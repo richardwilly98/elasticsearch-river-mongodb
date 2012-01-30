@@ -1,4 +1,4 @@
-Elasticsearch River for MongoDB
+MongoDB River Plugin for ElasticSearch
 
 Initial implementation by [aparo](https://github.com/aparo)
 
