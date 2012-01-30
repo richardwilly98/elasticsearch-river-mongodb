@@ -1,0 +1,65 @@
+-- create new index
+$ curl -XPUT "localhost:9200/testindex" -d '
+> { settings: { index: { number_of_shards: 1, number_of_replicas: 0}
+> }
+> }'
+
+
+-- create mapping for testattachment type
+$ curl -XPUT "localhost:9200/testindex/testattachment/_mapping" -d '
+{ testattachment: {
+properties: {
+file : { type: "attachment"}
+}
+}
+}'
+
+-- import binary content
+$ curl -XPUT "localhost:9200/testindex/testattachment/1" -d @attachment.txt
+
+-- get mapping
+$ curl -XGET "localhost:9200/testindex/testattachment/_mapping?pretty=true"
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100   868  100   868    0     0    856      0  0:00:01  0:00:01 --:--:--  847k{
+  "testattachment" : {
+    "properties" : {
+      "file" : {
+        "path" : "full",
+        "type" : "attachment",
+        "fields" : {
+          "author" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "keywords" : {
+            "type" : "string"
+          },
+          "file" : {
+            "type" : "string"
+          },
+          "date" : {
+            "format" : "dateOptionalTime",
+            "type" : "date"
+          },
+          "content_type" : {
+            "type" : "string"
+          }
+        }
+      },
+      "metadata" : {
+        "dynamic" : "true",
+        "properties" : {
+          "md5" : {
+            "type" : "string"
+          },
+          "length" : {
+            "type" : "long"
+          }
+        }
+      }
+    }
+  }
+}

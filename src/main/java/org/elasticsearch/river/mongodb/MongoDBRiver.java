@@ -51,35 +51,53 @@ import static org.elasticsearch.client.Requests.*;
 import static org.elasticsearch.common.xcontent.XContentFactory.*;
 
 /**
+ * @author richardwilly98 (Richard Louapre)
  * @author flaper87 (Flavio Percoco Premoli)
  * @author aparo (Alberto Paro)
  */
 
 public class MongoDBRiver extends AbstractRiverComponent implements River {
 
-    private final Client client;
+	public final static String RIVER_TYPE = "mongodb";
+	public final static String DB_FIELD = "db";
+	public final static String HOST_FIELD = "host";
+	public final static String PORT_FIELD = "port";
+	public final static String FILTER_FIELD = "filter";
+	public final static String PASSWORD_FIELD = "password";
+	public final static String USER_FIELD = "user";
+	public final static String SCRIPT_FIELD = "script";
+	public final static String COLLECTION_FIELD = "collection";
+	public final static String GRIDFS_FIELD = "gridfs";
+	public final static String INDEX_OBJECT = "index";
+	public final static String NAME_FIELD = "name";
+	public final static String TYPE_FIELD = "type";
+	public final static String BULK_SIZE_FIELD = "bulk_size";
+	public final static String BULK_TIMEOUT_FIELD = "bulk_timeout";
+	
+    protected final Client client;
 
-    private final String riverIndexName;
+    protected final String riverIndexName;
 
-    private final String mongoHost;
-    private final int mongoPort;
-    private final String mongoDb;
-    private final String mongoCollection;
-    private final String mongoFilter;
-    private final String mongoUser;
-    private final String mongoPassword;
+    protected final String mongoHost;
+    protected final int mongoPort;
+    protected final String mongoDb;
+    protected final String mongoCollection;
+    protected final boolean mongoGridFS;
+    protected final String mongoFilter;
+    protected final String mongoUser;
+    protected final String mongoPassword;
 
-    private final String indexName;
-    private final String typeName;
-    private final int bulkSize;
-    private final TimeValue bulkTimeout;
+    protected final String indexName;
+    protected final String typeName;
+    protected final int bulkSize;
+    protected final TimeValue bulkTimeout;
 
-    private final ExecutableScript script;
-    private final Map<String, Object> scriptParams = Maps.newHashMap();
+    protected final ExecutableScript script;
+    protected final Map<String, Object> scriptParams = Maps.newHashMap();
 
-    private volatile Thread tailerThread;
-    private volatile Thread indexerThread;
-    private volatile boolean closed;
+    protected volatile Thread tailerThread;
+    protected volatile Thread indexerThread;
+    protected volatile boolean closed;
 
     private final TransferQueue<Map> stream = new LinkedTransferQueue<Map>();
 
@@ -88,24 +106,24 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         this.riverIndexName = riverIndexName;
         this.client = client;
 
-        if (settings.settings().containsKey("mongodb")) {
-            Map<String, Object> mongoSettings = (Map<String, Object>) settings.settings().get("mongodb");
-            mongoHost = XContentMapValues.nodeStringValue(mongoSettings.get("host"), "localhost");
-            mongoPort = XContentMapValues.nodeIntegerValue(mongoSettings.get("port"), 27017);
-            mongoDb = XContentMapValues.nodeStringValue(mongoSettings.get("db"), riverName.name());
-            mongoCollection = XContentMapValues.nodeStringValue(mongoSettings.get("collection"), riverName.name());
-            mongoFilter = XContentMapValues.nodeStringValue(mongoSettings.get("filter"), null);
-            if (mongoSettings.containsKey("user") && mongoSettings.containsKey("password")) {
-                mongoUser = mongoSettings.get("user").toString();
-                mongoPassword = mongoSettings.get("password").toString();
+        if (settings.settings().containsKey(RIVER_TYPE)) {
+            Map<String, Object> mongoSettings = (Map<String, Object>) settings.settings().get(RIVER_TYPE);
+            mongoHost = XContentMapValues.nodeStringValue(mongoSettings.get(HOST_FIELD), "localhost");
+            mongoPort = XContentMapValues.nodeIntegerValue(mongoSettings.get(PORT_FIELD), 27017);
+            mongoDb = XContentMapValues.nodeStringValue(mongoSettings.get(DB_FIELD), riverName.name());
+            mongoCollection = XContentMapValues.nodeStringValue(mongoSettings.get(COLLECTION_FIELD), riverName.name());
+            mongoGridFS = XContentMapValues.nodeBooleanValue(mongoSettings.get(GRIDFS_FIELD), false);
+            mongoFilter = XContentMapValues.nodeStringValue(mongoSettings.get(FILTER_FIELD), null);
+            if (mongoSettings.containsKey(USER_FIELD) && mongoSettings.containsKey(PASSWORD_FIELD)) {
+                mongoUser = mongoSettings.get(USER_FIELD).toString();
+                mongoPassword = mongoSettings.get(PASSWORD_FIELD).toString();
             }else{
                 mongoUser = "";
                 mongoPassword = "";
-                
             }
 
-            if (mongoSettings.containsKey("script")) {
-                script = scriptService.executable("js", mongoSettings.get("script").toString(), Maps.newHashMap());
+            if (mongoSettings.containsKey(SCRIPT_FIELD)) {
+                script = scriptService.executable("js", mongoSettings.get(SCRIPT_FIELD).toString(), Maps.newHashMap());
             } else {
                 script = null;
             }
@@ -115,18 +133,19 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             mongoDb = riverName.name();
             mongoFilter = null;
             mongoCollection = riverName.name();
+            mongoGridFS = false;
             mongoUser = "";
             mongoPassword = "";
             script = null;
         }
 
-        if (settings.settings().containsKey("index")) {
-            Map<String, Object> indexSettings = (Map<String, Object>) settings.settings().get("index");
-            indexName = XContentMapValues.nodeStringValue(indexSettings.get("index"), mongoDb);
-            typeName = XContentMapValues.nodeStringValue(indexSettings.get("type"), mongoDb);
-            bulkSize = XContentMapValues.nodeIntegerValue(indexSettings.get("bulk_size"), 100);
-            if (indexSettings.containsKey("bulk_timeout")) {
-                bulkTimeout = TimeValue.parseTimeValue(XContentMapValues.nodeStringValue(indexSettings.get("bulk_timeout"), "10ms"), TimeValue.timeValueMillis(10));
+        if (settings.settings().containsKey(INDEX_OBJECT)) {
+            Map<String, Object> indexSettings = (Map<String, Object>) settings.settings().get(INDEX_OBJECT);
+            indexName = XContentMapValues.nodeStringValue(indexSettings.get(NAME_FIELD), mongoDb);
+            typeName = XContentMapValues.nodeStringValue(indexSettings.get(TYPE_FIELD), mongoDb);
+            bulkSize = XContentMapValues.nodeIntegerValue(indexSettings.get(BULK_SIZE_FIELD), 100);
+            if (indexSettings.containsKey(BULK_TIMEOUT_FIELD)) {
+                bulkTimeout = TimeValue.parseTimeValue(XContentMapValues.nodeStringValue(indexSettings.get(BULK_TIMEOUT_FIELD), "10ms"), TimeValue.timeValueMillis(10));
             } else {
                 bulkTimeout = TimeValue.timeValueMillis(10);
             }
@@ -221,7 +240,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 if (lastId != null) {
                     try {
                         bulk.add(indexRequest(riverIndexName).type(riverName.name()).id("_last_id")
-                                .source(jsonBuilder().startObject().startObject("mongodb").field("lats_id", lastId).endObject().endObject()));
+                                .source(jsonBuilder().startObject().startObject("mongodb").field("last_id", lastId).endObject().endObject()));
                     } catch (IOException e) {
                         e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
                     }
@@ -281,7 +300,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                     if (lastIdResponse.exists()) {
                         Map<String, Object> mongodbState = (Map<String, Object>) lastIdResponse.sourceAsMap().get("mongodb");
                         if (mongodbState != null) {
-                            lastId = mongodbState.get("lats_id").toString();
+                            lastId = mongodbState.get("last_id").toString();
                         }
                     }
                 } catch (Exception e) {

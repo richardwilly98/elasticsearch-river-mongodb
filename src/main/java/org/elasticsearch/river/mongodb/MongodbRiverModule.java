@@ -29,6 +29,6 @@ import org.elasticsearch.river.River;
 public class MongodbRiverModule extends AbstractModule {
 
     @Override protected void configure() {
-        bind(River.class).to(MongoDBRiver.class).asEagerSingleton();
+        bind(River.class).to(MongoDBRiver2.class).asEagerSingleton();
     }
 }
