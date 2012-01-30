@@ -98,7 +98,7 @@ public class MongoDBRiver2 extends MongoDBRiver {
 	public void start() {
 		logger.info(
 				"starting mongodb stream: host [{}], port [{}], gridfs [{}], filter [{}], db [{}], indexing to [{}]/[{}]",
-				mongoHost, mongoPort, mongoGridFS, mongoFilter, mongoDb, indexName, typeName);
+				mongoHost, mongoPort, mongoGridFS, mongoDb, indexName, typeName);
 		try {
 			client.admin().indices().prepareCreate(indexName).execute()
 					.actionGet();

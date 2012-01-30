@@ -83,7 +83,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     protected final String mongoDb;
     protected final String mongoCollection;
     protected final boolean mongoGridFS;
-    protected final String mongoFilter;
+//    protected final String mongoFilter;
     protected final String mongoUser;
     protected final String mongoPassword;
 
@@ -92,7 +92,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     protected final int bulkSize;
     protected final TimeValue bulkTimeout;
 
-    protected final ExecutableScript script;
+//    protected final ExecutableScript script;
     protected final Map<String, Object> scriptParams = Maps.newHashMap();
 
     protected volatile Thread tailerThread;
@@ -113,7 +113,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             mongoDb = XContentMapValues.nodeStringValue(mongoSettings.get(DB_FIELD), riverName.name());
             mongoCollection = XContentMapValues.nodeStringValue(mongoSettings.get(COLLECTION_FIELD), riverName.name());
             mongoGridFS = XContentMapValues.nodeBooleanValue(mongoSettings.get(GRIDFS_FIELD), false);
-            mongoFilter = XContentMapValues.nodeStringValue(mongoSettings.get(FILTER_FIELD), null);
+//            mongoFilter = XContentMapValues.nodeStringValue(mongoSettings.get(FILTER_FIELD), null);
             if (mongoSettings.containsKey(USER_FIELD) && mongoSettings.containsKey(PASSWORD_FIELD)) {
                 mongoUser = mongoSettings.get(USER_FIELD).toString();
                 mongoPassword = mongoSettings.get(PASSWORD_FIELD).toString();
@@ -122,21 +122,21 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 mongoPassword = "";
             }
 
-            if (mongoSettings.containsKey(SCRIPT_FIELD)) {
-                script = scriptService.executable("js", mongoSettings.get(SCRIPT_FIELD).toString(), Maps.newHashMap());
-            } else {
-                script = null;
-            }
+//            if (mongoSettings.containsKey(SCRIPT_FIELD)) {
+//                script = scriptService.executable("js", mongoSettings.get(SCRIPT_FIELD).toString(), Maps.newHashMap());
+//            } else {
+//                script = null;
+//            }
         } else {
             mongoHost = "localhost";
             mongoPort = 27017;
             mongoDb = riverName.name();
-            mongoFilter = null;
+//            mongoFilter = null;
             mongoCollection = riverName.name();
             mongoGridFS = false;
             mongoUser = "";
             mongoPassword = "";
-            script = null;
+//            script = null;
         }
 
         if (settings.settings().containsKey(INDEX_OBJECT)) {
@@ -158,7 +158,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     }
 
     @Override public void start() {
-        logger.info("starting mongodb stream: host [{}], port [{}], filter [{}], db [{}], indexing to [{}]/[{}]", mongoHost, mongoPort, mongoFilter, mongoDb, indexName, typeName);
+        logger.info("starting mongodb stream: host [{}], port [{}], db [{}], indexing to [{}]/[{}]", mongoHost, mongoPort, mongoDb, indexName, typeName);
         try {
             client.admin().indices().prepareCreate(indexName).execute().actionGet();
         } catch (Exception e) {
