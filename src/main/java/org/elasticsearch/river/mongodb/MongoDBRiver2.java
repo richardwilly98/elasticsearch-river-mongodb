@@ -441,7 +441,6 @@ public class MongoDBRiver2 extends MongoDBRiver {
 								else {
 									mydata = object.toMap();
 								}
-								
 								mydata.put("_id", object.get("_id"));
 								mydata.put(oplogTimestamp, currentTimestamp);
 								mydata.put(oplogOperation, operation);

@@ -37,6 +37,6 @@ public class MongoDBRiverPlugin extends AbstractPlugin {
     }
 
     @Override public String description() {
-        return "River MongoDB Plugin";
+        return "MongoDB River Plugin";
     }
 }
