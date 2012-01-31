@@ -18,12 +18,14 @@
         </license>
     </licenses>
     <scm>
-<!--
-        <connection>scm:git:git@github.com:elasticsearch/elasticsearch-river-couchdb.git</connection>
-        <developerConnection>scm:git:git@github.com:elasticsearch/elasticsearch-river-couchdb.git</developerConnection>
-        <url>http://github.com/elasticsearch/elasticsearch-river-couchdb</url>
--->
+        <connection>scm:git:git@github.com:richardwilly98/elasticsearch-river-mongodb.git</connection>
+        <developerConnection>scm:git:git@github.com:richardwilly98/elasticsearch-river-mongodb.git</developerConnection>
+        <url>https://github.com/richardwilly98/elasticsearch-river-mongodb</url>
     </scm>
+	<issueManagement>
+		<system>GitHub</system>
+		<url>https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/</url>
+	</issueManagement>
 
     <parent>
         <groupId>org.sonatype.oss</groupId>

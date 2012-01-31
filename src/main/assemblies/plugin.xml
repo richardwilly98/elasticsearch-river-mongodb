@@ -14,13 +14,11 @@
                 <exclude>org.elasticsearch:elasticsearch</exclude>
             </excludes>
         </dependencySet>
+        <!-- Include MongoDB driver as dependency -->
         <dependencySet>
-            <outputDirectory>/</outputDirectory>
-            <useProjectArtifact>true</useProjectArtifact>
-            <useTransitiveFiltering>true</useTransitiveFiltering>
-            <includes>
-                <!-- <include>org.twitter4j:twitter4j-stream</include> -->
-            </includes>
+			<includes>
+				<include>org.mongodb:mongo-java-driver</include>
+			</includes>
         </dependencySet>
     </dependencySets>
 </assembly>
