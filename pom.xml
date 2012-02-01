@@ -8,7 +8,9 @@
 	<version>1.1.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<description>MongoDB River for ElasticSearch</description>
+	<url>https://github.com/richardwilly98/elasticsearch-river-mongodb</url>
 	<inceptionYear>2010</inceptionYear>
+	
 	<licenses>
 		<license>
 			<name>The Apache Software License, Version 2.0</name>
@@ -108,6 +110,9 @@
 					<description>${project.name} download for ${project.version}</description>
 					<override>true</override>
 					<includeAttached>true</includeAttached>
+					<includes>
+						<include>releases/*.zip</include>
+					</includes>
 				</configuration>
 				<executions>
 					<execution>
@@ -115,27 +120,6 @@
 							<goal>upload</goal>
 						</goals>
 						<phase>install</phase>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
-				<groupId>com.github.github</groupId>
-				<artifactId>site-maven-plugin</artifactId>
-				<version>0.4</version>
-				<configuration>
-					<description>Creating site</description>
-					<override>true</override>
-					<includeAttached>true</includeAttached>
-					<message>Building ${project.version} maven site</message>
-					<path>version/${project.version}/</path>
-					<merge>true</merge>
-				</configuration>
-				<executions>
-					<execution>
-						<goals>
-							<goal>site</goal>
-						</goals>
-						<phase>site</phase>
 					</execution>
 				</executions>
 			</plugin>
