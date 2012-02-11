@@ -24,9 +24,10 @@ import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 
 import java.io.IOException;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.regex.Pattern;
 
 import org.bson.types.BSONTimestamp;
 import org.bson.types.ObjectId;
@@ -88,6 +89,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
   public final static String OPLOG_COLLECTION = "oplog.rs";
   public final static String OPLOG_NAMESPACE = "ns";
   public final static String OPLOG_OBJECT = "o";
+  public final static String OPLOG_UPDATE = "o2";
   public final static String OPLOG_OPERATION = "op";
   public final static String OPLOG_TIMESTAMP = "ts";
 
@@ -300,111 +302,172 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
   private class Slurper implements Runnable {
 
-    @SuppressWarnings("unchecked")
+    private Mongo mongo;
+    private DB slurpedDb;
+    private DBCollection slurpedCollection;
+    private DB oplogDb;
+    private DBCollection oplogCollection;
+
+    private boolean asignCollections() {
+      oplogDb = mongo.getDB(MONGODB_LOCAL);
+      if (!mongoUser.isEmpty() && !mongoPassword.isEmpty()) {
+        boolean auth = oplogDb.authenticate(mongoUser,
+            mongoPassword.toCharArray());
+        if (auth == false) {
+          logger.warn("Invalid credential");
+          return false;
+        }
+      }
+      oplogCollection = oplogDb.getCollection(OPLOG_COLLECTION);
+
+      slurpedDb = mongo.getDB(mongoDb);
+      if (!mongoUser.isEmpty() && !mongoPassword.isEmpty()) {
+        boolean auth = slurpedDb.authenticate(mongoUser, mongoPassword.toCharArray());
+        if (auth == false) {
+          logger.warn("Invalid credential");
+          return false;
+        }
+      }
+      slurpedCollection = slurpedDb.getCollection(mongoCollection);
+
+      return true;
+    }
+
     @Override
     public void run() {
-      // There should be just one Mongo instance per jvm
-      // it has an internal connection pooling. In this case
-      // we'll use a single Mongo to handle the river.
-      Mongo mongo = null;
       try {
-        ArrayList<ServerAddress> addr = new ArrayList<ServerAddress>();
-        addr.add(new ServerAddress(mongoHost, mongoPort));
-        mongo = new Mongo(addr);
-        // Only the master contains local/oplog collection
-        // m.slaveOk();
+        mongo = new Mongo(new ServerAddress(mongoHost, mongoPort));
       } catch (UnknownHostException e) {
-        e.printStackTrace(); // To change body of catch statement use
-        // File | Settings | File Templates.
+        logger.error("Unknown host");
+        return;
       }
 
       while (active) {
         try {
-          DB local = mongo.getDB(MONGODB_LOCAL);
-          if (!mongoUser.isEmpty() && !mongoPassword.isEmpty()) {
-            boolean auth = local.authenticate(mongoUser,
-                mongoPassword.toCharArray());
-            if (auth == false) {
-              logger.warn("Invalid credential");
-              break;
-            }
+          if (!asignCollections()) {
+            break; // failed to asign oplogCollection or slurpedCollection
           }
 
-          DBCollection coll = local.getCollection(OPLOG_COLLECTION);
-          DBCursor cur = coll.find(getIndexFilter(mongoOplogNamespace))
-              .sort(new BasicDBObject("$natural", 1))
-              .addOption(Bytes.QUERYOPTION_TAILABLE)
-              .addOption(Bytes.QUERYOPTION_AWAITDATA);
-
+          DBCursor oplogCursor = oplogCursor(null);
+          if (oplogCursor == null) {
+            oplogCursor = processFullCollection();
+          }
+          if (!oplogCursor.hasNext()) {
+            Thread.sleep(500); // sleep since mongo doesn't really work well until at least one item is in the cursor.
+            continue;
+          }
           DBObject item;
-          while ((item = cur.next()) != null) {
-            String operation = item.get(OPLOG_OPERATION).toString();
-            String namespace = item.get(OPLOG_NAMESPACE).toString();
-            BSONTimestamp currentTimestamp = (BSONTimestamp) item.get(OPLOG_TIMESTAMP);
-            DBObject object = (DBObject) item.get(OPLOG_NAMESPACE);
-            if (namespace.startsWith(mongoOplogNamespace)) {
-
-              // Not interested by chunks - skip all them
-              if (namespace.endsWith(".chunks")) {
-                continue;
-              }
-
-              logger.trace("oplog processing item {}", item);
-
-              if (mongoGridFS && namespace.endsWith(".files") && ("i".equals(operation) || "u".equals(operation))) {
-                String objectId = object.get("_id").toString();
-                GridFS grid = new GridFS(mongo.getDB(mongoDb), mongoCollection);
-                GridFSDBFile file = grid.findOne(new ObjectId(objectId));
-                if (file != null) {
-                  logger.info("Caught file: {} - {}", file.getId(), file.getFilename());
-                  object = file;
-                } else {
-                  logger.warn("Cannot find file from id: {}", objectId);
-                }
-              }
-
-              Map<String, Object> data;
-              if (object instanceof GridFSDBFile) {
-                logger.info("Add attachment: {}", object.get("_id"));
-                data = new HashMap<String, Object>();
-                data.put("attachment", object);
-              }
-              else {
-                data = object.toMap();
-              }
-
-              data.put("_id", object.get("_id"));
-              data.put(OPLOG_TIMESTAMP, currentTimestamp);
-              data.put(OPLOG_OPERATION, operation);
-
-              stream.add(data);
-            } else {
-              logger.debug("Skip namespace: {}", namespace);
-            }
+          while ((item = oplogCursor.next()) != null) {
+            processOplogEntry(item);
           }
-          Thread.sleep(bulkTimeout.getMillis()); // sleep since mongo seems to have dropped the cursor.
+          Thread.sleep(5000);
         } catch (MongoException mEx) {
           logger.error("Mongo gave an exception", mEx);
+        } catch (NoSuchElementException nEx) {
+          logger.warn("A mongoDB cursor bug ?", nEx);
         } catch (InterruptedException e) {
           logger.debug("river-mongodb slurper interrupted");
         }
       }
     }
 
-    private DBObject getIndexFilter(final String namespace) {
-      BSONTimestamp time = getLastTimestamp(namespace);
-      DBObject filter = null;
-      if (time != null) {
-        filter = new BasicDBObject();
-        filter.put(OPLOG_TIMESTAMP, new BasicDBObject("$gt", time));
-        if (logger.isDebugEnabled()) {
-          logger.debug("Using filter: {}", filter);
+    private DBCursor processFullCollection() {
+      CommandResult lockResult = mongo.fsyncAndLock();
+      if (lockResult.ok()) {
+        try {
+          BSONTimestamp currentTimestamp = (BSONTimestamp) oplogCollection.find()
+              .sort(new BasicDBObject(OPLOG_TIMESTAMP, -1))
+              .limit(1).next()
+              .get(OPLOG_TIMESTAMP);
+          addQueryToStream("i", currentTimestamp, null);
+          return oplogCursor(currentTimestamp);
+        } finally {
+          mongo.unlock();
         }
       } else {
-        logger.info("filter is null.");
+        throw new MongoException("Could not lock the database for FullCollection sync");
       }
-      return filter;
     }
+
+    @SuppressWarnings("unchecked")
+    private void processOplogEntry(final DBObject entry) {
+      String operation = entry.get(OPLOG_OPERATION).toString();
+      String namespace = entry.get(OPLOG_NAMESPACE).toString();
+      BSONTimestamp oplogTimestamp = (BSONTimestamp) entry.get(OPLOG_TIMESTAMP);
+      DBObject object = (DBObject) entry.get(OPLOG_OBJECT);
+
+      // Not interested by chunks - skip all
+      if (namespace.endsWith(".chunks")) { return; }
+
+      logger.trace("oplog processing item {}", entry);
+
+      if (mongoGridFS && namespace.endsWith(".files") && ("i".equals(operation) || "u".equals(operation))) {
+        String objectId = object.get("_id").toString();
+        GridFS grid = new GridFS(mongo.getDB(mongoDb), mongoCollection);
+        GridFSDBFile file = grid.findOne(new ObjectId(objectId));
+        if (file != null) {
+          logger.info("Caught file: {} - {}", file.getId(), file.getFilename());
+          object = file;
+        } else {
+          logger.warn("Cannot find file from id: {}", objectId);
+        }
+      }
+
+      if (object instanceof GridFSDBFile) {
+        logger.info("Add attachment: {}", object.get("_id"));
+        HashMap<String, Object> data = new HashMap<String, Object>();
+        data.put("attachment", object);
+        data.put("_id", object.get("_id"));
+        addToStream(operation, oplogTimestamp, data);
+      }
+      else {
+        if ("u".equals(operation)) {
+          DBObject update = (DBObject) entry.get(OPLOG_UPDATE);
+          addQueryToStream(operation, oplogTimestamp, update);
+        } else {
+          addToStream(operation, oplogTimestamp, object.toMap());
+        }
+      }
+    }
+
+    private DBObject getIndexFilter(final BSONTimestamp timestampOverride) {
+      BSONTimestamp time = timestampOverride == null ? getLastTimestamp(mongoOplogNamespace) : timestampOverride;
+      if (time == null) {
+        logger.info("No known previous slurping time for this collection");
+        return null;
+      } else {
+        BasicDBObject filter = new BasicDBObject();
+        filter.put(OPLOG_TIMESTAMP, new BasicDBObject("$gt", time));
+        filter.put(OPLOG_NAMESPACE, Pattern.compile(mongoOplogNamespace));
+        logger.debug("Using filter: {}", filter);
+        return filter;
+      }
+    }
+
+    private DBCursor oplogCursor(final BSONTimestamp timestampOverride) {
+      DBObject indexFilter = getIndexFilter(timestampOverride);
+      if (indexFilter == null) { return null; }
+      return oplogCollection.find(indexFilter)
+          .sort(new BasicDBObject("$natural", 1))
+          .addOption(Bytes.QUERYOPTION_TAILABLE)
+          .addOption(Bytes.QUERYOPTION_AWAITDATA);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void addQueryToStream(final String operation, final BSONTimestamp currentTimestamp, final DBObject update) {
+      for (DBObject item : slurpedCollection.find(update)) {
+        addToStream(operation, currentTimestamp, item.toMap());
+      }
+    }
+
+    private void addToStream(final String operation, final BSONTimestamp currentTimestamp,
+        final Map<String, Object> data) {
+      data.put(OPLOG_TIMESTAMP, currentTimestamp);
+      data.put(OPLOG_OPERATION, operation);
+
+      stream.add(data);
+    }
+
   }
 
   private XContentBuilder getGridFSMapping() throws IOException {
