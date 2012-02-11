@@ -30,7 +30,7 @@ import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
-import org.elasticsearch.river.mongodb.MongoDBRiver;
+import org.elasticsearch.river.mongodb.MongoDBRiverOld;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
@@ -141,14 +141,14 @@ public class MongoGridFSTest {
 
 	public XContentBuilder getRiverSettings() throws Exception {
 		XContentBuilder xb = jsonBuilder().startObject()
-					.field("type", MongoDBRiver.RIVER_TYPE)
-					.startObject(MongoDBRiver.RIVER_TYPE)
-						.field(MongoDBRiver.DB_FIELD, "test")
-						.field(MongoDBRiver.COLLECTION_FIELD, "fs")
+					.field("type", MongoDBRiverOld.RIVER_TYPE)
+					.startObject(MongoDBRiverOld.RIVER_TYPE)
+						.field(MongoDBRiverOld.DB_FIELD, "test")
+						.field(MongoDBRiverOld.COLLECTION_FIELD, "fs")
 					.endObject()
-					.startObject(MongoDBRiver.INDEX_OBJECT)
-						.field(MongoDBRiver.NAME_FIELD, INDEX_NAME)
-						.field(MongoDBRiver.TYPE_FIELD, TYPE_NAME)
+					.startObject(MongoDBRiverOld.INDEX_OBJECT)
+						.field(MongoDBRiverOld.NAME_FIELD, INDEX_NAME)
+						.field(MongoDBRiverOld.TYPE_FIELD, TYPE_NAME)
 					.endObject()
 				.endObject();
 		logger.debug("River settings: " + xb.string());

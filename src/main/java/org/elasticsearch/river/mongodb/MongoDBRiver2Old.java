@@ -70,7 +70,7 @@ import com.mongodb.util.JSON;
  * @author aparo (Alberto Paro)
  */
 
-public class MongoDBRiver2 extends MongoDBRiver {
+public class MongoDBRiver2Old extends MongoDBRiverOld {
 
 	public final static String mongoDBrootName = "mongodb";
 	public final static String lastTimestampName = "_last_ts";
@@ -85,7 +85,7 @@ public class MongoDBRiver2 extends MongoDBRiver {
 	private final TransferQueue<Map<String, Object>> stream = new LinkedTransferQueue<Map<String, Object>>();
 
 	@Inject
-	public MongoDBRiver2(RiverName riverName, RiverSettings settings,
+	public MongoDBRiver2Old(RiverName riverName, RiverSettings settings,
 			@RiverIndexName String riverIndexName, Client client,
 			ScriptService scriptService) {
 		super(riverName, settings, riverIndexName, client, scriptService);
