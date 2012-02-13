@@ -20,23 +20,34 @@
 package org.elasticsearch.plugin.river.mongodb;
 
 import org.elasticsearch.common.inject.Inject;
+import org.elasticsearch.common.inject.Module;
 import org.elasticsearch.plugins.AbstractPlugin;
+import org.elasticsearch.river.RiversModule;
+import org.elasticsearch.river.mongodb.MongodbRiverModule;
 
 /**
  * @author flaper87 (Flavio Percoco Premoli)
  * @author aparo (Alberto Paro)
+ * @author kryptt (Rodolfo Hansen)
  */
 
 public class MongoDBRiverPlugin extends AbstractPlugin {
 
-    @Inject public MongoDBRiverPlugin() {
-    }
+  @Inject public MongoDBRiverPlugin() {
+  }
 
-    @Override public String name() {
-        return "river-mongodb";
-    }
+  @Override public String name() {
+    return "river-mongodb";
+  }
 
-    @Override public String description() {
-        return "River MongoDB Plugin";
+  @Override public String description() {
+    return "River MongoDB Plugin";
+  }
+
+  @Override
+  public void processModule(final Module module) {
+    if (module instanceof RiversModule) {
+      ((RiversModule) module).registerRiver("mongodb", MongodbRiverModule.class);
     }
+  }
 }
