@@ -25,10 +25,11 @@ import org.elasticsearch.river.River;
 /**
  * @author flaper87 (Flavio Percoco Premoli)
  * @author aparo (Alberto Paro)
+ * @author kryptt (Rodolfo Hansen)
  */
 public class MongodbRiverModule extends AbstractModule {
 
-    @Override protected void configure() {
-        bind(River.class).to(MongoDBRiver2.class).asEagerSingleton();
-    }
+  @Override protected void configure() {
+    bind(River.class).to(MongoDBRiver.class).asEagerSingleton();
+  }
 }
