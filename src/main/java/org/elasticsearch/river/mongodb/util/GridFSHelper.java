@@ -23,7 +23,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-import org.elasticsearch.common.codec.binary.Base64;
+import org.elasticsearch.common.Base64;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 
@@ -52,7 +52,7 @@ public abstract class GridFSHelper {
 		buffer.flush();
 		stream.close();
 		
-		String encodedContent = Base64.encodeBase64String(buffer.toByteArray());
+		String encodedContent = Base64.encodeBytes(buffer.toByteArray());
 		
 		// Probably not necessary...
 		buffer.close();

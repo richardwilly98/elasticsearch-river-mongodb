@@ -31,13 +31,13 @@ import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
 import org.elasticsearch.action.get.GetResponse;
+import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.client.action.index.IndexRequestBuilder;
-import org.elasticsearch.client.action.search.SearchRequestBuilder;
 import org.elasticsearch.client.transport.TransportClient;
-import org.elasticsearch.common.codec.binary.Base64;
+import org.elasticsearch.common.Base64;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.ImmutableSettings;
@@ -108,7 +108,7 @@ public class ImportAttachmentTest {
 		String id = "1";
 		try {
 			byte[] content = getBytesFromFile(filename);
-			String encodedContent = Base64.encodeBase64String(content);
+			String encodedContent = Base64.encodeBytes(content);
 			XContentBuilder b = jsonBuilder().startObject();
 				b.startObject("content");
 					b.field("content_type", contentType);
