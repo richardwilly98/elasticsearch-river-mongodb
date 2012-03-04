@@ -6,20 +6,31 @@ Modified to get the same structure as the others Elasticsearch river (like [Couc
 
 The latest version monitor oplog capped collection and support attachment (GridFS).
 
-For the initla implementation see [tutorial](http://www.matt-reid.co.uk/blog_post.php?id=68#&slider1=4)
+For the initial implementation see [tutorial](http://www.matt-reid.co.uk/blog_post.php?id=68#&slider1=4)
 
-curl -XPUT 'http://localhost:9200/_river/mongodb/_meta' -d '{
-	"type": "mongodb", 
-	"mongodb": { 
-		"db": "DATABASE_NAME", 
-		"collection": "COLLECTION", 
-		"gridfs": true
-	}, 
-	"index": { 
-		"name": "ES_INDEX_NAME", 
-		"type": "ES_TYPE_NAME" 
-	}
-}'
+    -----------------------------------------------
+    | MongoDB River Plugin     | ElasticSearch    |
+    -----------------------------------------------
+    | master                   | 0.19 -> master   |
+    -----------------------------------------------
+    | 1.1.0                    | 0.19 -> master   |
+    -----------------------------------------------
+    | 1.0.0                    | 0.18             |
+    -----------------------------------------------
+
+
+	curl -XPUT 'http://localhost:9200/_river/mongodb/_meta' -d '{
+		"type": "mongodb", 
+		"mongodb": { 
+			"db": "DATABASE_NAME", 
+			"collection": "COLLECTION", 
+			"gridfs": true
+		}, 
+		"index": { 
+			"name": "ES_INDEX_NAME", 
+			"type": "ES_TYPE_NAME" 
+		}
+	}'
 
 Example:
 
