@@ -69,15 +69,15 @@ Query index:
 		}
 	}'
 
-- Import binary content in mongo:
+Import binary content in mongo:
 
 	%MONGO_HOME%\bin>mongofiles.exe --host localhost:27017 --db testmongo --collection files put test-document-2.pdf
-
-connected to: localhost:27017
-added file: { _id: ObjectId('**4f230588a7da6e94984d88a1**'), filename: "test-document-2.pdf", chunkSize: 262144, uploadDate: new Date(1327695240206), md5: "c2f251205576566826f86cd969158f24", length: 173293 }
-done!
+	connected to: localhost:27017
+	added file: { _id: ObjectId('**4f230588a7da6e94984d88a1**'), filename: "test-document-2.pdf", chunkSize: 262144, uploadDate: new Date(1327695240206), md5: "c2f251205576566826f86cd969158f24", length: 173293 }
+	done!
 
 Query index:
+
 	curl -XGET "http://localhost:9200/files/4f230588a7da6e94984d88a1?pretty=true"
 
 See more details check the [wiki](https://github.com/richardwilly98/elasticsearch-river-mongodb/wiki)
