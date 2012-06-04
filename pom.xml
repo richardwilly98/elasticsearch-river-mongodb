@@ -43,7 +43,7 @@
 	</parent>
 
 	<properties>
-		<elasticsearch.version>0.19.0</elasticsearch.version>
+		<elasticsearch.version>0.19.4</elasticsearch.version>
 		<mongo-java-driver.version>2.7.2</mongo-java-driver.version>
 	</properties>
 
