@@ -419,9 +419,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					}
 
 					while (oplogCursor.hasNext()) {
-                        DBObject item = oplogCursor.next();
-                        processOplogEntry(item);
-                    }
+						DBObject item = oplogCursor.next();
+						processOplogEntry(item);
+					}
 					Thread.sleep(5000);
 				} catch (MongoException mEx) {
 					logger.error("Mongo gave an exception", mEx);
