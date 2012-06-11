@@ -417,16 +417,11 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					if (oplogCursor == null) {
 						oplogCursor = processFullCollection();
 					}
-					if (!oplogCursor.hasNext()) {
-						Thread.sleep(500); // sleep since MongoDB doesn't really
-											// work well until at least one item
-											// is in the cursor.
-						continue;
-					}
-					DBObject item;
-					while ((item = oplogCursor.next()) != null) {
-						processOplogEntry(item);
-					}
+
+					while (oplogCursor.hasNext()) {
+                        DBObject item = oplogCursor.next();
+                        processOplogEntry(item);
+                    }
 					Thread.sleep(5000);
 				} catch (MongoException mEx) {
 					logger.error("Mongo gave an exception", mEx);
