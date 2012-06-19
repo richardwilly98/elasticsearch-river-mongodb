@@ -58,7 +58,6 @@ import org.elasticsearch.script.ScriptService;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.Bytes;
-import com.mongodb.CommandResult;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
