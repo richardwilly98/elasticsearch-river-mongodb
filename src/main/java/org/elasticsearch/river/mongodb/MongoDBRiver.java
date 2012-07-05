@@ -24,7 +24,9 @@ import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 
 import java.io.IOException;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -80,6 +82,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	public final static String RIVER_TYPE = "mongodb";
 	public final static String ROOT_NAME = RIVER_TYPE;
 	public final static String DB_FIELD = "db";
+	public final static String SERVERS_FIELD = "servers";
 	public final static String HOST_FIELD = "host";
 	public final static String PORT_FIELD = "port";
 	public final static String FILTER_FIELD = "filter";
@@ -109,8 +112,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 	protected final String riverIndexName;
 
-	protected final String mongoHost;
-	protected final int mongoPort;
+	protected final List<ServerAddress> mongoServers = new ArrayList<ServerAddress>();
+	//protected final String mongoHost;
+	//protected final int mongoPort;
 	protected final String mongoDb;
 	protected final String mongoCollection;
 	protected final boolean mongoGridFS;
@@ -136,17 +140,52 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			@RiverIndexName final String riverIndexName, final Client client,
 			final ScriptService scriptService) {
 		super(riverName, settings);
-		logger.debug("Prefix: " + logger.getPrefix() + " - name: " + logger.getName());
+		if (logger.isDebugEnabled()) {
+			logger.debug("Prefix: " + logger.getPrefix() + " - name: " + logger.getName());
+		}
 		this.riverIndexName = riverIndexName;
 		this.client = client;
-
+		String mongoHost;
+		int mongoPort;
+		
 		if (settings.settings().containsKey(RIVER_TYPE)) {
 			Map<String, Object> mongoSettings = (Map<String, Object>) settings
 					.settings().get(RIVER_TYPE);
-			mongoHost = XContentMapValues.nodeStringValue(
-					mongoSettings.get(HOST_FIELD), "localhost");
-			mongoPort = XContentMapValues.nodeIntegerValue(
-					mongoSettings.get(PORT_FIELD), 27017);
+			if (mongoSettings.containsKey(SERVERS_FIELD)) {
+				logger.info("Using " + SERVERS_FIELD + " node settings.");
+				Object mongoServersSettings = mongoSettings.get(SERVERS_FIELD);
+				logger.info("mongoServersSettings: " + mongoServersSettings);
+				boolean array = XContentMapValues.isArray(mongoServersSettings);
+
+				if (array) {
+					ArrayList<Map<String, Object>> feeds = (ArrayList<Map<String, Object>>) mongoServersSettings;
+					for (Map<String, Object> feed : feeds) {
+						mongoHost = XContentMapValues.nodeStringValue(feed.get(HOST_FIELD), null);
+						mongoPort = XContentMapValues.nodeIntegerValue(feed.get(PORT_FIELD), 0);
+						logger.info("Server: " + mongoHost + " - " + mongoPort);
+						try {
+							mongoServers.add(new ServerAddress(mongoHost, mongoPort));
+						} catch (UnknownHostException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+					}	
+				}
+			}
+			else
+			{
+				logger.info("Using " + HOST_FIELD + " and " + PORT_FIELD + " nodes settings.");
+				mongoHost = XContentMapValues.nodeStringValue(
+						mongoSettings.get(HOST_FIELD), "localhost");
+				mongoPort = XContentMapValues.nodeIntegerValue(
+						mongoSettings.get(PORT_FIELD), 27017);
+				try {
+					mongoServers.add(new ServerAddress(mongoHost, mongoPort));
+				} catch (UnknownHostException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
 			mongoDb = XContentMapValues.nodeStringValue(
 					mongoSettings.get(DB_FIELD), riverName.name());
 			mongoCollection = XContentMapValues.nodeStringValue(
@@ -164,6 +203,11 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		} else {
 			mongoHost = "localhost";
 			mongoPort = 27017;
+			try {
+				mongoServers.add(new ServerAddress(mongoHost, mongoPort));
+			} catch (UnknownHostException e) {
+				e.printStackTrace();
+			}
 			mongoDb = riverName.name();
 			mongoCollection = riverName.name();
 			mongoGridFS = false;
@@ -199,9 +243,14 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 	@Override
 	public void start() {
+		for (ServerAddress server : mongoServers) {
+			logger.info(
+					"starting mongodb server(s): host [{}], port [{}]",
+					server.getHost(), server.getPort());
+		}
 		logger.info(
-				"starting mongodb stream: host [{}], port [{}], gridfs [{}], filter [{}], db [{}], indexing to [{}]/[{}]",
-				mongoHost, mongoPort, mongoGridFS, mongoDb, indexName, typeName);
+				"starting mongodb stream: gridfs [{}], filter [{}], db [{}], indexing to [{}]/[{}]",
+				mongoGridFS, mongoDb, indexName, typeName);
 		try {
 			client.admin().indices().prepareCreate(indexName).execute()
 					.actionGet();
@@ -295,7 +344,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					}
 
 				} catch (InterruptedException e) {
-					logger.debug("river-mongodb indexer interrupted");
+					if (logger.isDebugEnabled()) {
+						logger.debug("river-mongodb indexer interrupted");
+					}
 				}
 			}
 		}
@@ -316,16 +367,20 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			data.remove(OPLOG_OPERATION);
 			try {
 				if (OPLOG_INSERT_OPERATION.equals(operation)) {
-					logger.debug(
-							"Insert operation - id: {} - contains attachment: {}",
-							operation, objectId, data.containsKey("attachment"));
+					if (logger.isDebugEnabled()) {
+						logger.debug(
+								"Insert operation - id: {} - contains attachment: {}",
+								operation, objectId, data.containsKey("attachment"));
+					}
 					bulk.add(indexRequest(indexName).type(typeName)
 							.id(objectId).source(build(data, objectId)));
 				}
 				if (OPLOG_UPDATE_OPERATION.equals(operation)) {
-					logger.debug(
-							"Update operation - id: {} - contains attachment: {}",
-							objectId, data.containsKey("attachment"));
+					if (logger.isDebugEnabled()) {
+						logger.debug(
+								"Update operation - id: {} - contains attachment: {}",
+								objectId, data.containsKey("attachment"));
+					}
 					bulk.add(new DeleteRequest(indexName, typeName, objectId));
 					bulk.add(indexRequest(indexName).type(typeName)
 							.id(objectId).source(build(data, objectId)));
@@ -398,12 +453,13 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 		@Override
 		public void run() {
-			try {
-				mongo = new Mongo(new ServerAddress(mongoHost, mongoPort));
-			} catch (UnknownHostException e) {
-				logger.error("Unknown host");
-				return;
-			}
+//			try {
+				//mongo = new Mongo(new ServerAddress(mongoHost, mongoPort));
+				mongo = new Mongo(mongoServers);
+//			} catch (UnknownHostException e) {
+//				logger.error("Unknown host");
+//				return;
+//			}
 
 			while (active) {
 				try {
@@ -427,7 +483,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				} catch (NoSuchElementException nEx) {
 					logger.warn("A mongoDB cursor bug ?", nEx);
 				} catch (InterruptedException e) {
-					logger.debug("river-mongodb slurper interrupted");
+					if (logger.isDebugEnabled()) {
+						logger.debug("river-mongodb slurper interrupted");
+					}
 				}
 			}
 		}
@@ -467,7 +525,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				return;
 			}
 
-			logger.trace("oplog processing item {}", entry);
+			if (logger.isTraceEnabled()) {
+				logger.trace("oplog processing item {}", entry);
+			}
 
 			if (mongoGridFS && namespace.endsWith(".files")
 					&& ("i".equals(operation) || "u".equals(operation))) {
@@ -510,7 +570,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				filter.put(OPLOG_TIMESTAMP, new BasicDBObject("$gt", time));
 				filter.put(OPLOG_NAMESPACE,
 						Pattern.compile(mongoOplogNamespace));
-				logger.debug("Using filter: {}", filter);
+				if (logger.isDebugEnabled()) {
+					logger.debug("Using filter: {}", filter);
+				}
 				return filter;
 			}
 		}
@@ -574,8 +636,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				String lastTimestamp = mongodbState.get(LAST_TIMESTAMP_FIELD)
 						.toString();
 				if (lastTimestamp != null) {
-					logger.debug("{} last timestamp: {}", namespace,
+					if (logger.isDebugEnabled()) {
+						logger.debug("{} last timestamp: {}", namespace,
 							lastTimestamp);
+					}
 					return (BSONTimestamp) JSON.parse(lastTimestamp);
 
 				}

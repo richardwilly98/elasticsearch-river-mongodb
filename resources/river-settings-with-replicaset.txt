@@ -1,0 +1,15 @@
+{
+	"type":"mongodb",
+	"mongodb": 
+	{
+		"servers":
+		[
+			{ host: "localhost", port: "27017" },
+			{ host: "localhost", port: "27018" }
+		],
+		db: "testriver", 
+		collection: "person", 
+		gridfs: "false"
+	},
+	index: {name: "personindex"}
+}
