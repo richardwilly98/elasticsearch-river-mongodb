@@ -7,9 +7,10 @@
 			{ host: "localhost", port: "27017" },
 			{ host: "localhost", port: "27018" }
 		],
+		"options": { "secondaryreadpreference" : true},
 		db: "testriver", 
 		collection: "person", 
 		gridfs: "false"
 	},
-	index: {name: "personindex"}
+	index: { name: "personindex" }
 }

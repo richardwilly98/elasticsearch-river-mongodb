@@ -66,6 +66,8 @@ import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.Mongo;
 import com.mongodb.MongoException;
+import com.mongodb.ReadPreference;
+import com.mongodb.ReadPreference.SecondaryReadPreference;
 import com.mongodb.ServerAddress;
 import com.mongodb.gridfs.GridFS;
 import com.mongodb.gridfs.GridFSDBFile;
@@ -85,6 +87,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	public final static String SERVERS_FIELD = "servers";
 	public final static String HOST_FIELD = "host";
 	public final static String PORT_FIELD = "port";
+	public final static String OPTIONS_FIELD = "options";
+	public final static String SECONDARYREADPREFERENCE_FIELD = "secondaryreadpreference";
 	public final static String FILTER_FIELD = "filter";
 	public final static String PASSWORD_FIELD = "password";
 	public final static String USER_FIELD = "user";
@@ -121,6 +125,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	protected final String mongoUser;
 	protected final String mongoPassword;
 	protected final String mongoOplogNamespace;
+	protected final boolean mongoSecondaryReadPreference;
 
 	protected final String indexName;
 	protected final String typeName;
@@ -172,8 +177,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					}	
 				}
 			}
-			else
-			{
+			else {
 				logger.info("Using " + HOST_FIELD + " and " + PORT_FIELD + " nodes settings.");
 				mongoHost = XContentMapValues.nodeStringValue(
 						mongoSettings.get(HOST_FIELD), "localhost");
@@ -185,6 +189,15 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
+			}
+			
+			if (mongoSettings.containsKey(OPTIONS_FIELD)) {
+				Map<String, Object> mongoOptionsSettings = (Map<String, Object>) mongoSettings.get(OPTIONS_FIELD);
+				mongoSecondaryReadPreference = XContentMapValues.nodeBooleanValue(
+						mongoOptionsSettings.get(SECONDARYREADPREFERENCE_FIELD), false);
+			}
+			else {
+				mongoSecondaryReadPreference = false;
 			}
 			mongoDb = XContentMapValues.nodeStringValue(
 					mongoSettings.get(DB_FIELD), riverName.name());
@@ -208,6 +221,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			} catch (UnknownHostException e) {
 				e.printStackTrace();
 			}
+			mongoSecondaryReadPreference = false;
 			mongoDb = riverName.name();
 			mongoCollection = riverName.name();
 			mongoGridFS = false;
@@ -249,8 +263,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					server.getHost(), server.getPort());
 		}
 		logger.info(
-				"starting mongodb stream: gridfs [{}], filter [{}], db [{}], indexing to [{}]/[{}]",
-				mongoGridFS, mongoDb, indexName, typeName);
+				"starting mongodb stream: options: secondaryreadpreference [{}], gridfs [{}], filter [{}], db [{}], indexing to [{}]/[{}]",
+				mongoSecondaryReadPreference, mongoGridFS, mongoDb, indexName, typeName);
 		try {
 			client.admin().indices().prepareCreate(indexName).execute()
 					.actionGet();
@@ -420,6 +434,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 		private boolean assignCollections() {
 			oplogDb = mongo.getDB(MONGODB_LOCAL);
+			
 			if (!mongoUser.isEmpty() && !mongoPassword.isEmpty()
 					&& oplogDb.isAuthenticated()) {
 				boolean auth = oplogDb.authenticate(mongoUser,
@@ -456,6 +471,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 //			try {
 				//mongo = new Mongo(new ServerAddress(mongoHost, mongoPort));
 				mongo = new Mongo(mongoServers);
+
+				if (mongoSecondaryReadPreference) {
+					mongo.setReadPreference(ReadPreference.SECONDARY);
+				}
 //			} catch (UnknownHostException e) {
 //				logger.error("Unknown host");
 //				return;
