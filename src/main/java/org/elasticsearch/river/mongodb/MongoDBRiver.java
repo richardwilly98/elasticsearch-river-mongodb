@@ -60,6 +60,7 @@ import org.elasticsearch.script.ScriptService;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.Bytes;
+import com.mongodb.CommandResult;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
@@ -67,7 +68,6 @@ import com.mongodb.DBObject;
 import com.mongodb.Mongo;
 import com.mongodb.MongoException;
 import com.mongodb.ReadPreference;
-import com.mongodb.ReadPreference.SecondaryReadPreference;
 import com.mongodb.ServerAddress;
 import com.mongodb.gridfs.GridFS;
 import com.mongodb.gridfs.GridFSDBFile;
@@ -88,8 +88,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	public final static String HOST_FIELD = "host";
 	public final static String PORT_FIELD = "port";
 	public final static String OPTIONS_FIELD = "options";
-	public final static String SECONDARYREADPREFERENCE_FIELD = "secondaryreadpreference";
+	public final static String SECONDARY_READ_PREFERENCE_FIELD = "secondary_read_preference";
 	public final static String FILTER_FIELD = "filter";
+	public final static String LOCAL_PASSWORD_FIELD = "local_password";
+	public final static String LOCAL_USER_FIELD = "local_user";
 	public final static String PASSWORD_FIELD = "password";
 	public final static String USER_FIELD = "user";
 	public final static String SCRIPT_FIELD = "script";
@@ -122,8 +124,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	protected final String mongoDb;
 	protected final String mongoCollection;
 	protected final boolean mongoGridFS;
-	protected final String mongoUser;
-	protected final String mongoPassword;
+	protected final String mongoLocalUser;
+	protected final String mongoLocalPassword;
+	protected final String mongoDbUser;
+	protected final String mongoDbPassword;
 	protected final String mongoOplogNamespace;
 	protected final boolean mongoSecondaryReadPreference;
 
@@ -194,7 +198,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			if (mongoSettings.containsKey(OPTIONS_FIELD)) {
 				Map<String, Object> mongoOptionsSettings = (Map<String, Object>) mongoSettings.get(OPTIONS_FIELD);
 				mongoSecondaryReadPreference = XContentMapValues.nodeBooleanValue(
-						mongoOptionsSettings.get(SECONDARYREADPREFERENCE_FIELD), false);
+						mongoOptionsSettings.get(SECONDARY_READ_PREFERENCE_FIELD), false);
 			}
 			else {
 				mongoSecondaryReadPreference = false;
@@ -205,13 +209,22 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					mongoSettings.get(COLLECTION_FIELD), riverName.name());
 			mongoGridFS = XContentMapValues.nodeBooleanValue(
 					mongoSettings.get(GRIDFS_FIELD), false);
+			if (mongoSettings.containsKey(LOCAL_USER_FIELD)
+					&& mongoSettings.containsKey(LOCAL_PASSWORD_FIELD)) {
+				mongoLocalUser = mongoSettings.get(LOCAL_USER_FIELD).toString();
+				mongoLocalPassword = mongoSettings.get(LOCAL_PASSWORD_FIELD).toString();
+			} else {
+				mongoLocalUser = "";
+				mongoLocalPassword = "";
+			}
+
 			if (mongoSettings.containsKey(USER_FIELD)
 					&& mongoSettings.containsKey(PASSWORD_FIELD)) {
-				mongoUser = mongoSettings.get(USER_FIELD).toString();
-				mongoPassword = mongoSettings.get(PASSWORD_FIELD).toString();
+				mongoDbUser = mongoSettings.get(USER_FIELD).toString();
+				mongoDbPassword = mongoSettings.get(PASSWORD_FIELD).toString();
 			} else {
-				mongoUser = "";
-				mongoPassword = "";
+				mongoDbUser = "";
+				mongoDbPassword = "";
 			}
 		} else {
 			mongoHost = "localhost";
@@ -225,8 +238,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			mongoDb = riverName.name();
 			mongoCollection = riverName.name();
 			mongoGridFS = false;
-			mongoUser = "";
-			mongoPassword = "";
+			mongoLocalUser = "";
+			mongoLocalPassword = "";
+			mongoDbUser = "";
+			mongoDbPassword = "";
 		}
 		mongoOplogNamespace = mongoDb + "." + mongoCollection;
 
@@ -259,7 +274,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	public void start() {
 		for (ServerAddress server : mongoServers) {
 			logger.info(
-					"starting mongodb server(s): host [{}], port [{}]",
+					"Using mongodb server(s): host [{}], port [{}]",
 					server.getHost(), server.getPort());
 		}
 		logger.info(
@@ -434,13 +449,11 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 		private boolean assignCollections() {
 			oplogDb = mongo.getDB(MONGODB_LOCAL);
-			
-			if (!mongoUser.isEmpty() && !mongoPassword.isEmpty()
-					&& oplogDb.isAuthenticated()) {
-				boolean auth = oplogDb.authenticate(mongoUser,
-						mongoPassword.toCharArray());
-				if (auth == false) {
-					logger.warn("Invalid credential");
+			if (!mongoLocalUser.isEmpty() && !mongoLocalPassword.isEmpty()
+					&& !oplogDb.isAuthenticated()) {
+				CommandResult cmd = oplogDb.authenticateCommand(mongoLocalUser, mongoLocalPassword.toCharArray());
+				if (! cmd.ok()) {
+					logger.error("Autenticatication failed for {}: {}", MONGODB_LOCAL, cmd.getErrorMessage());
 					return false;
 				}
 			}
@@ -452,12 +465,17 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			oplogCollection = oplogDb.getCollection(OPLOG_COLLECTION);
 
 			slurpedDb = mongo.getDB(mongoDb);
-			if (!mongoUser.isEmpty() && !mongoPassword.isEmpty()
-					&& slurpedDb.isAuthenticated()) {
-				boolean auth = slurpedDb.authenticate(mongoUser,
-						mongoPassword.toCharArray());
-				if (auth == false) {
-					logger.warn("Invalid credential");
+			if (!mongoDbUser.isEmpty() && !mongoDbPassword.isEmpty()
+					&& !slurpedDb.isAuthenticated()) {
+//				boolean auth = slurpedDb.authenticate(mongoUser,
+//						mongoPassword.toCharArray());
+//				if (auth == false) {
+//					logger.warn("Invalid credential");
+//					return false;
+//				}
+				CommandResult cmd = slurpedDb.authenticateCommand(mongoDbUser, mongoDbPassword.toCharArray());
+				if (! cmd.ok()) {
+					logger.error("Autenticatication failed for {}: {}", mongoDb, cmd.getErrorMessage());
 					return false;
 				}
 			}
