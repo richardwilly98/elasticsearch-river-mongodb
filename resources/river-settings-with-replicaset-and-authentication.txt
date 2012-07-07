@@ -8,11 +8,11 @@
 			{ host: "localhost", port: "27018" }
 		],
 		"options": { "secondary_read_preference" : true},
-		local_user: "local", 
-		local_password: "mypassword", 
+		"credentials":
+		[
+			{ db: "admin", user: "admin", password: "Skipper2000" }
+		],
 		db: "testriver", 
-		user: "testriver", 
-		password: "mypassword", 
 		collection: "person", 
 		gridfs: "false"
 	},
