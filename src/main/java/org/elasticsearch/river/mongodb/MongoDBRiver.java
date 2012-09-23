@@ -154,7 +154,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			final ScriptService scriptService) {
 		super(riverName, settings);
 		if (logger.isDebugEnabled()) {
-			logger.debug("Prefix: " + logger.getPrefix() + " - name: " + logger.getName());
+			logger.debug("Prefix: [{}] - name: [{}]", logger.getPrefix(), logger.getName());
 		}
 		this.riverIndexName = riverIndexName;
 		this.client = client;
@@ -538,7 +538,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			mongo = new Mongo(mongoServers);
 
 			if (mongoSecondaryReadPreference) {
-				mongo.setReadPreference(ReadPreference.SECONDARY);
+				mongo.setReadPreference(ReadPreference.secondaryPreferred());
 			}
 
 			while (active) {
@@ -610,7 +610,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			}
 
 			if (mongoGridFS && namespace.endsWith(".files")
-					&& ("i".equals(operation) || "u".equals(operation))) {
+					&& (OPLOG_INSERT_OPERATION.equals(operation) || OPLOG_UPDATE_OPERATION.equals(operation))) {
 				String objectId = object.get("_id").toString();
 				GridFS grid = new GridFS(mongo.getDB(mongoDb), mongoCollection);
 				GridFSDBFile file = grid.findOne(new ObjectId(objectId));
@@ -630,7 +630,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				data.put("_id", object.get("_id"));
 				addToStream(operation, oplogTimestamp, data);
 			} else {
-				if ("u".equals(operation)) {
+				if (OPLOG_UPDATE_OPERATION.equals(operation)) {
 					DBObject update = (DBObject) entry.get(OPLOG_UPDATE);
 					addQueryToStream(operation, oplogTimestamp, update);
 				} else {
