@@ -19,12 +19,21 @@
 
 package test.elasticsearch.plugin.river.mongodb;
 
+import static org.elasticsearch.client.Requests.clusterHealthRequest;
+import static org.elasticsearch.client.Requests.createIndexRequest;
+import static org.elasticsearch.client.Requests.deleteIndexRequest;
+import static org.elasticsearch.common.settings.ImmutableSettings.settingsBuilder;
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import static org.elasticsearch.index.query.QueryBuilders.termQuery;
+import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 
 import java.io.IOException;
 import java.util.Date;
 
+import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
+import org.elasticsearch.action.admin.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
@@ -36,6 +45,7 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.common.network.NetworkUtils;
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
@@ -43,50 +53,87 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.QueryStringQueryBuilder;
+import org.elasticsearch.node.Node;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+@Test
 public class SimpleIndexingSearchingTest {
 
 	private final ESLogger logger = Loggers.getLogger(getClass());
 
-	Client client;
+    private Node node;
+
+    @BeforeClass
+    public void setupServer() {
+        node = nodeBuilder().local(true).settings(settingsBuilder()
+                .put("path.data", "target/data")
+                .put("cluster.name", "test-cluster-" + NetworkUtils.getLocalAddress())
+                .put("gateway.type", "none")).node();
+    }
+
+    @AfterClass
+    public void closeServer() {
+        node.close();
+    }
+
+//    Client client;
 	String INDEX_NAME = "testindex";
 	String INDEX_TYPE = "tweet";
 
-	@BeforeClass
-	public void beforeClass() {
-		logger.info("Initiate client.");
-		// String cluster;
-		Settings s = ImmutableSettings.settingsBuilder()
-		// .put("cluster.name", cluster)
-				.build();
-		client = new TransportClient(s);
-		((TransportClient) client)
-				.addTransportAddress(new InetSocketTransportAddress(
-						"localhost", 9300));
-
-		try {
-			logger.info("Creating index [{}]", INDEX_NAME);
-			client.admin().indices().create(new CreateIndexRequest(INDEX_NAME))
-					.actionGet();
-		} catch (Exception ex) {
-			logger.warn("already exists", ex);
-		}
-
+	@BeforeMethod
+	public void createIndex() {
+		logger.info("Creating index [{}]", INDEX_NAME);
+        node.client().admin().indices().create(createIndexRequest(INDEX_NAME).settings(settingsBuilder().put("index.numberOfReplicas", 0))).actionGet();
+        logger.info("Running Cluster Health");
+        ClusterHealthResponse clusterHealth = node.client().admin().cluster().health(clusterHealthRequest().waitForGreenStatus()).actionGet();
+        logger.info("Done Cluster Health, status " + clusterHealth.status());
+        assertThat(clusterHealth.timedOut(), equalTo(false));
+        assertThat(clusterHealth.status(), equalTo(ClusterHealthStatus.GREEN));
 	}
 
-	@AfterClass
-	public void afterClass() {
-		logger.info("Deleting index [{}]", INDEX_NAME);
-		client.admin().indices().delete(new DeleteIndexRequest(INDEX_NAME))
-				.actionGet();
-	}
+    @AfterMethod
+    public void deleteIndex() {
+    	logger.info("Deleting index [{}]", INDEX_NAME);
+        node.client().admin().indices().delete(deleteIndexRequest(INDEX_NAME)).actionGet();
+    }
+
+//    @BeforeClass
+//	public void beforeClass() {
+//		logger.info("Initiate client.");
+//		// String cluster;
+//		Settings s = ImmutableSettings.settingsBuilder()
+//		// .put("cluster.name", cluster)
+//				.build();
+//		client = new TransportClient(s);
+//		((TransportClient) client)
+//				.addTransportAddress(new InetSocketTransportAddress(
+//						"localhost", 9300));
+//
+//		try {
+//			logger.info("Creating index [{}]", INDEX_NAME);
+//			client.admin().indices().create(new CreateIndexRequest(INDEX_NAME))
+//					.actionGet();
+//		} catch (Exception ex) {
+//			logger.warn("already exists", ex);
+//		}
+//
+//	}
+
+//	@AfterClass
+//	public void afterClass() {
+//		logger.info("Deleting index [{}]", INDEX_NAME);
+//		client.admin().indices().delete(new DeleteIndexRequest(INDEX_NAME))
+//				.actionGet();
+//	}
 
 	@Test
 	public void importAttachment() {
+		logger.info("Start importAttachment");
 		String id = "1";
 		try {
 			XContentBuilder b = jsonBuilder().startObject();
@@ -96,17 +143,17 @@ public class SimpleIndexingSearchingTest {
 			b.field("userName", "richard");
 			b.endObject();
 
-			IndexRequestBuilder irb = client.prepareIndex(INDEX_NAME,
+			IndexRequestBuilder irb = node.client().prepareIndex(INDEX_NAME,
 					INDEX_TYPE, id).setSource(b);
 			irb.execute().actionGet();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		client.admin().indices().refresh(new RefreshRequest(INDEX_NAME))
+		node.client().admin().indices().refresh(new RefreshRequest(INDEX_NAME))
 				.actionGet();
 
-		GetResponse response = client
+		GetResponse response = node.client()
 				.prepareGet(INDEX_NAME, INDEX_TYPE, String.valueOf(id))
 				.execute().actionGet();
 		boolean exist = response.exists();
@@ -116,7 +163,7 @@ public class SimpleIndexingSearchingTest {
 
 		QueryBuilder qb1 = termQuery("userName", "richard");
 
-		SearchRequestBuilder srb = client.prepareSearch(INDEX_NAME).setQuery(
+		SearchRequestBuilder srb = node.client().prepareSearch(INDEX_NAME).setQuery(
 				qb1);
 
 		SearchResponse searchResponse = srb.execute().actionGet();
@@ -129,7 +176,7 @@ public class SimpleIndexingSearchingTest {
 
 		logger.info(qb.toString());
 
-		srb = client.prepareSearch(INDEX_NAME).setQuery(qb);
+		srb = node.client().prepareSearch(INDEX_NAME).setQuery(qb);
 
 		searchResponse = srb.execute().actionGet();
 
