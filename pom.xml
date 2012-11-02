@@ -44,7 +44,7 @@
 
 	<properties>
 		<elasticsearch.version>0.19.9</elasticsearch.version>
-		<mongo-java-driver.version>2.9.1</mongo-java-driver.version>
+		<mongo-java-driver.version>2.9.3</mongo-java-driver.version>
 	</properties>
 
 	<repositories>
@@ -100,6 +100,23 @@
 	</dependencies>
 
 	<build>
+        <testResources>
+            <testResource>
+                <directory>${basedir}/src/test/java</directory>
+                <includes>
+                    <include>**/*.json</include>
+                    <include>**/*.yml</include>
+                    <include>**/*.html</include>
+                </includes>
+            </testResource>
+            <testResource>
+                <directory>${basedir}/src/test/resources</directory>
+                <includes>
+                    <include>**/*.*</include>
+                </includes>
+            </testResource>
+        </testResources>
+
 		<plugins>
 			<plugin>
 				<groupId>com.github.github</groupId>
@@ -137,7 +154,7 @@
 				<version>2.11</version>
 				<configuration>
 					<includes>
-						<include>**/*Tests.java</include>
+						<include>**/*Test.java</include>
 					</includes>
 				</configuration>
 			</plugin>
