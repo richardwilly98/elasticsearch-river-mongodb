@@ -1,0 +1,35 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"servers": [
+			{
+				host: "localhost",
+				port: "27017"
+			},
+			{
+				host: "localhost",
+				port: "27018"
+			},
+			{
+				host: "localhost",
+				port: "27019"
+			}
+		],
+		"options": {
+			"secondary_read_preference": true
+		},
+		"credentials": [{
+			db: "admin",
+			user: "admin",
+			password: "Skipper2000"
+		}],
+		db: "testriver",
+		collection: "documents",
+		gridfs: "false",
+		filter: "{ 'o.score' : { '$gt' : 60}}"
+	},
+	index: {
+		name: "documentsindex",
+		throttle_size: 2000
+	}
+}
