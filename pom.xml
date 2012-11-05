@@ -43,7 +43,7 @@
 	</parent>
 
 	<properties>
-		<elasticsearch.version>0.19.9</elasticsearch.version>
+		<elasticsearch.version>0.19.11</elasticsearch.version>
 		<mongo-java-driver.version>2.9.3</mongo-java-driver.version>
 	</properties>
 
@@ -97,6 +97,18 @@
 			<version>${mongo-java-driver.version}</version>
 		</dependency>
 
+		<dependency>
+			<groupId>de.flapdoodle.embed</groupId>
+			<artifactId>de.flapdoodle.embed.mongo</artifactId>
+			<version>1.27-SNAPSHOT</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>de.flapdoodle.embed</groupId>
+			<artifactId>de.flapdoodle.embed.process</artifactId>
+			<version>1.24</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>
