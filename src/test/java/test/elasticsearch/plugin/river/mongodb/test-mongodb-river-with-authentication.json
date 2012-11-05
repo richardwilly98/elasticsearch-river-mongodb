@@ -3,19 +3,16 @@
 	"mongodb": {
 		"servers": [{ 
 			host: "localhost",
-			port: "%s"
-		},
-		{ 
-			host: "localhost",
-			port: "%s"
-		},
-		{ 
-			host: "localhost",
-			port: "%s"
+			port: "27017"
 		}],
 		"options": {
 			"secondary_read_preference": true
 		},
+		"credentials": [{
+			db: "admin",
+			user: "admin",
+			password: "Skipper2000"
+		}],
 		db: "testriver",
 		collection: "person",
 		gridfs: "false"

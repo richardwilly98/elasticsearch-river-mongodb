@@ -16,12 +16,12 @@
 		"options": {
 			"secondary_read_preference": true
 		},
-		db: "testriver",
-		collection: "person",
-		gridfs: "false"
+		db: "testgridfs",
+		collection: "fs",
+		gridfs: "true"
 	},
 	index: {
-		name: "personindex",
+		name: "testattachmentindex",
 		throttle_size: 2000
 	}
 }

@@ -631,7 +631,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				BSONTimestamp currentTimestamp = (BSONTimestamp) oplogCollection
 						.find().sort(new BasicDBObject(OPLOG_TIMESTAMP, -1))
 						.limit(1).next().get(OPLOG_TIMESTAMP);
-				addQueryToStream("i", currentTimestamp, null);
+				addQueryToStream(OPLOG_INSERT_OPERATION, currentTimestamp, null);
 				return oplogCursor(currentTimestamp);
 			} finally {
 				// mongo.unlock();
@@ -699,7 +699,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			BasicDBObject filter = new BasicDBObject();
 			List<DBObject> values = new ArrayList<DBObject>();
 			// Should we filter when GridFS is enabled?
-			if (!mongoGridFS) {
+			if (mongoGridFS) {
+				values.add(new BasicDBObject(OPLOG_NAMESPACE,
+						mongoOplogNamespace + ".files"));
+			} else {
 				values.add(new BasicDBObject(OPLOG_NAMESPACE,
 						mongoOplogNamespace));
 			}
