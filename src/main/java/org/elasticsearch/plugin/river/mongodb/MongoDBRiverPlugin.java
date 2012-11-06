@@ -44,10 +44,7 @@ public class MongoDBRiverPlugin extends AbstractPlugin {
     return "River MongoDB Plugin";
   }
 
-  @Override
-  public void processModule(final Module module) {
-    if (module instanceof RiversModule) {
-      ((RiversModule) module).registerRiver("mongodb", MongodbRiverModule.class);
-    }
+  public void onModule(RiversModule module) {
+      module.registerRiver("mongodb", MongodbRiverModule.class);
   }
 }
