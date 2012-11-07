@@ -133,10 +133,10 @@ public abstract class RiverMongoDBTestAsbtract {
 
 		// Initialize replica set
 		cr = mongoAdminDB.command(new BasicDBObject("replSetInitiate",
-				(DBObject) JSON.parse("{_id: '" + REPLICA_SET_NAME
-						+ "', members: [{_id: 0, host: '" + server1
-						+ "'}, {_id: 1, host: '" + server2
-						+ "'}, {_id: 2, host: '" + server3 + "'}]} }")));
+				(DBObject) JSON.parse("{'_id': '" + REPLICA_SET_NAME
+						+ "', 'members': [{'_id': 0, 'host': '" + server1
+						+ "'}, {'_id': 1, 'host': '" + server2
+						+ "'}, {'_id': 2, 'host': '" + server3 + "', 'arbiterOnly' : true}]} }")));
 		logger.debug("replSetInitiate: " + cr);
 
 		Thread.sleep(5000);

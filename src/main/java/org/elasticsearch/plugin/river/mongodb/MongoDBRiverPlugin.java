@@ -20,7 +20,6 @@
 package org.elasticsearch.plugin.river.mongodb;
 
 import org.elasticsearch.common.inject.Inject;
-import org.elasticsearch.common.inject.Module;
 import org.elasticsearch.plugins.AbstractPlugin;
 import org.elasticsearch.river.RiversModule;
 import org.elasticsearch.river.mongodb.MongodbRiverModule;

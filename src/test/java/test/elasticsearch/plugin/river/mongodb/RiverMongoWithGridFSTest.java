@@ -107,8 +107,9 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 		
 		SearchResponse response = getNode().client().prepareSearch(INDEX_NAME).setQuery(QueryBuilders.queryString("Aliquam")).execute().actionGet();
 		logger.debug("SearchResponse {}", response.toString());
-		logger.debug("TotalHits: {}", response.hits().getTotalHits());
-		assertThat(response.hits().getTotalHits(), equalTo(1l));
+		long totalHits = response.hits().getTotalHits();
+		logger.debug("TotalHits: {}", totalHits);
+		assertThat(totalHits, equalTo(1l));
 
 		gridFS.remove(new ObjectId(id));
 

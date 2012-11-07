@@ -686,6 +686,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			} else {
 				if (OPLOG_UPDATE_OPERATION.equals(operation)) {
 					DBObject update = (DBObject) entry.get(OPLOG_UPDATE);
+					logger.debug("Updated item: {}", update);
 					addQueryToStream(operation, oplogTimestamp, update);
 				} else {
 					addToStream(operation, oplogTimestamp, object.toMap());
