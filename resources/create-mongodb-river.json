@@ -23,6 +23,7 @@
 	},
 	index: {
 		name: "personindex",
+		bulk_size: 500,
 		throttle_size: 2000
 	}
 }
