@@ -40,7 +40,6 @@ import de.flapdoodle.embed.mongo.MongodExecutable;
 import de.flapdoodle.embed.mongo.MongodProcess;
 import de.flapdoodle.embed.mongo.MongodStarter;
 import de.flapdoodle.embed.mongo.config.MongodConfig;
-import de.flapdoodle.embed.mongo.distribution.Version;
 import de.flapdoodle.embed.process.distribution.GenericVersion;
 import de.flapdoodle.embed.process.runtime.Network;
 
@@ -178,7 +177,8 @@ public abstract class RiverMongoDBTestAsbtract {
 			logger.info(member.toString());
 			int state = member.getInt("state");
 			logger.info("state: " + state);
-			if (state != 1 && state != 2 && state != 3) {
+			// 1 - PRIMARY, 2 - SECONDARY, 7 - ARBITER
+			if (state != 1 && state != 2 && state != 7) {
 				return false;
 			}
 		}
