@@ -43,7 +43,10 @@ import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.block.ClusterBlockException;
+import org.elasticsearch.common.StopWatch;
 import org.elasticsearch.common.inject.Inject;
+import org.elasticsearch.common.logging.ESLogger;
+import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.util.concurrent.EsExecutors;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -110,6 +113,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	public final static String LAST_TIMESTAMP_FIELD = "_last_ts";
 	public final static String MONGODB_LOCAL = "local";
 	public final static String MONGODB_ADMIN = "admin";
+	public final static String MONGODB_ID_FIELD = "_id";
 	public final static String OPLOG_COLLECTION = "oplog.rs";
 	public final static String OPLOG_NAMESPACE = "ns";
 	public final static String OPLOG_OBJECT = "o";
@@ -162,6 +166,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		if (logger.isDebugEnabled()) {
 			logger.debug("Prefix: [{}] - name: [{}]", logger.getPrefix(),
 					logger.getName());
+			logger.debug("River settings: ", settings.settings());
 		}
 		this.riverIndexName = riverIndexName;
 		this.client = client;
@@ -402,9 +407,19 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 	private class Indexer implements Runnable {
 
-		@Override
+		private final ESLogger logger = ESLoggerFactory.getLogger(this.getClass().getName());
+        private int deletedDocuments = 0;
+        private int insertedDocuments = 0;
+        private int updatedDocuments = 0;
+        private StopWatch sw;
+        
+        @Override
 		public void run() {
 			while (active) {
+				sw = new StopWatch().start();
+				deletedDocuments = 0;
+                insertedDocuments = 0;
+                updatedDocuments = 0;
 				try {
 					BSONTimestamp lastTimestamp = null;
 					BulkRequestBuilder bulk = client.prepareBulk();
@@ -444,12 +459,13 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						logger.debug("river-mongodb indexer interrupted");
 					}
 				}
+				logStatistics();
 			}
 		}
 
 		private BSONTimestamp updateBulkRequest(final BulkRequestBuilder bulk,
 				final Map<String, Object> data) {
-			if (data.get("_id") == null) {
+			if (data.get(MONGODB_ID_FIELD) == null) {
 				logger.warn(
 						"Cannot get object id. Skip the current item: [{}]",
 						data);
@@ -458,7 +474,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			BSONTimestamp lastTimestamp = (BSONTimestamp) data
 					.get(OPLOG_TIMESTAMP);
 			String operation = data.get(OPLOG_OPERATION).toString();
-			String objectId = data.get("_id").toString();
+			String objectId = data.get(MONGODB_ID_FIELD).toString();
 			data.remove(OPLOG_TIMESTAMP);
 			data.remove(OPLOG_OPERATION);
 			if (logger.isDebugEnabled()) {
@@ -475,6 +491,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					}
 					bulk.add(indexRequest(indexName).type(typeName)
 							.id(objectId).source(build(data, objectId)));
+					insertedDocuments++;
 				}
 				if (OPLOG_UPDATE_OPERATION.equals(operation)) {
 					if (logger.isDebugEnabled()) {
@@ -485,12 +502,14 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					bulk.add(new DeleteRequest(indexName, typeName, objectId));
 					bulk.add(indexRequest(indexName).type(typeName)
 							.id(objectId).source(build(data, objectId)));
+					updatedDocuments++;
 					// new UpdateRequest(indexName, typeName, objectId)
 				}
 				if (OPLOG_DELETE_OPERATION.equals(operation)) {
 					logger.info("Delete request [{}], [{}], [{}]", indexName,
 							typeName, objectId);
 					bulk.add(new DeleteRequest(indexName, typeName, objectId));
+					deletedDocuments++;
 				}
 			} catch (IOException e) {
 				logger.warn("failed to parse {}", e, data);
@@ -509,6 +528,13 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				return XContentFactory.jsonBuilder().map(data);
 			}
 		}
+		
+		private void logStatistics() {
+            long totalDocuments = deletedDocuments + insertedDocuments;
+            long totalTimeInSeconds = sw.stop().totalTime().seconds();
+            long totalDocumentsPerSecond = (totalTimeInSeconds == 0) ? totalDocuments : totalDocuments / totalTimeInSeconds;
+            logger.info("Indexed {} documents, {} insertions {}, updates, {} deletions, {} documents per second", totalDocuments, insertedDocuments, updatedDocuments, deletedDocuments, totalDocumentsPerSecond);
+        }
 	}
 
 	private class Slurper implements Runnable {
@@ -665,7 +691,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					&& namespace.endsWith(".files")
 					&& (OPLOG_INSERT_OPERATION.equals(operation) || OPLOG_UPDATE_OPERATION
 							.equals(operation))) {
-				String objectId = object.get("_id").toString();
+				String objectId = object.get(MONGODB_ID_FIELD).toString();
 				GridFS grid = new GridFS(mongo.getDB(mongoDb), mongoCollection);
 				GridFSDBFile file = grid.findOne(new ObjectId(objectId));
 				if (file != null) {
@@ -678,10 +704,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			}
 
 			if (object instanceof GridFSDBFile) {
-				logger.info("Add attachment: {}", object.get("_id"));
+				logger.info("Add attachment: {}", object.get(MONGODB_ID_FIELD));
 				HashMap<String, Object> data = new HashMap<String, Object>();
 				data.put("attachment", object);
-				data.put("_id", object.get("_id"));
+				data.put(MONGODB_ID_FIELD, object.get(MONGODB_ID_FIELD));
 				addToStream(operation, oplogTimestamp, data);
 			} else {
 				if (OPLOG_UPDATE_OPERATION.equals(operation)) {
