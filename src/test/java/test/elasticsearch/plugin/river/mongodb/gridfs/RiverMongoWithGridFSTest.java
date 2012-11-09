@@ -1,4 +1,4 @@
-package test.elasticsearch.plugin.river.mongodb;
+package test.elasticsearch.plugin.river.mongodb.gridfs;
 
 import static org.elasticsearch.client.Requests.countRequest;
 import static org.elasticsearch.common.io.Streams.copyToBytesFromClasspath;
@@ -21,6 +21,8 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+import test.elasticsearch.plugin.river.mongodb.RiverMongoDBTestAsbtract;
+
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.gridfs.GridFS;
@@ -40,13 +42,16 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 	private DB mongoDB;
 	private DBCollection mongoCollection;
 
+	protected RiverMongoWithGridFSTest() {
+		super(RIVER_NAME, DATABASE_NAME, COLLECTION_NAME, INDEX_NAME);
+	}
+
 	@BeforeClass
 	public void createDatabase() {
 		logger.debug("createDatabase {}", DATABASE_NAME);
 		try {
 			mongoDB = getMongo().getDB(DATABASE_NAME);
-			logger.debug("Create river {}", RIVER_NAME);
-			super.createRiver(RIVER_NAME, "test-gridfs-mongodb-river.json");
+			super.createRiver("/test/elasticsearch/plugin/river/mongodb/gridfs/test-gridfs-mongodb-river.json");
 			ActionFuture<IndicesExistsResponse> response = getNode().client()
 					.admin().indices()
 					.exists(new IndicesExistsRequest(INDEX_NAME));
@@ -61,7 +66,7 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 
 	@AfterClass
 	public void cleanUp() {
-		super.deleteRiver(INDEX_NAME);
+		super.deleteRiver();
 		logger.info("Drop database " + mongoDB.getName());
 		mongoDB.dropDatabase();
 	}
@@ -69,7 +74,7 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 	@Test
 	public void testImportAttachment() throws Exception {
 		logger.debug("*** testImportAttachment ***");
-		byte[] content = copyToBytesFromClasspath("/test/elasticsearch/plugin/river/mongodb/test-attachment.html");
+		byte[] content = copyToBytesFromClasspath("/test/elasticsearch/plugin/river/mongodb/gridfs/test-attachment.html");
 		logger.debug("Content in bytes: {}", content.length);
 		GridFS gridFS = new GridFS(mongoDB);
 		GridFSInputFile in = gridFS.createFile(content);

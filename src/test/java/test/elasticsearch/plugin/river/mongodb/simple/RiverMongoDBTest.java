@@ -1,4 +1,4 @@
-package test.elasticsearch.plugin.river.mongodb;
+package test.elasticsearch.plugin.river.mongodb.simple;
 
 import static org.elasticsearch.client.Requests.countRequest;
 import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath;
@@ -17,6 +17,8 @@ import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
+
+import test.elasticsearch.plugin.river.mongodb.RiverMongoDBTestAsbtract;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
@@ -39,13 +41,16 @@ public class RiverMongoDBTest extends RiverMongoDBTestAsbtract {
 	private DB mongoDB;
 	private DBCollection mongoCollection;
 
+	protected RiverMongoDBTest() {
+		super(RIVER_NAME, DATABASE_NAME, COLLECTION_NAME, INDEX_NAME);
+	}
+
 	@BeforeClass
 	public void createDatabase() {
 		logger.debug("createDatabase {}", DATABASE_NAME);
 		try {
 			mongoDB = getMongo().getDB(DATABASE_NAME);
-			logger.debug("Create river {}", RIVER_NAME);
-			super.createRiver(RIVER_NAME, "test-simple-mongodb-river.json");
+			super.createRiver("/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river.json");
 			logger.info("Start createCollection");
 			mongoCollection = mongoDB.createCollection(COLLECTION_NAME, null);
 			Assert.assertNotNull(mongoCollection);
@@ -56,12 +61,12 @@ public class RiverMongoDBTest extends RiverMongoDBTestAsbtract {
 
 	@AfterClass
 	public void cleanUp() {
-		super.deleteRiver(INDEX_NAME);
+		super.deleteRiver();
 		logger.info("Drop database " + mongoDB.getName());
 		mongoDB.dropDatabase();
 	}
 
-	@Test
+	@Test(enabled = false)
 	public void mongoCRUDTest() {
 		logger.info("Start mongoCRUDTest");
 		DBObject dbObject = new BasicDBObject("count", "-1");
@@ -77,7 +82,7 @@ public class RiverMongoDBTest extends RiverMongoDBTestAsbtract {
 	public void simpleBSONObject() throws Throwable {
 		logger.debug("Start simpleBSONObject");
 		try {
-			String mongoDocument = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/test-simple-mongodb-document.json");
+			String mongoDocument = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-document.json");
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
 			WriteResult result = mongoCollection.insert(dbObject,
 					WriteConcern.REPLICAS_SAFE);

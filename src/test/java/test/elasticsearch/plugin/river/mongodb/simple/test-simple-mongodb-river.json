@@ -1,0 +1,27 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"servers": [{ 
+			"host": "localhost",
+			"port": %s
+		},
+		{ 
+			"host": "localhost",
+			"port": %s
+		},
+		{ 
+			"host": "localhost",
+			"port": %s
+		}],
+		"options": {
+			"secondary_read_preference": true
+		},
+		"db": "%s",
+		"collection": "%s",
+		"gridfs": false
+	},
+	"index": {
+		"name": "%s",
+		"throttle_size": 2000
+	}
+}
