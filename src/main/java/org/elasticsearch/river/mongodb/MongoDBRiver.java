@@ -44,6 +44,7 @@ import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.block.ClusterBlockException;
 import org.elasticsearch.common.StopWatch;
+import org.elasticsearch.common.collect.Maps;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.ESLoggerFactory;
@@ -51,6 +52,7 @@ import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.util.concurrent.EsExecutors;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
+import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.common.xcontent.support.XContentMapValues;
 import org.elasticsearch.indices.IndexAlreadyExistsException;
 import org.elasticsearch.river.AbstractRiverComponent;
@@ -59,6 +61,7 @@ import org.elasticsearch.river.RiverIndexName;
 import org.elasticsearch.river.RiverName;
 import org.elasticsearch.river.RiverSettings;
 import org.elasticsearch.river.mongodb.util.GridFSHelper;
+import org.elasticsearch.script.ExecutableScript;
 import org.elasticsearch.script.ScriptService;
 
 import com.mongodb.BasicDBObject;
@@ -70,6 +73,7 @@ import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.Mongo;
 import com.mongodb.MongoException;
+import com.mongodb.MongoInterruptedException;
 import com.mongodb.QueryOperators;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
@@ -148,8 +152,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	protected final TimeValue bulkTimeout;
 	protected final int throttleSize;
 
-	protected Thread tailerThread;
-	protected Thread indexerThread;
+    private final ExecutableScript script;
+
+    protected volatile Thread tailerThread;
+	protected volatile Thread indexerThread;
 	protected volatile boolean active = true;
 
 	// private final TransferQueue<Map<String, Object>> stream = new
@@ -287,6 +293,17 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			} else {
 				mongoFilter = "";
 			}
+
+            if (mongoSettings.containsKey("script")) {
+                String scriptType = "js";
+                if(mongoSettings.containsKey("scriptType")) {
+                    scriptType = mongoSettings.get("scriptType").toString();
+                }
+
+                script = scriptService.executable(scriptType, mongoSettings.get("script").toString(), Maps.newHashMap());
+            } else {
+                script = null;
+            }
 		} else {
 			mongoHost = DEFAULT_DB_HOST;
 			mongoPort = DEFAULT_DB_PORT;
@@ -306,6 +323,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			mongoLocalPassword = "";
 			mongoDbUser = "";
 			mongoDbPassword = "";
+			script = null;
 		}
 		mongoOplogNamespace = mongoDb + "." + mongoCollection;
 
@@ -349,9 +367,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					server.getHost(), server.getPort());
 		}
 		logger.info(
-				"starting mongodb stream. options: secondaryreadpreference [{}], throttlesize [{}], gridfs [{}], filter [{}], db [{}], indexing to [{}]/[{}]",
+				"starting mongodb stream. options: secondaryreadpreference [{}], throttlesize [{}], gridfs [{}], filter [{}], db [{}], script [{}], indexing to [{}]/[{}]",
 				mongoSecondaryReadPreference, throttleSize, mongoGridFS,
-				mongoFilter, mongoDb, indexName, typeName);
+				mongoFilter, mongoDb, script, indexName, typeName);
 		try {
 			client.admin().indices().prepareCreate(indexName).execute()
 					.actionGet();
@@ -373,15 +391,15 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 		if (mongoGridFS) {
 			try {
+				if (logger.isDebugEnabled()) {
+					logger.debug("Set explicit attachment mapping.");
+				}
 				client.admin().indices().preparePutMapping(indexName)
 						.setType(typeName).setSource(getGridFSMapping())
 						.execute().actionGet();
 			} catch (Exception e) {
 				logger.warn("Failed to set explicit mapping (attachment): {}",
 						e);
-				if (logger.isDebugEnabled()) {
-					logger.debug("Set explicit attachment mapping.", e);
-				}
 			}
 		}
 
@@ -462,9 +480,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				logStatistics();
 			}
 		}
-
+        
+        @SuppressWarnings({"unchecked"})
 		private BSONTimestamp updateBulkRequest(final BulkRequestBuilder bulk,
-				final Map<String, Object> data) {
+				Map<String, Object> data) {
 			if (data.get(MONGODB_ID_FIELD) == null) {
 				logger.warn(
 						"Cannot get object id. Skip the current item: [{}]",
@@ -481,6 +500,46 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				logger.debug("updateBulkRequest for id: [{}], operation: [{}]",
 						objectId, operation);
 			}
+
+			if (script != null) {
+				Map<String, Object> ctx = null;
+		        try {
+		            ctx = XContentFactory.xContent(XContentType.JSON).createParser("{}").mapAndClose();
+		        } catch (IOException e) {
+		            logger.warn("failed to parse {}", e);
+//		            return null;
+		        }
+//				Map<String, Object> ctx = XContentFactory.xContent(XContentType.JSON).createParser("{}").mapAndClose();
+		        if (ctx != null) {
+					ctx.put("document", data);
+					ctx.put("operation", operation);
+					ctx.put("id", objectId);
+					logger.debug("From script context: {}", ctx);
+		            script.setNextVar("ctx", ctx);
+		            try {
+		                script.run();
+		                // we need to unwrap the context object...
+		                ctx = (Map<String, Object>) script.unwrap(ctx);
+		            } catch (Exception e) {
+		                logger.warn("failed to script process {}, ignoring", e, ctx);
+//		                return seq;
+		            }
+		            if (ctx.containsKey("ignore") && ctx.get("ignore").equals(Boolean.TRUE)) {
+		            	logger.debug("From script ignore document id: {}", objectId);
+		                // ignore dock
+		            	return lastTimestamp;
+		            }
+		            if (ctx.containsKey("document")) {
+		            	data = (Map<String, Object>) ctx.get("document");
+		            	logger.debug("From script document: {}", data);
+		            }
+	                if (ctx.containsKey("operation")) {
+	                	operation = ctx.get("operation").toString();
+		            	logger.debug("From script operation: {}", operation);
+	                }
+		       }
+	        }
+
 			try {
 				if (OPLOG_INSERT_OPERATION.equals(operation)) {
 					if (logger.isDebugEnabled()) {
@@ -633,6 +692,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						processOplogEntry(item);
 					}
 					Thread.sleep(5000);
+				} catch (MongoInterruptedException mIEx) {
+					logger.error("Mongo driver has been interrupted", mIEx);
+					active = false;
 				} catch (MongoException mEx) {
 					logger.error("Mongo gave an exception", mEx);
 				} catch (NoSuchElementException nEx) {
