@@ -1,3 +1,21 @@
+/*
+ * Licensed to Elastic Search and Shay Banon under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership. Elastic Search licenses this
+ * file to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package test.elasticsearch.plugin.river.mongodb.simple;
 
 import static org.elasticsearch.client.Requests.countRequest;
@@ -9,7 +27,6 @@ import static org.hamcrest.Matchers.equalTo;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.admin.indices.exists.IndicesExistsRequest;
 import org.elasticsearch.action.admin.indices.exists.IndicesExistsResponse;
-import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
 import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
@@ -50,6 +67,7 @@ public class RiverMongoDBTest extends RiverMongoDBTestAsbtract {
 		logger.debug("createDatabase {}", DATABASE_NAME);
 		try {
 			mongoDB = getMongo().getDB(DATABASE_NAME);
+			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
 			super.createRiver("/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river.json");
 			logger.info("Start createCollection");
 			mongoCollection = mongoDB.createCollection(COLLECTION_NAME, null);
@@ -84,17 +102,15 @@ public class RiverMongoDBTest extends RiverMongoDBTestAsbtract {
 		try {
 			String mongoDocument = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-document.json");
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
-			WriteResult result = mongoCollection.insert(dbObject,
-					WriteConcern.REPLICAS_SAFE);
+			WriteResult result = mongoCollection.insert(dbObject);
 			Thread.sleep(1000);
 			String id = dbObject.get("_id").toString();
 			logger.info("WriteResult: {}", result.toString());
-			getNode().client().admin().indices()
-					.refresh(new RefreshRequest(INDEX_NAME));
 			ActionFuture<IndicesExistsResponse> response = getNode().client()
 					.admin().indices()
 					.exists(new IndicesExistsRequest(INDEX_NAME));
 			assertThat(response.actionGet().isExists(), equalTo(true));
+			refreshIndex();
 			CountResponse countResponse = getNode()
 					.client()
 					.count(countRequest(INDEX_NAME).query(
@@ -109,8 +125,7 @@ public class RiverMongoDBTest extends RiverMongoDBTestAsbtract {
 			mongoCollection.remove(dbObject, WriteConcern.REPLICAS_SAFE);
 
 			Thread.sleep(1000);
-			getNode().client().admin().indices()
-					.refresh(new RefreshRequest(INDEX_NAME));
+			refreshIndex();
 			countResponse = getNode()
 					.client()
 					.count(countRequest(INDEX_NAME)
@@ -118,7 +133,7 @@ public class RiverMongoDBTest extends RiverMongoDBTestAsbtract {
 			logger.debug("Count after delete request: {}", countResponse.count());
 			 assertThat(countResponse.count(), equalTo(0L));
 		} catch (Throwable t) {
-			logger.error("importAttachment failed.", t);
+			logger.error("simpleBSONObject failed.", t);
 			t.printStackTrace();
 			throw t;
 		}

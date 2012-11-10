@@ -1,0 +1,6 @@
+plugins:
+  mapper-attachments: elasticsearch/elasticsearch-mapper-attachments/1.6.0
+  lang-javascript: elasticsearch/elasticsearch-lang-javascript/1.2.0
+mongodb:
+  version: 2.2.1
+  use_dynamic_ports: false

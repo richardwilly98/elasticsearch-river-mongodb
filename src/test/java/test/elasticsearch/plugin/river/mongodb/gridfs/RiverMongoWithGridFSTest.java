@@ -1,3 +1,21 @@
+/*
+ * Licensed to Elastic Search and Shay Banon under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership. Elastic Search licenses this
+ * file to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package test.elasticsearch.plugin.river.mongodb.gridfs;
 
 import static org.elasticsearch.client.Requests.countRequest;
@@ -10,7 +28,6 @@ import org.bson.types.ObjectId;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.admin.indices.exists.IndicesExistsRequest;
 import org.elasticsearch.action.admin.indices.exists.IndicesExistsResponse;
-import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
 import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.common.logging.ESLogger;
@@ -25,6 +42,7 @@ import test.elasticsearch.plugin.river.mongodb.RiverMongoDBTestAsbtract;
 
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
+import com.mongodb.WriteConcern;
 import com.mongodb.gridfs.GridFS;
 import com.mongodb.gridfs.GridFSDBFile;
 import com.mongodb.gridfs.GridFSInputFile;
@@ -51,6 +69,7 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 		logger.debug("createDatabase {}", DATABASE_NAME);
 		try {
 			mongoDB = getMongo().getDB(DATABASE_NAME);
+			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
 			super.createRiver("/test/elasticsearch/plugin/river/mongodb/gridfs/test-gridfs-mongodb-river.json");
 			ActionFuture<IndicesExistsResponse> response = getNode().client()
 					.admin().indices()
@@ -93,10 +112,10 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 		logger.debug("GridFS from findOne: {}", out);
 		Assert.assertEquals(out.getId(), in.getId());
 
-		Thread.sleep(5000);
+		Thread.sleep(500);
 		
-		getNode().client().admin().indices()
-				.refresh(new RefreshRequest(INDEX_NAME));
+		refreshIndex();
+
 
 		CountResponse countResponse = getNode().client()
 				.count(countRequest(INDEX_NAME))
@@ -119,8 +138,8 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 		gridFS.remove(new ObjectId(id));
 
 		Thread.sleep(1000);
-		getNode().client().admin().indices()
-				.refresh(new RefreshRequest(INDEX_NAME));
+		refreshIndex();
+
 		countResponse = getNode()
 				.client()
 				.count(countRequest(INDEX_NAME)

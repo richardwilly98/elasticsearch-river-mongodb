@@ -1,3 +1,21 @@
+/*
+ * Licensed to Elastic Search and Shay Banon under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership. Elastic Search licenses this
+ * file to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package test.elasticsearch.plugin.river.mongodb;
 
 import static org.elasticsearch.client.Requests.clusterHealthRequest;
@@ -10,6 +28,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
+import org.elasticsearch.action.admin.indices.mapping.delete.DeleteMappingRequest;
+import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
 import org.elasticsearch.common.collect.Tuple;
 import org.elasticsearch.common.io.FileSystemUtils;
 import org.elasticsearch.common.logging.ESLogger;
@@ -34,6 +54,7 @@ import com.mongodb.Mongo;
 import com.mongodb.MongoOptions;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
+import com.mongodb.WriteConcern;
 import com.mongodb.util.JSON;
 
 import de.flapdoodle.embed.mongo.MongodExecutable;
@@ -48,11 +69,8 @@ public abstract class RiverMongoDBTestAsbtract {
 
 	private final ESLogger logger = Loggers.getLogger(getClass());
 
-	private static final String MAPPER_ATTACHMENT_PLUGIN_NAME = "elasticsearch/elasticsearch-mapper-attachments/1.6.0";
-	private static final String JAVASCRIPT_LANG_PLUGIN_NAME = "elasticsearch/elasticsearch-lang-javascript/1.2.0";
-	private static boolean USE_DYNAMIC_PORTS = false;
-	// Version.Main.V2_2
-	private static final String MONGO_VERSION = "2.2.1";
+//	private static final String MAPPER_ATTACHMENT_PLUGIN_NAME = "elasticsearch/elasticsearch-mapper-attachments/1.6.0";
+//	private static final String JAVASCRIPT_LANG_PLUGIN_NAME = "elasticsearch/elasticsearch-lang-javascript/1.2.0";
 	public static final String ADMIN_DATABASE_NAME = "admin";
 	public static final String LOCAL_DATABASE_NAME = "local";
 	public static final String REPLICA_SET_NAME = "rep1";
@@ -74,7 +92,10 @@ public abstract class RiverMongoDBTestAsbtract {
 	private DB mongoAdminDB;
 
 	private static Node node;
+	private static Settings settings;
 
+	private boolean useDynamicPorts;
+	private String mongoVersion;
 	private final String river;
 	private final String database;
 	private final String collection;
@@ -86,12 +107,13 @@ public abstract class RiverMongoDBTestAsbtract {
 		this.database = database;
 		this.collection = collection;
 		this.index = index;
+		loadSettings();
 	}
 
 	@BeforeSuite
 	public void beforeSuite() throws Exception {
 		logger.debug("*** beforeSuite ***");
-		if (USE_DYNAMIC_PORTS) {
+		if (useDynamicPorts) {
 			mongoPort1 = Network.getFreeServerPort();
 			mongoPort2 = Network.getFreeServerPort();
 			mongoPort3 = Network.getFreeServerPort();
@@ -104,23 +126,38 @@ public abstract class RiverMongoDBTestAsbtract {
 		initMongoInstances();
 	}
 
+	private void loadSettings() {
+		settings = settingsBuilder()
+				.loadFromStream("settings.yml", this.getClass().getClassLoader().getSystemResourceAsStream("settings.yml"))
+				.put("path.data", "target/data")
+				.put("path.plugins", "target/plugins")
+				.put("path.logs", "target/log")
+				.put("path.conf", "target/conf")
+				.put("cluster.name",
+						"test-cluster-" + NetworkUtils.getLocalAddress())
+				.put("gateway.type", "none").build();
+		
+		this.useDynamicPorts = settings.getAsBoolean("mongodb.use_dynamic_ports", Boolean.FALSE);
+		this.mongoVersion = settings.get("mongodb.version");
+	}
+
 	private void initMongoInstances() throws Exception {
 		logger.debug("*** initMongoInstances ***");
 		CommandResult cr;
 
 		// Create 3 mongod processes
-		mongodConfig1 = new MongodConfig(new GenericVersion(MONGO_VERSION),
+		mongodConfig1 = new MongodConfig(new GenericVersion(mongoVersion),
 				null, mongoPort1, Network.localhostIsIPv6(), null,
 				REPLICA_SET_NAME, 20);
 		MongodStarter starter = MongodStarter.getDefaultInstance();
 		mongodExe1 = starter.prepare(mongodConfig1);
 		mongod1 = mongodExe1.start();
-		mongodConfig2 = new MongodConfig(new GenericVersion(MONGO_VERSION),
+		mongodConfig2 = new MongodConfig(new GenericVersion(mongoVersion),
 				null, mongoPort2, Network.localhostIsIPv6(), null,
 				REPLICA_SET_NAME, 20);
 		mongodExe2 = starter.prepare(mongodConfig2);
 		mongod2 = mongodExe2.start();
-		mongodConfig3 = new MongodConfig(new GenericVersion(MONGO_VERSION),
+		mongodConfig3 = new MongodConfig(new GenericVersion(mongoVersion),
 				null, mongoPort3, Network.localhostIsIPv6(), null,
 				REPLICA_SET_NAME, 20);
 		mongodExe3 = starter.prepare(mongodConfig3);
@@ -179,6 +216,7 @@ public abstract class RiverMongoDBTestAsbtract {
 		mongo = new Mongo(mongoServers, mo);
 		Assert.assertNotNull(mongo);
 		mongo.setReadPreference(ReadPreference.secondaryPreferred());
+		mongo.setWriteConcern(WriteConcern.REPLICAS_SAFE);
 	}
 
 	private boolean isReplicaSetStarted(BasicDBObject setting) {
@@ -203,14 +241,6 @@ public abstract class RiverMongoDBTestAsbtract {
 	private void setupElasticsearchServer() throws Exception {
 		logger.debug("*** setupElasticsearchServer ***");
 		try {
-			Settings settings = settingsBuilder()
-					.put("path.data", "target/data")
-					.put("path.plugins", "target/plugins")
-					.put("path.logs", "target/log")
-					.put("path.conf", "target/conf")
-					.put("cluster.name",
-							"test-cluster-" + NetworkUtils.getLocalAddress())
-					.put("gateway.type", "none").build();
 			Tuple<Settings, Environment> initialSettings = InternalSettingsPerparer
 					.prepareSettings(settings, true);
 			PluginManager pluginManager = new PluginManager(
@@ -226,13 +256,15 @@ public abstract class RiverMongoDBTestAsbtract {
 
 			if (!initialSettings.v2().pluginsFile().exists()) {
 				FileSystemUtils.mkdirs(initialSettings.v2().pluginsFile());
-				pluginManager.downloadAndExtract(MAPPER_ATTACHMENT_PLUGIN_NAME);
-				pluginManager.downloadAndExtract(JAVASCRIPT_LANG_PLUGIN_NAME);
+//				pluginManager.downloadAndExtract(MAPPER_ATTACHMENT_PLUGIN_NAME);
+//				pluginManager.downloadAndExtract(JAVASCRIPT_LANG_PLUGIN_NAME);
+				pluginManager.downloadAndExtract(settings.get("plugins.mapper-attachments"));
+				pluginManager.downloadAndExtract(settings.get("plugins.lang-javascript"));
 			} else {
 				logger.info("Plugin {} has been already installed.",
-						MAPPER_ATTACHMENT_PLUGIN_NAME);
+						settings.get("plugins.mapper-attachments"));
 				logger.info("Plugin {} has been already installed.",
-						JAVASCRIPT_LANG_PLUGIN_NAME);
+						settings.get("plugins.lang-javascript"));
 			}
 
 			node = nodeBuilder().local(true).settings(settings).node();
@@ -249,6 +281,15 @@ public abstract class RiverMongoDBTestAsbtract {
 		setting = String.format(setting, args);
 		logger.debug("River setting: {}", setting);
 		return setting;
+	}
+
+	protected void refreshIndex() {
+		refreshIndex(index);
+	}
+	
+	protected void refreshIndex(String index) {
+		getNode().client().admin().indices()
+		.refresh(new RefreshRequest(index)).actionGet();
 	}
 
 	protected void createRiver(String jsonDefinition, Object... args)
@@ -289,11 +330,10 @@ public abstract class RiverMongoDBTestAsbtract {
 		deleteRiver(river);
 	}
 
-	// TODO how to delete a specific river?
 	protected void deleteRiver(String name) {
 		logger.info("Delete river [{}]", name);
-//		deleteIndex("_river/" + name);
-		deleteIndex("_river");
+		DeleteMappingRequest deleteMapping = new DeleteMappingRequest("_river").type(name);
+		node.client().admin().indices().deleteMapping(deleteMapping).actionGet();
 	}
 
 	@AfterSuite
