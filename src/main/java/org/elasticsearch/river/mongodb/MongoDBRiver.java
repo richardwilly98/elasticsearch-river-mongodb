@@ -476,6 +476,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					if (logger.isDebugEnabled()) {
 						logger.debug("river-mongodb indexer interrupted");
 					}
+					Thread.currentThread().interrupt();
 				}
 				logStatistics();
 			}
@@ -703,6 +704,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					if (logger.isDebugEnabled()) {
 						logger.debug("river-mongodb slurper interrupted");
 					}
+					Thread.currentThread().interrupt();
 				}
 			}
 		}
@@ -712,7 +714,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		 * https://github.com/richardwilly98/elasticsearch
 		 * -river-mongodb/issues/17
 		 */
-		private DBCursor processFullCollection() {
+		private DBCursor processFullCollection() throws InterruptedException {
 			// CommandResult lockResult = mongo.fsyncAndLock();
 			// if (lockResult.ok()) {
 			try {
@@ -731,7 +733,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		}
 
 		@SuppressWarnings("unchecked")
-		private void processOplogEntry(final DBObject entry) {
+		private void processOplogEntry(final DBObject entry) throws InterruptedException {
 			String operation = entry.get(OPLOG_OPERATION).toString();
 			String namespace = entry.get(OPLOG_NAMESPACE).toString();
 			BSONTimestamp oplogTimestamp = (BSONTimestamp) entry
@@ -849,7 +851,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 		@SuppressWarnings("unchecked")
 		private void addQueryToStream(final String operation,
-				final BSONTimestamp currentTimestamp, final DBObject update) {
+				final BSONTimestamp currentTimestamp, final DBObject update) throws InterruptedException {
 			if (logger.isDebugEnabled()) {
 				logger.debug(
 						"addQueryToStream - operation [{}], currentTimestamp [{}], update [{}]",
@@ -862,7 +864,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 		private void addToStream(final String operation,
 				final BSONTimestamp currentTimestamp,
-				final Map<String, Object> data) {
+				final Map<String, Object> data) throws InterruptedException {
 			if (logger.isDebugEnabled()) {
 				logger.debug(
 						"addToStream - operation [{}], currentTimestamp [{}], data [{}]",
@@ -872,11 +874,12 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			data.put(OPLOG_OPERATION, operation);
 
 			// stream.add(data);
-			try {
-				stream.put(data);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
+			stream.put(data);
+//			try {
+//				stream.put(data);
+//			} catch (InterruptedException e) {
+//				e.printStackTrace();
+//			}
 		}
 
 	}
