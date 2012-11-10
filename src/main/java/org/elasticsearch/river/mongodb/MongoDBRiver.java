@@ -102,6 +102,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	public final static String USER_FIELD = "user";
 	public final static String PASSWORD_FIELD = "password";
 	public final static String SCRIPT_FIELD = "script";
+	public static final String SCRIPT_TYPE_FIELD = "scriptType";
 	public final static String COLLECTION_FIELD = "collection";
 	public final static String GRIDFS_FIELD = "gridfs";
 	public final static String INDEX_OBJECT = "index";
@@ -127,6 +128,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	public final static String OPLOG_INSERT_OPERATION = "i";
 	public final static String OPLOG_DELETE_OPERATION = "d";
 	public final static String OPLOG_TIMESTAMP = "ts";
+	public final static String GRIDFS_FILES_SUFFIX = ".files";
+	public final static String GRIDFS_CHUNKS_SUFFIX = ".chunks";
 
 	protected final Client client;
 
@@ -294,13 +297,13 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				mongoFilter = "";
 			}
 
-            if (mongoSettings.containsKey("script")) {
+            if (mongoSettings.containsKey(SCRIPT_FIELD)) {
                 String scriptType = "js";
-                if(mongoSettings.containsKey("scriptType")) {
-                    scriptType = mongoSettings.get("scriptType").toString();
+                if(mongoSettings.containsKey(SCRIPT_TYPE_FIELD)) {
+                    scriptType = mongoSettings.get(SCRIPT_TYPE_FIELD).toString();
                 }
 
-                script = scriptService.executable(scriptType, mongoSettings.get("script").toString(), Maps.newHashMap());
+                script = scriptService.executable(scriptType, mongoSettings.get(SCRIPT_FIELD).toString(), Maps.newHashMap());
             } else {
                 script = null;
             }
@@ -510,12 +513,13 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		            logger.warn("failed to parse {}", e);
 //		            return null;
 		        }
-//				Map<String, Object> ctx = XContentFactory.xContent(XContentType.JSON).createParser("{}").mapAndClose();
 		        if (ctx != null) {
 					ctx.put("document", data);
 					ctx.put("operation", operation);
 					ctx.put("id", objectId);
-					logger.debug("From script context: {}", ctx);
+					if (logger.isDebugEnabled()) {
+						logger.debug("From script context: {}", ctx);
+					}
 		            script.setNextVar("ctx", ctx);
 		            try {
 		                script.run();
@@ -523,11 +527,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		                ctx = (Map<String, Object>) script.unwrap(ctx);
 		            } catch (Exception e) {
 		                logger.warn("failed to script process {}, ignoring", e, ctx);
-//		                return seq;
 		            }
 		            if (ctx.containsKey("ignore") && ctx.get("ignore").equals(Boolean.TRUE)) {
 		            	logger.debug("From script ignore document id: {}", objectId);
-		                // ignore dock
+		                // ignore document
 		            	return lastTimestamp;
 		            }
 		            if (ctx.containsKey("document")) {
@@ -692,7 +695,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						DBObject item = oplogCursor.next();
 						processOplogEntry(item);
 					}
-					Thread.sleep(5000);
+					Thread.sleep(500);
 				} catch (MongoInterruptedException mIEx) {
 					logger.error("Mongo driver has been interrupted", mIEx);
 					active = false;
@@ -741,7 +744,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			DBObject object = (DBObject) entry.get(OPLOG_OBJECT);
 
 			// Not interested by chunks - skip all
-			if (namespace.endsWith(".chunks")) {
+			if (namespace.endsWith(GRIDFS_CHUNKS_SUFFIX)) {
 				return;
 			}
 
@@ -752,7 +755,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			}
 
 			if (mongoGridFS
-					&& namespace.endsWith(".files")
+					&& namespace.endsWith(GRIDFS_FILES_SUFFIX)
 					&& (OPLOG_INSERT_OPERATION.equals(operation) || OPLOG_UPDATE_OPERATION
 							.equals(operation))) {
 				String objectId = object.get(MONGODB_ID_FIELD).toString();
@@ -789,10 +792,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					: timestampOverride;
 			BasicDBObject filter = new BasicDBObject();
 			List<DBObject> values = new ArrayList<DBObject>();
-			// Should we filter when GridFS is enabled?
+
 			if (mongoGridFS) {
 				values.add(new BasicDBObject(OPLOG_NAMESPACE,
-						mongoOplogNamespace + ".files"));
+						mongoOplogNamespace + GRIDFS_FILES_SUFFIX));
 			} else {
 				values.add(new BasicDBObject(OPLOG_NAMESPACE,
 						mongoOplogNamespace));
