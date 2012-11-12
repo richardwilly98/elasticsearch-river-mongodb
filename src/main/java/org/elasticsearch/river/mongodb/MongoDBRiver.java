@@ -34,8 +34,10 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedTransferQueue;
 
+import org.bson.BasicBSONObject;
 import org.bson.types.BSONTimestamp;
 import org.bson.types.ObjectId;
+import org.elasticsearch.ElasticSearchInterruptedException;
 import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -102,14 +104,14 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	public final static String USER_FIELD = "user";
 	public final static String PASSWORD_FIELD = "password";
 	public final static String SCRIPT_FIELD = "script";
-	public static final String SCRIPT_TYPE_FIELD = "scriptType";
+	public final static String SCRIPT_TYPE_FIELD = "scriptType";
 	public final static String COLLECTION_FIELD = "collection";
 	public final static String GRIDFS_FIELD = "gridfs";
 	public final static String INDEX_OBJECT = "index";
 	public final static String NAME_FIELD = "name";
 	public final static String TYPE_FIELD = "type";
-	public final static String DB_LOCAL = "local";
-	public final static String DB_ADMIN = "admin";
+	public final static String LOCAL_DB_FIELD = "local";
+	public final static String ADMIN_DB_FIELD = "admin";
 	public final static String DEFAULT_DB_HOST = "localhost";
 	public final static String THROTTLE_SIZE_FIELD = "throttle_size";
 	public final static int DEFAULT_DB_PORT = 27017;
@@ -250,12 +252,12 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					for (Map<String, Object> credential : credentials) {
 						dbCredential = XContentMapValues.nodeStringValue(
 								credential.get(DB_FIELD), null);
-						if (DB_ADMIN.equals(dbCredential)) {
+						if (ADMIN_DB_FIELD.equals(dbCredential)) {
 							mau = XContentMapValues.nodeStringValue(
 									credential.get(USER_FIELD), null);
 							map = XContentMapValues.nodeStringValue(
 									credential.get(PASSWORD_FIELD), null);
-						} else if (DB_LOCAL.equals(dbCredential)) {
+						} else if (LOCAL_DB_FIELD.equals(dbCredential)) {
 							mlu = XContentMapValues.nodeStringValue(
 									credential.get(USER_FIELD), null);
 							mlp = XContentMapValues.nodeStringValue(
@@ -471,6 +473,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 							logger.warn("failed to execute"
 									+ response.buildFailureMessage());
 						}
+					} catch (ElasticSearchInterruptedException esie) {
+						logger.warn("river-mongodb indexer bas been interrupted", esie);
+						Thread.currentThread().interrupt();
 					} catch (Exception e) {
 						logger.warn("failed to execute bulk", e);
 					}
@@ -743,6 +748,12 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					.get(OPLOG_TIMESTAMP);
 			DBObject object = (DBObject) entry.get(OPLOG_OBJECT);
 
+			// Initial support for sharded collection - https://jira.mongodb.org/browse/SERVER-4333
+			// Not interested in operation from migration or sharding
+			if (entry.containsField("fromMigrate") && ((BasicBSONObject) entry).getBoolean("fromMigrate")) {
+				logger.debug("From migration or sharding operation. Can be ignored. {}", entry);
+				return;
+			}
 			// Not interested by chunks - skip all
 			if (namespace.endsWith(GRIDFS_CHUNKS_SUFFIX)) {
 				return;
