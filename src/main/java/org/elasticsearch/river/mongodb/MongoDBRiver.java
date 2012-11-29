@@ -369,6 +369,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			logger.info("Using mongodb server(s): host [{}], port [{}]",
 					server.getHost(), server.getPort());
 		}
+		// TODO: include plugin version from pom.properties file.
+		// http://stackoverflow.com/questions/5270611/read-maven-properties-file-inside-jar-war-file
 		logger.info(
 				"starting mongodb stream. options: secondaryreadpreference [{}], throttlesize [{}], gridfs [{}], filter [{}], db [{}], script [{}], indexing to [{}]/[{}]",
 				mongoSecondaryReadPreference, throttleSize, mongoGridFS,
@@ -518,7 +520,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					ctx.put("operation", operation);
 					ctx.put("id", objectId);
 					if (logger.isDebugEnabled()) {
-						logger.debug("From script context: {}", ctx);
+						logger.debug("Context before script executed: {}", ctx);
 					}
 		            script.setNextVar("ctx", ctx);
 		            try {
@@ -528,10 +530,16 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		            } catch (Exception e) {
 		                logger.warn("failed to script process {}, ignoring", e, ctx);
 		            }
+					if (logger.isDebugEnabled()) {
+						logger.debug("Context after script executed: {}", ctx);
+					}
 		            if (ctx.containsKey("ignore") && ctx.get("ignore").equals(Boolean.TRUE)) {
 		            	logger.debug("From script ignore document id: {}", objectId);
 		                // ignore document
 		            	return lastTimestamp;
+		            }
+		            if (ctx.containsKey("deleted") && ctx.get("deleted").equals(Boolean.TRUE)) {
+		            	ctx.put("operation", OPLOG_DELETE_OPERATION);
 		            }
 		            if (ctx.containsKey("document")) {
 		            	data = (Map<String, Object>) ctx.get("document");
