@@ -112,10 +112,8 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 		logger.debug("GridFS from findOne: {}", out);
 		Assert.assertEquals(out.getId(), in.getId());
 
-		Thread.sleep(500);
-		
+		Thread.sleep(1000);
 		refreshIndex();
-
 
 		CountResponse countResponse = getNode().client()
 				.count(countRequest(INDEX_NAME))
