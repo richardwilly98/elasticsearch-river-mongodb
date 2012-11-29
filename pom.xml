@@ -44,7 +44,7 @@
 
 	<properties>
 		<elasticsearch.version>0.19.11</elasticsearch.version>
-		<mongo-java-driver.version>2.9.3</mongo-java-driver.version>
+		<mongo-java-driver.version>2.10.0</mongo-java-driver.version>
 	</properties>
 
 	<repositories>
@@ -133,7 +133,7 @@
 			<plugin>
 				<groupId>com.github.github</groupId>
 				<artifactId>downloads-maven-plugin</artifactId>
-				<version>0.4</version>
+				<version>0.6</version>
 				<configuration>
 					<description>${project.name} download for ${project.version}</description>
 					<override>true</override>
