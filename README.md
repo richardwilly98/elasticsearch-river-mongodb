@@ -1,9 +1,12 @@
 MongoDB River Plugin for ElasticSearch
+==================================
 
     ---------------------------------------------------------
     | MongoDB River Plugin     | ElasticSearch    | MongoDB |
     --------------------------------------------------------|
-    | master                   | 0.19.11-> master | 2.2.1   |
+    | master                   | 0.20.1 -> master | 2.2.2   |
+    --------------------------------------------------------|
+    | 1.6.0                    | 0.20.1 -> master | 2.2.2   |
     --------------------------------------------------------|
     | 1.5.0                    | 0.19.11          | 2.2.1   |
     --------------------------------------------------------|
@@ -68,7 +71,7 @@ Query index:
 		"type": "mongodb", 
 		"mongodb": { 
 			"db": "testmongo", 
-			"collection": "files", 
+			"collection": "fs", 
 			"gridfs": true 
 		}, 
 		"index": {
@@ -79,7 +82,7 @@ Query index:
 
 Import binary content in mongo:
 
-	%MONGO_HOME%\bin>mongofiles.exe --host localhost:27017 --db testmongo --collection files put test-document-2.pdf
+	%MONGO_HOME%\bin>mongofiles.exe --host localhost:27017 --db testmongo --collection fs put test-document-2.pdf
 	connected to: localhost:27017
 	added file: { _id: ObjectId('4f230588a7da6e94984d88a1'), filename: "test-document-2.pdf", chunkSize: 262144, uploadDate: new Date(1327695240206), md5: "c2f251205576566826f86cd969158f24", length: 173293 }
 	done!
@@ -89,3 +92,31 @@ Query index:
 	curl -XGET 'http://localhost:9200/files/4f230588a7da6e94984d88a1?pretty=true'
 
 See more details check the [wiki](https://github.com/richardwilly98/elasticsearch-river-mongodb/wiki)
+
+License
+-------
+
+    This software is licensed under the Apache 2 license, quoted below.
+
+    Copyright 2009-2012 Shay Banon and ElasticSearch <http://www.elasticsearch.org>
+
+    Licensed under the Apache License, Version 2.0 (the "License"); you may not
+    use this file except in compliance with the License. You may obtain a copy of
+    the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+    License for the specific language governing permissions and limitations under
+    the License.
+
+### Changelog
+
+#### 1.6.0 
+
+- Support for sharded collection
+- Script filters
+- MongoDB driver 2.10.1 (use of MongoClient)
+	
