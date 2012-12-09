@@ -258,8 +258,8 @@ public abstract class RiverMongoDBTestAsbtract {
 				FileSystemUtils.mkdirs(initialSettings.v2().pluginsFile());
 //				pluginManager.downloadAndExtract(MAPPER_ATTACHMENT_PLUGIN_NAME);
 //				pluginManager.downloadAndExtract(JAVASCRIPT_LANG_PLUGIN_NAME);
-				pluginManager.downloadAndExtract(settings.get("plugins.mapper-attachments"));
-				pluginManager.downloadAndExtract(settings.get("plugins.lang-javascript"));
+				pluginManager.downloadAndExtract(settings.get("plugins.mapper-attachments"), false);
+				pluginManager.downloadAndExtract(settings.get("plugins.lang-javascript"), false);
 			} else {
 				logger.info("Plugin {} has been already installed.",
 						settings.get("plugins.mapper-attachments"));
