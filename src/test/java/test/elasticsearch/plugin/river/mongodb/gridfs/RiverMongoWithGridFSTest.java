@@ -146,4 +146,60 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 		 assertThat(countResponse.count(), equalTo(0L));
 	}
 
+	@Test
+	public void testImportPDFAttachment() throws Exception {
+		logger.debug("*** testImportPDFAttachment ***");
+		byte[] content = copyToBytesFromClasspath("/test/elasticsearch/plugin/river/mongodb/gridfs/lorem.pdf");
+		logger.debug("Content in bytes: {}", content.length);
+		GridFS gridFS = new GridFS(mongoDB);
+		GridFSInputFile in = gridFS.createFile(content);
+		in.setFilename("lorem.pdf");
+		in.setContentType("application/pdf");
+		in.save();
+		in.validate();
+		
+		String id = in.getId().toString();
+		logger.debug("GridFS in: {}", in);
+		logger.debug("Document created with id: {}", id);
+
+		GridFSDBFile out = gridFS.findOne(in.getFilename());
+		logger.debug("GridFS from findOne: {}", out);
+		out = gridFS.findOne(new ObjectId(id));
+		logger.debug("GridFS from findOne: {}", out);
+		Assert.assertEquals(out.getId(), in.getId());
+
+		Thread.sleep(1000);
+		refreshIndex();
+
+		CountResponse countResponse = getNode().client()
+				.count(countRequest(INDEX_NAME))
+				.actionGet();
+		logger.debug("Index total count: {}", countResponse.count());
+		assertThat(countResponse.count(), equalTo(1l));
+		
+		countResponse = getNode().client()
+				.count(countRequest(INDEX_NAME).query(fieldQuery("_id", id)))
+				.actionGet();
+		logger.debug("Index count for id {}: {}", id, countResponse.count());
+		assertThat(countResponse.count(), equalTo(1l));
+		
+		SearchResponse response = getNode().client().prepareSearch(INDEX_NAME).setQuery(QueryBuilders.queryString("Lorem ipsum dolor")).execute().actionGet();
+		logger.debug("SearchResponse {}", response.toString());
+		long totalHits = response.hits().getTotalHits();
+		logger.debug("TotalHits: {}", totalHits);
+		assertThat(totalHits, equalTo(1l));
+
+		gridFS.remove(new ObjectId(id));
+
+		Thread.sleep(1000);
+		refreshIndex();
+
+		countResponse = getNode()
+				.client()
+				.count(countRequest(INDEX_NAME)
+						.query(fieldQuery("_id", id))).actionGet();
+		logger.debug("Count after delete request: {}", countResponse.count());
+		 assertThat(countResponse.count(), equalTo(0L));
+	}
+
 }
