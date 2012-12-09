@@ -26,8 +26,8 @@ import static org.hamcrest.Matchers.equalTo;
 
 import org.bson.types.ObjectId;
 import org.elasticsearch.action.ActionFuture;
-import org.elasticsearch.action.admin.indices.exists.IndicesExistsRequest;
-import org.elasticsearch.action.admin.indices.exists.IndicesExistsResponse;
+import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
+import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.common.logging.ESLogger;
@@ -112,10 +112,8 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 		logger.debug("GridFS from findOne: {}", out);
 		Assert.assertEquals(out.getId(), in.getId());
 
-		Thread.sleep(500);
-		
+		Thread.sleep(1000);
 		refreshIndex();
-
 
 		CountResponse countResponse = getNode().client()
 				.count(countRequest(INDEX_NAME))

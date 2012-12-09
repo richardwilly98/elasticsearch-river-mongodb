@@ -74,6 +74,7 @@ import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.Mongo;
+import com.mongodb.MongoClient;
 import com.mongodb.MongoException;
 import com.mongodb.MongoInterruptedException;
 import com.mongodb.QueryOperators;
@@ -112,6 +113,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	public final static String TYPE_FIELD = "type";
 	public final static String LOCAL_DB_FIELD = "local";
 	public final static String ADMIN_DB_FIELD = "admin";
+	public final static String DB_LOCAL = "local";
+	public final static String DB_ADMIN = "admin";
+	public final static String DB_CONFIG = "config";
 	public final static String DEFAULT_DB_HOST = "localhost";
 	public final static String THROTTLE_SIZE_FIELD = "throttle_size";
 	public final static int DEFAULT_DB_PORT = 27017;
@@ -159,7 +163,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
     private final ExecutableScript script;
 
-    protected volatile Thread tailerThread;
+    protected volatile List<Thread> tailerThreads = new ArrayList<Thread>();
 	protected volatile Thread indexerThread;
 	protected volatile boolean active = true;
 
@@ -371,6 +375,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			logger.info("Using mongodb server(s): host [{}], port [{}]",
 					server.getHost(), server.getPort());
 		}
+		// TODO: include plugin version from pom.properties file.
+		// http://stackoverflow.com/questions/5270611/read-maven-properties-file-inside-jar-war-file
 		logger.info(
 				"starting mongodb stream. options: secondaryreadpreference [{}], throttlesize [{}], gridfs [{}], filter [{}], db [{}], script [{}], indexing to [{}]/[{}]",
 				mongoSecondaryReadPreference, throttleSize, mongoGridFS,
@@ -408,14 +414,70 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			}
 		}
 
-		tailerThread = EsExecutors.daemonThreadFactory(
-				settings.globalSettings(), "mongodb_river_slurper").newThread(
-				new Slurper());
+		if (! isMongos()) {
+			Mongo mongo = new MongoClient(mongoServers);
+			DBCursor cursor = mongo.getDB(DB_CONFIG).getCollection("shards").find();
+			while (cursor.hasNext()) {
+				DBObject item = cursor.next();
+				logger.info(item.toString());
+				List<ServerAddress> servers = getServerAddressForReplica(item);
+				if (servers != null) {
+					String replicaName = item.get("_id").toString();
+//					Runnable oplogThread = new OplogThread(
+//							new Mongo(servers), replicaName);
+//					Thread worker = new Thread(oplogThread);
+//					// We can set the name of the thread
+//					worker.setName("Oplog monitoring: " + servers);
+//					// Start the thread, never call method run() direct
+//					worker.start();
+					Thread tailerThread = EsExecutors.daemonThreadFactory(
+							settings.globalSettings(), "mongodb_river_slurper-" + replicaName).newThread(
+							new Slurper(servers));
+					tailerThreads.add(tailerThread);
+					// monitorOplog(servers);
+				}
+			}
+		} else {
+			Thread tailerThread = EsExecutors.daemonThreadFactory(
+					settings.globalSettings(), "mongodb_river_slurper").newThread(
+					new Slurper(mongoServers));
+			tailerThreads.add(tailerThread);
+		}
+		
+		for (Thread thread : tailerThreads) {
+			thread.start();
+		}
+
 		indexerThread = EsExecutors.daemonThreadFactory(
 				settings.globalSettings(), "mongodb_river_indexer").newThread(
 				new Indexer());
 		indexerThread.start();
-		tailerThread.start();
+	}
+
+	private boolean isMongos() {
+		Mongo mongo = new MongoClient(mongoServers);
+		CommandResult cr = mongo.getDB(DB_ADMIN).command(new BasicDBObject(
+				"serverStatus", 1));
+		return (cr.get("process") != "mongos");
+	}
+
+	private List<ServerAddress> getServerAddressForReplica(DBObject item) {
+		String definition = item.get("host").toString();
+		if (definition.contains("/")) {
+			definition = definition.substring(definition.indexOf("/") + 1);
+		}
+		if (logger.isDebugEnabled()) {
+			logger.debug("getServerAddressForReplica - definition: {}", definition);
+		}
+		List<ServerAddress> servers = new ArrayList<ServerAddress>();
+		for (String server : definition.split(",")) {
+			try {
+				servers.add(new ServerAddress(server));
+			} catch (UnknownHostException uhEx) {
+				logger.warn("failed to execute bulk", uhEx);
+			}
+		}
+		return servers;
 	}
 
 	@Override
@@ -423,7 +485,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		if (active) {
 			logger.info("closing mongodb stream river");
 			active = false;
-			tailerThread.interrupt();
+			for (Thread thread : tailerThreads) {
+				thread.interrupt();
+			}
 			indexerThread.interrupt();
 		}
 	}
@@ -523,7 +587,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					ctx.put("operation", operation);
 					ctx.put("id", objectId);
 					if (logger.isDebugEnabled()) {
-						logger.debug("From script context: {}", ctx);
+						logger.debug("Context before script executed: {}", ctx);
 					}
 		            script.setNextVar("ctx", ctx);
 		            try {
@@ -533,10 +597,16 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		            } catch (Exception e) {
 		                logger.warn("failed to script process {}, ignoring", e, ctx);
 		            }
+					if (logger.isDebugEnabled()) {
+						logger.debug("Context after script executed: {}", ctx);
+					}
 		            if (ctx.containsKey("ignore") && ctx.get("ignore").equals(Boolean.TRUE)) {
 		            	logger.debug("From script ignore document id: {}", objectId);
 		                // ignore document
 		            	return lastTimestamp;
+		            }
+		            if (ctx.containsKey("deleted") && ctx.get("deleted").equals(Boolean.TRUE)) {
+		            	ctx.put("operation", OPLOG_DELETE_OPERATION);
 		            }
 		            if (ctx.containsKey("document")) {
 		            	data = (Map<String, Object>) ctx.get("document");
@@ -612,7 +682,12 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		private DBCollection slurpedCollection;
 		private DB oplogDb;
 		private DBCollection oplogCollection;
+		private final List<ServerAddress> mongoServers;
 
+		public Slurper(List<ServerAddress> mongoServers) {
+			this.mongoServers = mongoServers;
+		}
+		
 		private boolean assignCollections() {
 			DB adminDb = mongo.getDB(MONGODB_ADMIN);
 			oplogDb = mongo.getDB(MONGODB_LOCAL);
