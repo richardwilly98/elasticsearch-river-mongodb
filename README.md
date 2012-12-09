@@ -112,11 +112,11 @@ License
     License for the specific language governing permissions and limitations under
     the License.
 
-### Changelog
+Changelog
+-------
 
-#### 1.6.0 
-
-- Support for sharded collection
-- Script filters
-- MongoDB driver 2.10.1 (use of MongoClient)
+	#### 1.6.0 
+	- Support for sharded collection
+	- Script filters
+	- MongoDB driver 2.10.1 (use of MongoClient)
 	
