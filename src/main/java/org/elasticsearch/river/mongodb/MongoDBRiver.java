@@ -423,18 +423,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				List<ServerAddress> servers = getServerAddressForReplica(item);
 				if (servers != null) {
 					String replicaName = item.get("_id").toString();
-//					Runnable oplogThread = new OplogThread(
-//							new Mongo(servers), replicaName);
-//					Thread worker = new Thread(oplogThread);
-//					// We can set the name of the thread
-//					worker.setName("Oplog monitoring: " + servers);
-//					// Start the thread, never call method run() direct
-//					worker.start();
 					Thread tailerThread = EsExecutors.daemonThreadFactory(
 							settings.globalSettings(), "mongodb_river_slurper-" + replicaName).newThread(
-							new Slurper(servers));
+									new Slurper(servers));
 					tailerThreads.add(tailerThread);
-					// monitorOplog(servers);
 				}
 			}
 		} else {
@@ -753,7 +745,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 		@Override
 		public void run() {
-			mongo = new Mongo(mongoServers);
+			mongo = new MongoClient(mongoServers);
 
 			if (mongoSecondaryReadPreference) {
 				mongo.setReadPreference(ReadPreference.secondaryPreferred());
