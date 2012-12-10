@@ -1,0 +1,12 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"db": "mydb",
+		"collection": "mycollec",
+		"script": "ctx.document.title = ctx.document.title_from_mongo; delete ctx.document.title_from_mongo;"
+	},
+	"index": {
+		"name": "mydb",
+		"type": "mycollec"
+	}
+}
