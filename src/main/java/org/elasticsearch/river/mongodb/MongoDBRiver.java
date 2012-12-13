@@ -92,6 +92,8 @@ import com.mongodb.util.JSON;
  */
 public class MongoDBRiver extends AbstractRiverComponent implements River {
 
+	public final static String IS_MONGODB_ATTACHMENT = "is_mongodb_attachment";
+	public final static String MONGODB_ATTACHMENT = "mongodb_attachment";
 	public final static String RIVER_TYPE = "mongodb";
 	public final static String ROOT_NAME = RIVER_TYPE;
 	public final static String DB_FIELD = "db";
@@ -617,7 +619,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						logger.debug(
 								"Insert operation - id: {} - contains attachment: {}",
 								operation, objectId,
-								data.containsKey("attachment"));
+								data.containsKey(IS_MONGODB_ATTACHMENT));
 					}
 					bulk.add(indexRequest(indexName).type(typeName)
 							.id(objectId).source(build(data, objectId)));
@@ -627,7 +629,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					if (logger.isDebugEnabled()) {
 						logger.debug(
 								"Update operation - id: {} - contains attachment: {}",
-								objectId, data.containsKey("attachment"));
+								objectId, data.containsKey(IS_MONGODB_ATTACHMENT));
 					}
 					bulk.add(new DeleteRequest(indexName, typeName, objectId));
 					bulk.add(indexRequest(indexName).type(typeName)
@@ -649,11 +651,11 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 		private XContentBuilder build(final Map<String, Object> data,
 				final String objectId) throws IOException {
-			if (data.containsKey("attachment")) {
+			if (data.containsKey(IS_MONGODB_ATTACHMENT)) {
 				logger.info("Add Attachment: {} to index {} / type {}",
 						objectId, indexName, typeName);
 				return GridFSHelper.serialize((GridFSDBFile) data
-						.get("attachment"));
+						.get(MONGODB_ATTACHMENT));
 			} else {
 				return XContentFactory.jsonBuilder().map(data);
 			}
@@ -851,7 +853,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			if (object instanceof GridFSDBFile) {
 				logger.info("Add attachment: {}", object.get(MONGODB_ID_FIELD));
 				HashMap<String, Object> data = new HashMap<String, Object>();
-				data.put("attachment", object);
+				data.put(IS_MONGODB_ATTACHMENT, true);
+				data.put(MONGODB_ATTACHMENT, object);
 				data.put(MONGODB_ID_FIELD, object.get(MONGODB_ID_FIELD));
 				addToStream(operation, oplogTimestamp, data);
 			} else {
