@@ -883,6 +883,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			}
 			if (time == null) {
 				logger.info("No known previous slurping time for this collection");
+				// XM: https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/38
+				return null;
 			} else {
 				values.add(new BasicDBObject(OPLOG_TIMESTAMP,
 						new BasicDBObject(QueryOperators.GT, time)));
