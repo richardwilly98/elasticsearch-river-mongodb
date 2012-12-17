@@ -416,7 +416,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			}
 		}
 
-		if (! isMongos()) {
+		if (isMongos()) {
 			Mongo mongo = new MongoClient(mongoServers);
 			DBCursor cursor = mongo.getDB(DB_CONFIG).getCollection("shards").find();
 			while (cursor.hasNext()) {
@@ -452,7 +452,11 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		Mongo mongo = new MongoClient(mongoServers);
 		CommandResult cr = mongo.getDB(DB_ADMIN).command(new BasicDBObject(
 				"serverStatus", 1));
-		return (cr.get("process") != "mongos");
+		if (logger.isTraceEnabled()) {
+			logger.trace("serverStatus: {}", cr);
+			logger.trace("process: {}", cr.get("process"));
+		}
+		return (cr.get("process").equals("mongos"));
 	}
 
 	private List<ServerAddress> getServerAddressForReplica(DBObject item) {
