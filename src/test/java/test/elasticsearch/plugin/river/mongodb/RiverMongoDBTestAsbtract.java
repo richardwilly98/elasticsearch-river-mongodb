@@ -60,7 +60,10 @@ import com.mongodb.util.JSON;
 import de.flapdoodle.embed.mongo.MongodExecutable;
 import de.flapdoodle.embed.mongo.MongodProcess;
 import de.flapdoodle.embed.mongo.MongodStarter;
+import de.flapdoodle.embed.mongo.config.AbstractMongoConfig.Net;
 import de.flapdoodle.embed.mongo.config.MongodConfig;
+import de.flapdoodle.embed.mongo.config.AbstractMongoConfig.Storage;
+import de.flapdoodle.embed.mongo.config.AbstractMongoConfig.Timeout;
 import de.flapdoodle.embed.process.distribution.GenericVersion;
 import de.flapdoodle.embed.process.runtime.Network;
 
@@ -69,8 +72,6 @@ public abstract class RiverMongoDBTestAsbtract {
 
 	private final ESLogger logger = Loggers.getLogger(getClass());
 
-//	private static final String MAPPER_ATTACHMENT_PLUGIN_NAME = "elasticsearch/elasticsearch-mapper-attachments/1.6.0";
-//	private static final String JAVASCRIPT_LANG_PLUGIN_NAME = "elasticsearch/elasticsearch-lang-javascript/1.2.0";
 	public static final String ADMIN_DATABASE_NAME = "admin";
 	public static final String LOCAL_DATABASE_NAME = "local";
 	public static final String REPLICA_SET_NAME = "rep1";
@@ -146,28 +147,25 @@ public abstract class RiverMongoDBTestAsbtract {
 		CommandResult cr;
 
 		// Create 3 mongod processes
-		mongodConfig1 = new MongodConfig(new GenericVersion(mongoVersion),
-				null, mongoPort1, Network.localhostIsIPv6(), null,
-				REPLICA_SET_NAME, 20);
+		mongodConfig1 = new MongodConfig(new GenericVersion(mongoVersion), new Net(mongoPort1, Network.localhostIsIPv6()),
+		new Storage(null, REPLICA_SET_NAME, 20), new Timeout());
 		MongodStarter starter = MongodStarter.getDefaultInstance();
 		mongodExe1 = starter.prepare(mongodConfig1);
 		mongod1 = mongodExe1.start();
-		mongodConfig2 = new MongodConfig(new GenericVersion(mongoVersion),
-				null, mongoPort2, Network.localhostIsIPv6(), null,
-				REPLICA_SET_NAME, 20);
+		mongodConfig2 = new MongodConfig(new GenericVersion(mongoVersion), new Net(mongoPort2, Network.localhostIsIPv6()),
+				new Storage(null, REPLICA_SET_NAME, 20), new Timeout());
 		mongodExe2 = starter.prepare(mongodConfig2);
 		mongod2 = mongodExe2.start();
-		mongodConfig3 = new MongodConfig(new GenericVersion(mongoVersion),
-				null, mongoPort3, Network.localhostIsIPv6(), null,
-				REPLICA_SET_NAME, 20);
+		mongodConfig3 = new MongodConfig(new GenericVersion(mongoVersion), new Net(mongoPort3, Network.localhostIsIPv6()),
+				new Storage(null, REPLICA_SET_NAME, 20), new Timeout());
 		mongodExe3 = starter.prepare(mongodConfig3);
 		mongod3 = mongodExe3.start();
 		String server1 = Network.getLocalHost().getHostName() + ":"
-				+ mongodConfig1.getPort();
+				+ mongodConfig1.net().getPort();
 		String server2 = Network.getLocalHost().getHostName() + ":"
-				+ mongodConfig2.getPort();
+				+ mongodConfig2.net().getPort();
 		String server3 = Network.getLocalHost().getHostName() + ":"
-				+ mongodConfig3.getPort();
+				+ mongodConfig3.net().getPort();
 		logger.debug("Server #1: {}", server1);
 		logger.debug("Server #2: {}", server2);
 		logger.debug("Server #3: {}", server3);
@@ -175,7 +173,7 @@ public abstract class RiverMongoDBTestAsbtract {
 		MongoOptions mo = new MongoOptions();
 		mo.autoConnectRetry = true;
 		mongo = new Mongo(new ServerAddress(Network.getLocalHost()
-				.getHostName(), mongodConfig1.getPort()), mo);
+				.getHostName(), mongodConfig1.net().getPort()), mo);
 		mongoAdminDB = mongo.getDB(ADMIN_DATABASE_NAME);
 
 		cr = mongoAdminDB.command(new BasicDBObject("isMaster", 1));
@@ -208,11 +206,11 @@ public abstract class RiverMongoDBTestAsbtract {
 		// Initialize a new client using all instances.
 		List<ServerAddress> mongoServers = new ArrayList<ServerAddress>();
 		mongoServers.add(new ServerAddress(
-				Network.getLocalHost().getHostName(), mongodConfig1.getPort()));
+				Network.getLocalHost().getHostName(), mongodConfig1.net().getPort()));
 		mongoServers.add(new ServerAddress(
-				Network.getLocalHost().getHostName(), mongodConfig2.getPort()));
+				Network.getLocalHost().getHostName(), mongodConfig2.net().getPort()));
 		mongoServers.add(new ServerAddress(
-				Network.getLocalHost().getHostName(), mongodConfig3.getPort()));
+				Network.getLocalHost().getHostName(), mongodConfig3.net().getPort()));
 		mongo = new Mongo(mongoServers, mo);
 		Assert.assertNotNull(mongo);
 		mongo.setReadPreference(ReadPreference.secondaryPreferred());
@@ -256,8 +254,6 @@ public abstract class RiverMongoDBTestAsbtract {
 
 			if (!initialSettings.v2().pluginsFile().exists()) {
 				FileSystemUtils.mkdirs(initialSettings.v2().pluginsFile());
-//				pluginManager.downloadAndExtract(MAPPER_ATTACHMENT_PLUGIN_NAME);
-//				pluginManager.downloadAndExtract(JAVASCRIPT_LANG_PLUGIN_NAME);
 				pluginManager.downloadAndExtract(settings.get("plugins.mapper-attachments"), false);
 				pluginManager.downloadAndExtract(settings.get("plugins.lang-javascript"), false);
 			} else {
