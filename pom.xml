@@ -45,7 +45,7 @@
 	<properties>
 		<elasticsearch.version>0.20.1</elasticsearch.version>
 		<mongo-java-driver.version>2.10.1</mongo-java-driver.version>
-		<de.flapdoodle.embed.mongo.version>1.28-SNAPSHOT</de.flapdoodle.embed.mongo.version>
+		<de.flapdoodle.embed.mongo.version>1.28</de.flapdoodle.embed.mongo.version>
 		<hamcrest.version>1.3</hamcrest.version>
 	</properties>
 
