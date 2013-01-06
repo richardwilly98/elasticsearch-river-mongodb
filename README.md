@@ -1,3 +1,7 @@
+Sorry If I stuffed it up, this is my first attempt to contribute to the mongodb river documenetation.
+I think we should change the line just after this one “From shell execute the command:” to
+$ curl -XPUT "localhost:9200/_river/${collection.name_ river}/_meta" -d '
+
 MongoDB River Plugin for ElasticSearch
 ==================================
 
