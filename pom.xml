@@ -2,9 +2,9 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<name>elasticsearch-river-mongodb</name>
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>org.elasticsearch</groupId>
+	<groupId>com.github.richardwill98.elasticsearch</groupId>
 	<artifactId>elasticsearch-river-mongodb</artifactId>
-	<version>1.6.1</version>
+	<version>1.6.2-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<description>MongoDB River for ElasticSearch</description>
 	<url>https://github.com/richardwilly98/elasticsearch-river-mongodb</url>
@@ -205,9 +205,23 @@
 					</execution>
 				</executions>
 			</plugin>
-		</plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-gpg-plugin</artifactId>
+				<executions>
+				  <execution>
+					<id>sign-artifacts</id>
+					<phase>verify</phase>
+					<goals>
+					  <goal>sign</goal>
+					</goals>
+				  </execution>
+				</executions>
+			</plugin>
+	  </plugins>
 	</build>
 
+	<!--
 	<pluginRepositories>
 		<pluginRepository>
 			<id>central</id>
@@ -224,4 +238,5 @@
 			<url>https://oss.sonatype.org/content/repositories/snapshots/</url>
 		</pluginRepository>
 	</pluginRepositories>
+	-->
 </project>
