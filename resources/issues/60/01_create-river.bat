@@ -1,0 +1,1 @@
+curl -XPUT "http://localhost:9200/_river/mongodb46/_meta" -d @mongodb-river-sharded-collection.json

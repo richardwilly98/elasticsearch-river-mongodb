@@ -1,0 +1,17 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"host": "localhost", 
+		"port": "37017",
+		"db": "mydb",
+		"collection": "students",
+		"credentials":
+		[
+			{ db: "admin", user: "admin", password: "admin" }
+		]
+	},
+	"index": {
+		"name": "mydb60",
+		"type": "students60"
+	}
+}
