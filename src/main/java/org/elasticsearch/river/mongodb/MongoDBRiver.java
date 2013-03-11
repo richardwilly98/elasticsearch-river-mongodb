@@ -173,6 +173,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	// LinkedTransferQueue<Map<String, Object>>();
 	private final BlockingQueue<Map<String, Object>> stream;
 
+	private Mongo mongo;
+	private DB adminDb;
+	
 	@SuppressWarnings("unchecked")
 	@Inject
 	public MongoDBRiver(final RiverName riverName,
@@ -417,8 +420,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		}
 
 		if (isMongos()) {
-			Mongo mongo = new MongoClient(mongoServers);
-			DBCursor cursor = mongo.getDB(DB_CONFIG).getCollection("shards").find();
+			DBCursor cursor = getConfigDb().getCollection("shards").find();
 			while (cursor.hasNext()) {
 				DBObject item = cursor.next();
 				logger.info(item.toString());
@@ -449,8 +451,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	}
 
 	private boolean isMongos() {
-		Mongo mongo = new MongoClient(mongoServers);
-		CommandResult cr = mongo.getDB(DB_ADMIN).command(new BasicDBObject(
+		CommandResult cr = getAdminDb().command(new BasicDBObject(
 				"serverStatus", 1));
 		if (logger.isTraceEnabled()) {
 			logger.trace("serverStatus: {}", cr);
@@ -459,6 +460,49 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		return (cr.get("process").equals("mongos"));
 	}
 
+	private DB getAdminDb() {
+		if (adminDb == null) {
+			adminDb = getMongoClient().getDB(DB_ADMIN);
+			if (!mongoAdminUser.isEmpty() && !mongoAdminPassword.isEmpty() && !adminDb.isAuthenticated()) {
+				logger.info("Authenticate {} with {}", MONGODB_ADMIN,
+						mongoAdminUser);
+
+				CommandResult cmd = adminDb.authenticateCommand(mongoAdminUser,
+						mongoAdminPassword.toCharArray());
+				if (!cmd.ok()) {
+					logger.error("Autenticatication failed for {}: {}",
+							MONGODB_ADMIN, cmd.getErrorMessage());
+				}
+			}
+		}
+		return adminDb;
+	}
+	
+	private DB getConfigDb() {
+		DB configDb = getMongoClient().getDB(DB_CONFIG);
+		if (!mongoAdminUser.isEmpty() && !mongoAdminUser.isEmpty()
+				&& getAdminDb().isAuthenticated()) {
+			configDb = getAdminDb().getMongo().getDB(DB_CONFIG);
+		} else if (!mongoDbUser.isEmpty() && !mongoDbPassword.isEmpty()
+				&& !configDb.isAuthenticated()) {
+			logger.info("Authenticate {} with {}", mongoDb, mongoDbUser);
+			CommandResult cmd = configDb.authenticateCommand(mongoDbUser,
+					mongoDbPassword.toCharArray());
+			if (!cmd.ok()) {
+				logger.error("Autenticatication failed for {}: {}",
+						DB_CONFIG, cmd.getErrorMessage());
+			}
+		}
+		return configDb;
+	}
+	
+	private Mongo getMongoClient() {
+		if (mongo == null) {
+			mongo = new MongoClient(mongoServers);
+		}
+		return mongo;
+	}
+	
 	private List<ServerAddress> getServerAddressForReplica(DBObject item) {
 		String definition = item.get("host").toString();
 		if (definition.contains("/")) {
