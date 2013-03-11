@@ -4,7 +4,9 @@ MongoDB River Plugin for ElasticSearch
     ---------------------------------------------------------
     | MongoDB River Plugin     | ElasticSearch    | MongoDB |
     --------------------------------------------------------|
-    | master                   | 0.20.1 -> master | 2.2.2   |
+    | master                   | 0.20.5 -> master | 2.2.3   |
+    --------------------------------------------------------|
+    | 1.6.2                    | 0.20.1           | 2.2.2   |
     --------------------------------------------------------|
     | 1.6.0                    | 0.20.1 -> master | 2.2.2   |
     --------------------------------------------------------|
@@ -119,4 +121,7 @@ Changelog
 	- Support for sharded collection
 	- Script filters
 	- MongoDB driver 2.10.1 (use of MongoClient)
+
+	#### 1.6.2 
+	- Support for secured sharded collection (see issue #60)
 	
