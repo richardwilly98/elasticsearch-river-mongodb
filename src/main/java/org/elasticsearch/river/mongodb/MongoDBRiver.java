@@ -152,8 +152,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	protected final String mongoAdminPassword;
 	protected final String mongoLocalUser;
 	protected final String mongoLocalPassword;
-	protected final String mongoDbUser;
-	protected final String mongoDbPassword;
+//	protected final String mongoDbUser;
+//	protected final String mongoDbPassword;
 	protected final String mongoOplogNamespace;
 	protected final boolean mongoSecondaryReadPreference;
 
@@ -249,8 +249,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				String map = "";
 				String mlu = "";
 				String mlp = "";
-				String mdu = "";
-				String mdp = "";
+//				String mdu = "";
+//				String mdp = "";
 				Object mongoCredentialsSettings = mongoSettings
 						.get(CREDENTIALS_FIELD);
 				boolean array = XContentMapValues
@@ -271,11 +271,11 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 									credential.get(USER_FIELD), null);
 							mlp = XContentMapValues.nodeStringValue(
 									credential.get(PASSWORD_FIELD), null);
-						} else {
-							mdu = XContentMapValues.nodeStringValue(
-									credential.get(USER_FIELD), null);
-							mdp = XContentMapValues.nodeStringValue(
-									credential.get(PASSWORD_FIELD), null);
+//						} else {
+//							mdu = XContentMapValues.nodeStringValue(
+//									credential.get(USER_FIELD), null);
+//							mdp = XContentMapValues.nodeStringValue(
+//									credential.get(PASSWORD_FIELD), null);
 						}
 					}
 				}
@@ -283,16 +283,16 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				mongoAdminPassword = map;
 				mongoLocalUser = mlu;
 				mongoLocalPassword = mlp;
-				mongoDbUser = mdu;
-				mongoDbPassword = mdp;
+//				mongoDbUser = mdu;
+//				mongoDbPassword = mdp;
 
 			} else {
 				mongoAdminUser = "";
 				mongoAdminPassword = "";
 				mongoLocalUser = "";
 				mongoLocalPassword = "";
-				mongoDbUser = "";
-				mongoDbPassword = "";
+//				mongoDbUser = "";
+//				mongoDbPassword = "";
 			}
 
 			mongoDb = XContentMapValues.nodeStringValue(
@@ -335,8 +335,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			mongoAdminPassword = "";
 			mongoLocalUser = "";
 			mongoLocalPassword = "";
-			mongoDbUser = "";
-			mongoDbPassword = "";
+//			mongoDbUser = "";
+//			mongoDbPassword = "";
 			script = null;
 		}
 		mongoOplogNamespace = mongoDb + "." + mongoCollection;
@@ -451,11 +451,19 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	}
 
 	private boolean isMongos() {
-		CommandResult cr = getAdminDb().command(new BasicDBObject(
+		DB adminDb = getAdminDb();
+		if (adminDb == null) {
+			return false;
+		}
+		CommandResult cr = adminDb.command(new BasicDBObject(
 				"serverStatus", 1));
 		if (logger.isTraceEnabled()) {
 			logger.trace("serverStatus: {}", cr);
 			logger.trace("process: {}", cr.get("process"));
+		}
+		if (cr == null || cr.get("process") == null) {
+			logger.warn("serverStatus return null.");
+			return false;
 		}
 		return (cr.get("process").equals("mongos"));
 	}
@@ -467,11 +475,15 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				logger.info("Authenticate {} with {}", MONGODB_ADMIN,
 						mongoAdminUser);
 
+				try {
 				CommandResult cmd = adminDb.authenticateCommand(mongoAdminUser,
 						mongoAdminPassword.toCharArray());
 				if (!cmd.ok()) {
 					logger.error("Autenticatication failed for {}: {}",
 							MONGODB_ADMIN, cmd.getErrorMessage());
+				}
+				} catch (MongoException mEx) {
+					logger.warn("getAdminDb() failed", mEx);
 				}
 			}
 		}
@@ -483,15 +495,15 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		if (!mongoAdminUser.isEmpty() && !mongoAdminUser.isEmpty()
 				&& getAdminDb().isAuthenticated()) {
 			configDb = getAdminDb().getMongo().getDB(DB_CONFIG);
-		} else if (!mongoDbUser.isEmpty() && !mongoDbPassword.isEmpty()
-				&& !configDb.isAuthenticated()) {
-			logger.info("Authenticate {} with {}", mongoDb, mongoDbUser);
-			CommandResult cmd = configDb.authenticateCommand(mongoDbUser,
-					mongoDbPassword.toCharArray());
-			if (!cmd.ok()) {
-				logger.error("Autenticatication failed for {}: {}",
-						DB_CONFIG, cmd.getErrorMessage());
-			}
+//		} else if (!mongoDbUser.isEmpty() && !mongoDbPassword.isEmpty()
+//				&& !configDb.isAuthenticated()) {
+//			logger.info("Authenticate {} with {}", mongoDb, mongoDbUser);
+//			CommandResult cmd = configDb.authenticateCommand(mongoDbUser,
+//					mongoDbPassword.toCharArray());
+//			if (!cmd.ok()) {
+//				logger.error("Autenticatication failed for {}: {}",
+//						DB_CONFIG, cmd.getErrorMessage());
+//			}
 		}
 		return configDb;
 	}
@@ -777,17 +789,19 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				slurpedDb = adminDb.getMongo().getDB(mongoDb);
 			}
 
-			if (!mongoDbUser.isEmpty() && !mongoDbPassword.isEmpty()
-					&& !slurpedDb.isAuthenticated()) {
-				logger.info("Authenticate {} with {}", mongoDb, mongoDbUser);
-				CommandResult cmd = slurpedDb.authenticateCommand(mongoDbUser,
-						mongoDbPassword.toCharArray());
-				if (!cmd.ok()) {
-					logger.error("Autenticatication failed for {}: {}",
-							mongoDb, cmd.getErrorMessage());
-					return false;
-				}
-			}
+			// Not necessary as local user has access to all databases.
+			// http://docs.mongodb.org/manual/reference/local-database/
+//			if (!mongoDbUser.isEmpty() && !mongoDbPassword.isEmpty()
+//					&& !slurpedDb.isAuthenticated()) {
+//				logger.info("Authenticate {} with {}", mongoDb, mongoDbUser);
+//				CommandResult cmd = slurpedDb.authenticateCommand(mongoDbUser,
+//						mongoDbPassword.toCharArray());
+//				if (!cmd.ok()) {
+//					logger.error("Autenticatication failed for {}: {}",
+//							mongoDb, cmd.getErrorMessage());
+//					return false;
+//				}
+//			}
 			slurpedCollection = slurpedDb.getCollection(mongoCollection);
 
 			return true;
