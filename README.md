@@ -124,4 +124,11 @@ Changelog
 
 	#### 1.6.2 
 	- Support for secured sharded collection (see issue #60)
+
+	#### 1.6.3 
+	- First attempt to stored the artifact in Maven central (please ignore this version
+
+	#### 1.6.2 
+	- Fix NPE (see issue #60)
+	- Remove database user, password river settings. Local or admin user, password should be used instead.
 	
