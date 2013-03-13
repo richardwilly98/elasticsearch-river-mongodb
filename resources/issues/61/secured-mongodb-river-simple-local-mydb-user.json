@@ -1,0 +1,31 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"servers": [{
+			host: "localhost",
+			port: "27017"
+		},
+		{
+			host: "localhost",
+			port: "27018"
+		},
+		{
+			host: "localhost",
+			port: "27019"
+		}],
+		"options": {
+			"secondary_read_preference": true
+		},
+		"db": "mydb",
+		"collection": "mycollec",
+		"credentials":
+		[
+			{ db: "local", user: "local", password: "local" },
+			{ db: "mydb", user: "mydb", password: "mydb" }
+		]
+	},
+	"index": {
+		"name": "mydb61",
+		"type": "instances"
+	}
+}
