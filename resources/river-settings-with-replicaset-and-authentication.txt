@@ -10,8 +10,7 @@
 		"options": { "secondary_read_preference" : true},
 		"credentials":
 		[
-			{ db: "local", user: "local", password: "mysecretpassword" },
-			{ db: "testriver", user: "richard", password: "mysecretpassword" }
+			{ db: "local", user: "local", password: "mysecretpassword" }
 		],
 		db: "testriver", 
 		collection: "person", 
