@@ -1,0 +1,14 @@
+{
+  "query": {
+    "match_all": {}
+  },
+  "filter": {
+    "geo_distance": {
+      "distance": "100km",
+      "pin.location": {
+        "lat": 48,
+        "lon": 2
+      }
+    }
+  }
+}
