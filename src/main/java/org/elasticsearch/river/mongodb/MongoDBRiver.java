@@ -628,14 +628,13 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						objectId, operation);
 			}
 
+			Map<String, Object> ctx = null;
+	        try {
+	            ctx = XContentFactory.xContent(XContentType.JSON).createParser("{}").mapAndClose();
+	        } catch (IOException e) {
+	            logger.warn("failed to parse {}", e);
+	        }
 			if (script != null) {
-				Map<String, Object> ctx = null;
-		        try {
-		            ctx = XContentFactory.xContent(XContentType.JSON).createParser("{}").mapAndClose();
-		        } catch (IOException e) {
-		            logger.warn("failed to parse {}", e);
-//		            return null;
-		        }
 		        if (ctx != null) {
 					ctx.put("document", data);
 					ctx.put("operation", operation);
@@ -674,6 +673,16 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	        }
 
 			try {
+	            String index = extractIndex(ctx);
+	            String type = extractType(ctx);
+	            String parent = extractParent(ctx);
+	            String routing = extractRouting(ctx);
+				if (logger.isDebugEnabled()) {
+					logger.debug(
+							"Operation: {} - index: {} - type: {} - routing: {} - parent: {}",
+							operation, index,
+							type, routing, parent);
+				}
 				if (OPLOG_INSERT_OPERATION.equals(operation)) {
 					if (logger.isDebugEnabled()) {
 						logger.debug(
@@ -681,8 +690,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 								operation, objectId,
 								data.containsKey(IS_MONGODB_ATTACHMENT));
 					}
-					bulk.add(indexRequest(indexName).type(typeName)
-							.id(objectId).source(build(data, objectId)));
+					bulk.add(indexRequest(index).type(type)
+							.id(objectId).source(build(data, objectId)).routing(routing).parent(parent));
 					insertedDocuments++;
 				}
 				if (OPLOG_UPDATE_OPERATION.equals(operation)) {
@@ -691,16 +700,16 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 								"Update operation - id: {} - contains attachment: {}",
 								objectId, data.containsKey(IS_MONGODB_ATTACHMENT));
 					}
-					bulk.add(new DeleteRequest(indexName, typeName, objectId));
-					bulk.add(indexRequest(indexName).type(typeName)
-							.id(objectId).source(build(data, objectId)));
+					bulk.add(new DeleteRequest(index, type, objectId).routing(routing).parent(parent));
+					bulk.add(indexRequest(index).type(type)
+							.id(objectId).source(build(data, objectId)).routing(routing).parent(parent));
 					updatedDocuments++;
 					// new UpdateRequest(indexName, typeName, objectId)
 				}
 				if (OPLOG_DELETE_OPERATION.equals(operation)) {
-					logger.info("Delete request [{}], [{}], [{}]", indexName,
-							typeName, objectId);
-					bulk.add(new DeleteRequest(indexName, typeName, objectId));
+					logger.info("Delete request [{}], [{}], [{}]", index,
+							type, objectId);
+					bulk.add(new DeleteRequest(index, type, objectId).routing(routing).parent(parent));
 					deletedDocuments++;
 				}
 			} catch (IOException e) {
@@ -721,6 +730,30 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			}
 		}
 		
+	    private String extractParent(Map<String, Object> ctx) {
+	        return (String) ctx.get("_parent");
+	    }
+
+	    private String extractRouting(Map<String, Object> ctx) {
+	        return (String) ctx.get("_routing");
+	    }
+
+	    private String extractType(Map<String, Object> ctx) {
+	        String type = (String) ctx.get("_type");
+	        if (type == null) {
+	            type = typeName;
+	        }
+	        return type;
+	    }
+
+	    private String extractIndex(Map<String, Object> ctx) {
+	        String index = (String) ctx.get("_index");
+	        if (index == null) {
+	            index = indexName;
+	        }
+	        return index;
+	    }
+
 		private void logStatistics() {
             long totalDocuments = deletedDocuments + insertedDocuments;
             long totalTimeInSeconds = sw.stop().totalTime().seconds();
