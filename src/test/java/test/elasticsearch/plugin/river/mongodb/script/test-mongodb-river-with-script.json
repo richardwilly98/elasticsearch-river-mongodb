@@ -23,6 +23,7 @@
 	},
 	"index": {
 		"name": "%s",
+		"type": "%s",
 		"throttle_size": 2000
 	}
 }

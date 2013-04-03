@@ -129,7 +129,10 @@ public abstract class RiverMongoDBTestAsbtract {
 
 	private void loadSettings() {
 		settings = settingsBuilder()
-				.loadFromStream("settings.yml", this.getClass().getClassLoader().getSystemResourceAsStream("settings.yml"))
+				.loadFromStream(
+						"settings.yml",
+						this.getClass().getClassLoader()
+								.getSystemResourceAsStream("settings.yml"))
 				.put("path.data", "target/data")
 				.put("path.plugins", "target/plugins")
 				.put("path.logs", "target/log")
@@ -137,8 +140,9 @@ public abstract class RiverMongoDBTestAsbtract {
 				.put("cluster.name",
 						"test-cluster-" + NetworkUtils.getLocalAddress())
 				.put("gateway.type", "none").build();
-		
-		this.useDynamicPorts = settings.getAsBoolean("mongodb.use_dynamic_ports", Boolean.FALSE);
+
+		this.useDynamicPorts = settings.getAsBoolean(
+				"mongodb.use_dynamic_ports", Boolean.FALSE);
 		this.mongoVersion = settings.get("mongodb.version");
 	}
 
@@ -147,17 +151,20 @@ public abstract class RiverMongoDBTestAsbtract {
 		CommandResult cr;
 
 		// Create 3 mongod processes
-		mongodConfig1 = new MongodConfig(new GenericVersion(mongoVersion), new Net(mongoPort1, Network.localhostIsIPv6()),
-		new Storage(null, REPLICA_SET_NAME, 20), new Timeout());
+		mongodConfig1 = new MongodConfig(new GenericVersion(mongoVersion),
+				new Net(mongoPort1, Network.localhostIsIPv6()), new Storage(
+						null, REPLICA_SET_NAME, 20), new Timeout());
 		MongodStarter starter = MongodStarter.getDefaultInstance();
 		mongodExe1 = starter.prepare(mongodConfig1);
 		mongod1 = mongodExe1.start();
-		mongodConfig2 = new MongodConfig(new GenericVersion(mongoVersion), new Net(mongoPort2, Network.localhostIsIPv6()),
-				new Storage(null, REPLICA_SET_NAME, 20), new Timeout());
+		mongodConfig2 = new MongodConfig(new GenericVersion(mongoVersion),
+				new Net(mongoPort2, Network.localhostIsIPv6()), new Storage(
+						null, REPLICA_SET_NAME, 20), new Timeout());
 		mongodExe2 = starter.prepare(mongodConfig2);
 		mongod2 = mongodExe2.start();
-		mongodConfig3 = new MongodConfig(new GenericVersion(mongoVersion), new Net(mongoPort3, Network.localhostIsIPv6()),
-				new Storage(null, REPLICA_SET_NAME, 20), new Timeout());
+		mongodConfig3 = new MongodConfig(new GenericVersion(mongoVersion),
+				new Net(mongoPort3, Network.localhostIsIPv6()), new Storage(
+						null, REPLICA_SET_NAME, 20), new Timeout());
 		mongodExe3 = starter.prepare(mongodConfig3);
 		mongod3 = mongodExe3.start();
 		String server1 = Network.getLocalHost().getHostName() + ":"
@@ -206,11 +213,14 @@ public abstract class RiverMongoDBTestAsbtract {
 		// Initialize a new client using all instances.
 		List<ServerAddress> mongoServers = new ArrayList<ServerAddress>();
 		mongoServers.add(new ServerAddress(
-				Network.getLocalHost().getHostName(), mongodConfig1.net().getPort()));
+				Network.getLocalHost().getHostName(), mongodConfig1.net()
+						.getPort()));
 		mongoServers.add(new ServerAddress(
-				Network.getLocalHost().getHostName(), mongodConfig2.net().getPort()));
+				Network.getLocalHost().getHostName(), mongodConfig2.net()
+						.getPort()));
 		mongoServers.add(new ServerAddress(
-				Network.getLocalHost().getHostName(), mongodConfig3.net().getPort()));
+				Network.getLocalHost().getHostName(), mongodConfig3.net()
+						.getPort()));
 		mongo = new Mongo(mongoServers, mo);
 		Assert.assertNotNull(mongo);
 		mongo.setReadPreference(ReadPreference.secondaryPreferred());
@@ -254,8 +264,10 @@ public abstract class RiverMongoDBTestAsbtract {
 
 			if (!initialSettings.v2().pluginsFile().exists()) {
 				FileSystemUtils.mkdirs(initialSettings.v2().pluginsFile());
-				pluginManager.downloadAndExtract(settings.get("plugins.mapper-attachments"), false);
-				pluginManager.downloadAndExtract(settings.get("plugins.lang-javascript"), false);
+				pluginManager.downloadAndExtract(
+						settings.get("plugins.mapper-attachments"), false);
+				pluginManager.downloadAndExtract(
+						settings.get("plugins.lang-javascript"), false);
 			} else {
 				logger.info("Plugin {} has been already installed.",
 						settings.get("plugins.mapper-attachments"));
@@ -270,11 +282,13 @@ public abstract class RiverMongoDBTestAsbtract {
 		}
 	}
 
-	private String getRiverSetting(String jsonDefinition, Object... args)
+	protected String getJsonSettings(String jsonDefinition, Object... args)
 			throws Exception {
 		logger.debug("Get river setting");
 		String setting = copyToStringFromClasspath(jsonDefinition);
-		setting = String.format(setting, args);
+		if (args != null) {
+			setting = String.format(setting, args);
+		}
 		logger.debug("River setting: {}", setting);
 		return setting;
 	}
@@ -282,16 +296,17 @@ public abstract class RiverMongoDBTestAsbtract {
 	protected void refreshIndex() {
 		refreshIndex(index);
 	}
-	
+
 	protected void refreshIndex(String index) {
-		getNode().client().admin().indices()
-		.refresh(new RefreshRequest(index)).actionGet();
+		getNode().client().admin().indices().refresh(new RefreshRequest(index))
+				.actionGet();
 	}
 
-	protected void createRiver(String jsonDefinition, Object... args)
-			throws Exception {
+	protected void createRiver(String jsonDefinition, String river,
+			Object... args) throws Exception {
 		logger.info("Create river [{}]", river);
-		String setting = getRiverSetting(jsonDefinition, args);
+		String setting = getJsonSettings(jsonDefinition, args);
+		logger.info("River setting [{}]", setting);
 		node.client().prepareIndex("_river", river, "_meta").setSource(setting)
 				.execute().actionGet();
 		logger.debug("Running Cluster Health");
@@ -301,7 +316,17 @@ public abstract class RiverMongoDBTestAsbtract {
 		logger.info("Done Cluster Health, status " + clusterHealth.status());
 	}
 
+	protected void createRiver(String jsonDefinition, Object... args)
+			throws Exception {
+		createRiver(jsonDefinition, river, args);
+	}
+
 	protected void createRiver(String jsonDefinition) throws Exception {
+		createRiver(jsonDefinition, database, collection, index);
+	}
+
+	protected void createRiver(String jsonDefinition, String database,
+			String collection, String index) throws Exception {
 		createRiver(jsonDefinition, String.valueOf(getMongoPort1()),
 				String.valueOf(getMongoPort2()),
 				String.valueOf(getMongoPort3()), database, collection, index);
@@ -328,8 +353,10 @@ public abstract class RiverMongoDBTestAsbtract {
 
 	protected void deleteRiver(String name) {
 		logger.info("Delete river [{}]", name);
-		DeleteMappingRequest deleteMapping = new DeleteMappingRequest("_river").type(name);
-		node.client().admin().indices().deleteMapping(deleteMapping).actionGet();
+		DeleteMappingRequest deleteMapping = new DeleteMappingRequest("_river")
+				.type(name);
+		node.client().admin().indices().deleteMapping(deleteMapping)
+				.actionGet();
 	}
 
 	@AfterSuite
