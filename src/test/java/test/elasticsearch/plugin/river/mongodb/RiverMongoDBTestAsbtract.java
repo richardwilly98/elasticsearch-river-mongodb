@@ -327,7 +327,7 @@ public abstract class RiverMongoDBTestAsbtract {
 
 	protected void createRiver(String jsonDefinition, String database,
 			String collection, String index) throws Exception {
-		createRiver(jsonDefinition, String.valueOf(getMongoPort1()),
+		createRiver(jsonDefinition, river, String.valueOf(getMongoPort1()),
 				String.valueOf(getMongoPort2()),
 				String.valueOf(getMongoPort3()), database, collection, index);
 	}

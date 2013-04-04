@@ -97,6 +97,7 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 			String script = "ctx.ignore = true;";
 			super.createRiver(
 					"/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-river-with-script.json",
+					RIVER_NAME,
 					String.valueOf(getMongoPort1()),
 					String.valueOf(getMongoPort2()),
 					String.valueOf(getMongoPort3()), DATABASE_NAME,
@@ -138,6 +139,7 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 			String script = "ctx.document.score = 200;";
 			super.createRiver(
 					"/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-river-with-script.json",
+					RIVER_NAME,
 					String.valueOf(getMongoPort1()),
 					String.valueOf(getMongoPort2()),
 					String.valueOf(getMongoPort3()), DATABASE_NAME,
@@ -192,6 +194,7 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 			String script = "delete ctx.document.score;";
 			super.createRiver(
 					"/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-river-with-script.json",
+					RIVER_NAME,
 					String.valueOf(getMongoPort1()),
 					String.valueOf(getMongoPort2()),
 					String.valueOf(getMongoPort3()), DATABASE_NAME,
@@ -239,6 +242,7 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 			String script = "ctx.document.score2 = ctx.document.score; delete ctx.document.score;";
 			super.createRiver(
 					"/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-river-with-script.json",
+					RIVER_NAME,
 					String.valueOf(getMongoPort1()),
 					String.valueOf(getMongoPort2()),
 					String.valueOf(getMongoPort3()), DATABASE_NAME,
@@ -286,6 +290,7 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 			String script = "if (ctx.document.to_be_deleted == true) { ctx.operation = 'd' };";
 			super.createRiver(
 					"/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-river-with-script.json",
+					RIVER_NAME,
 					String.valueOf(getMongoPort1()),
 					String.valueOf(getMongoPort2()),
 					String.valueOf(getMongoPort3()), DATABASE_NAME,
