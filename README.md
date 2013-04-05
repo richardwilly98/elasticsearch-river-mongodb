@@ -4,7 +4,9 @@ MongoDB River Plugin for ElasticSearch
     ---------------------------------------------------------
     | MongoDB River Plugin     | ElasticSearch    | MongoDB |
     --------------------------------------------------------|
-    | master                   | 0.20.5 -> master | 2.2.3   |
+    | master                   | 0.20.6 -> master | 2.4.1   |
+    --------------------------------------------------------|
+    | 1.6.5                    | 0.20.6           | 2.4.1   |
     --------------------------------------------------------|
     | 1.6.4                    | 0.20.5           | 2.2.3   |
     --------------------------------------------------------|
@@ -133,4 +135,7 @@ Changelog
 	#### 1.6.4 
 	- Fix NPE (see issue #60)
 	- Remove database user, password river settings. Local or admin user, password should be used instead.
+
+	#### 1.6.5 
+	- Add support for _parent, _routing (see issue #64)
 	
