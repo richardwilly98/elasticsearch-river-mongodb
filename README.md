@@ -141,3 +141,6 @@ Changelog
 	#### 1.6.5 
 	- Add support for _parent, _routing (see issue #64)
 	
+	#### 1.6.6 
+	- Support for Elasticsearch 0.90.0 and MongoDB 2.4.3
+	- MongoDB driver 2.11.1 (use of MongoClient)	
