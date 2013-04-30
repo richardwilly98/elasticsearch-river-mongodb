@@ -43,8 +43,8 @@
 	</parent>
 
 	<properties>
-		<elasticsearch.version>0.20.6</elasticsearch.version>
-		<mongo-java-driver.version>2.10.1</mongo-java-driver.version>
+		<elasticsearch.version>0.90.0</elasticsearch.version>
+		<mongo-java-driver.version>2.11.1</mongo-java-driver.version>
 		<de.flapdoodle.embed.version>1.24</de.flapdoodle.embed.version>
 		<de.flapdoodle.embed.mongo.version>1.28</de.flapdoodle.embed.mongo.version>
 		<hamcrest.version>1.3</hamcrest.version>

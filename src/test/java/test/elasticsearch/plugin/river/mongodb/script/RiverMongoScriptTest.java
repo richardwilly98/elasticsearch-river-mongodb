@@ -116,8 +116,8 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 			assertThat(response.actionGet().isExists(), equalTo(true));
 			CountResponse countResponse = getNode().client()
 					.count(countRequest(INDEX_NAME)).actionGet();
-			logger.info("Document count: {}", countResponse.count());
-			assertThat(countResponse.count(), equalTo(0l));
+			logger.info("Document count: {}", countResponse.getCount());
+			assertThat(countResponse.getCount(), equalTo(0l));
 
 			mongoCollection.remove(dbObject);
 
@@ -161,7 +161,7 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 			SearchResponse sr = getNode().client().prepareSearch(INDEX_NAME)
 					.setQuery(fieldQuery("_id", id)).execute().actionGet();
 			logger.debug("SearchResponse {}", sr.toString());
-			long totalHits = sr.hits().getTotalHits();
+			long totalHits = sr.getHits().getTotalHits();
 			logger.debug("TotalHits: {}", totalHits);
 			assertThat(totalHits, equalTo(1l));
 
@@ -216,7 +216,7 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 			SearchResponse sr = getNode().client().prepareSearch(INDEX_NAME)
 					.setQuery(fieldQuery("_id", id)).execute().actionGet();
 			logger.debug("SearchResponse {}", sr.toString());
-			long totalHits = sr.hits().getTotalHits();
+			long totalHits = sr.getHits().getTotalHits();
 			logger.debug("TotalHits: {}", totalHits);
 			assertThat(totalHits, equalTo(1l));
 
@@ -264,7 +264,7 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 			SearchResponse sr = getNode().client().prepareSearch(INDEX_NAME)
 					.setQuery(fieldQuery("_id", id)).execute().actionGet();
 			logger.debug("SearchResponse {}", sr.toString());
-			long totalHits = sr.hits().getTotalHits();
+			long totalHits = sr.getHits().getTotalHits();
 			logger.debug("TotalHits: {}", totalHits);
 			assertThat(totalHits, equalTo(1l));
 
@@ -312,7 +312,7 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 			SearchResponse sr = getNode().client().prepareSearch(INDEX_NAME)
 					.setQuery(fieldQuery("_id", id)).execute().actionGet();
 			logger.debug("SearchResponse {}", sr.toString());
-			long totalHits = sr.hits().getTotalHits();
+			long totalHits = sr.getHits().getTotalHits();
 			logger.debug("TotalHits: {}", totalHits);
 			assertThat(totalHits, equalTo(1l));
 
@@ -324,8 +324,8 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 
 			CountResponse countResponse = getNode().client()
 					.count(countRequest(INDEX_NAME)).actionGet();
-			logger.info("Document count: {}", countResponse.count());
-			assertThat(countResponse.count(), equalTo(0l));
+			logger.info("Document count: {}", countResponse.getCount());
+			assertThat(countResponse.getCount(), equalTo(0l));
 
 			mongoCollection.remove(dbObject);
 		} catch (Throwable t) {

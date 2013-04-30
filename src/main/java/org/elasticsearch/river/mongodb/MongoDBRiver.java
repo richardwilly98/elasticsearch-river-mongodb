@@ -1113,9 +1113,11 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		GetResponse lastTimestampResponse = client
 				.prepareGet(riverIndexName, riverName.getName(), namespace)
 				.execute().actionGet();
-		if (lastTimestampResponse.exists()) {
+		// API changes since 0.90.0 lastTimestampResponse.exists() replaced by lastTimestampResponse.isExists()
+		if (lastTimestampResponse.isExists()) {
+			// API changes since 0.90.0 lastTimestampResponse.sourceAsMap() replaced by lastTimestampResponse.getSourceAsMap()
 			Map<String, Object> mongodbState = (Map<String, Object>) lastTimestampResponse
-					.sourceAsMap().get(ROOT_NAME);
+					.getSourceAsMap().get(ROOT_NAME);
 			if (mongodbState != null) {
 				String lastTimestamp = mongodbState.get(LAST_TIMESTAMP_FIELD)
 						.toString();

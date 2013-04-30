@@ -115,12 +115,12 @@ public class RiverMongoDBTest extends RiverMongoDBTestAsbtract {
 					.client()
 					.count(countRequest(INDEX_NAME).query(
 							fieldQuery("name", "Richard"))).actionGet();
-			logger.info("Document count: {}", countResponse.count());
+			logger.info("Document count: {}", countResponse.getCount());
 			countResponse = getNode()
 					.client()
 					.count(countRequest(INDEX_NAME)
 							.query(fieldQuery("_id", id))).actionGet();
-			assertThat(countResponse.count(), equalTo(1l));
+			assertThat(countResponse.getCount(), equalTo(1l));
 
 			mongoCollection.remove(dbObject, WriteConcern.REPLICAS_SAFE);
 
@@ -130,8 +130,8 @@ public class RiverMongoDBTest extends RiverMongoDBTestAsbtract {
 					.client()
 					.count(countRequest(INDEX_NAME)
 							.query(fieldQuery("_id", id))).actionGet();
-			logger.debug("Count after delete request: {}", countResponse.count());
-			 assertThat(countResponse.count(), equalTo(0L));
+			logger.debug("Count after delete request: {}", countResponse.getCount());
+			 assertThat(countResponse.getCount(), equalTo(0L));
 		} catch (Throwable t) {
 			logger.error("simpleBSONObject failed.", t);
 			t.printStackTrace();

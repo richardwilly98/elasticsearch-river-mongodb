@@ -313,7 +313,7 @@ public abstract class RiverMongoDBTestAsbtract {
 		ClusterHealthResponse clusterHealth = node.client().admin().cluster()
 				.health(clusterHealthRequest().waitForGreenStatus())
 				.actionGet();
-		logger.info("Done Cluster Health, status " + clusterHealth.status());
+		logger.info("Done Cluster Health, status " + clusterHealth.getStatus());
 	}
 
 	protected void createRiver(String jsonDefinition, Object... args)
@@ -340,7 +340,7 @@ public abstract class RiverMongoDBTestAsbtract {
 		ClusterHealthResponse clusterHealth = node.client().admin().cluster()
 				.health(clusterHealthRequest().waitForGreenStatus())
 				.actionGet();
-		logger.info("Done Cluster Health, status " + clusterHealth.status());
+		logger.info("Done Cluster Health, status " + clusterHealth.getStatus());
 	}
 
 	protected void deleteIndex() {
