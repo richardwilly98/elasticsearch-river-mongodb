@@ -1,0 +1,17 @@
+{
+	"author": {
+		"properties": {
+			"name": {
+				"type": "string"
+			},
+			"nationality": {
+				"type": "string"
+			}
+		}
+	},
+	"book": {
+		"_parent": {
+			"type": "author"
+		}
+	}
+}

@@ -1,0 +1,12 @@
+{
+	"author": {
+		"properties": {
+			"name": {
+				"type": "string"
+			},
+			"nationality": {
+				"type": "string"
+			}
+		}
+	}
+}

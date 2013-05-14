@@ -1,0 +1,17 @@
+{
+	"query": {
+		"has_child": {
+			"type": "book",
+			"query" : {
+				"filtered": {
+					"query": { "match_all": {}},
+					"filter" : {
+						"and": [
+							{"term": {"publisher": "Herge"}}
+						]
+					}
+				}
+			}
+		}
+	}
+}
