@@ -469,7 +469,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			logger.warn("serverStatus return null.");
 			return false;
 		}
-		return (cr.get("process").equals("mongos"));
+//		return (cr.get("process").equals("mongos"));
+		return (cr.get("process").toString().toLowerCase().contains("mongos"));
 	}
 
 	private DB getAdminDb() {
