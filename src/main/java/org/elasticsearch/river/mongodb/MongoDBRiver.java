@@ -461,16 +461,18 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		}
 		CommandResult cr = adminDb
 				.command(new BasicDBObject("serverStatus", 1));
-		if (logger.isTraceEnabled()) {
-			logger.trace("serverStatus: {}", cr);
-			logger.trace("process: {}", cr.get("process"));
-		}
 		if (cr == null || cr.get("process") == null) {
 			logger.warn("serverStatus return null.");
 			return false;
 		}
+		String process = cr.get("process").toString().toLowerCase();
+		if (logger.isTraceEnabled()) {
+			logger.trace("serverStatus: {}", cr);
+			logger.trace("process: {}", process);
+		}
 //		return (cr.get("process").equals("mongos"));
-		return (cr.get("process").toString().toLowerCase().contains("mongos"));
+		// Fix for https://jira.mongodb.org/browse/SERVER-9160
+		return (process.contains("mongos"));
 	}
 
 	private DB getAdminDb() {
