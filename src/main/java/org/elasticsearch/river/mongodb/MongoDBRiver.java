@@ -102,6 +102,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	public final static String PORT_FIELD = "port";
 	public final static String OPTIONS_FIELD = "options";
 	public final static String SECONDARY_READ_PREFERENCE_FIELD = "secondary_read_preference";
+	public final static String DROP_COLLECTION_FIELD = "drop_collection";
 	public final static String FILTER_FIELD = "filter";
 	public final static String CREDENTIALS_FIELD = "credentials";
 	public final static String USER_FIELD = "user";
@@ -127,14 +128,19 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	public final static String MONGODB_LOCAL = "local";
 	public final static String MONGODB_ADMIN = "admin";
 	public final static String MONGODB_ID_FIELD = "_id";
+	public final static String MONGODB_OR_OPERATOR = "$or";
+	public final static String MONGODB_AND_OPERATOR = "$and";
+	public final static String MONGODB_NATURAL_OPERATOR = "$natural";
 	public final static String OPLOG_COLLECTION = "oplog.rs";
 	public final static String OPLOG_NAMESPACE = "ns";
+	public final static String OPLOG_NAMESPACE_COMMAND = "$cmd";
 	public final static String OPLOG_OBJECT = "o";
 	public final static String OPLOG_UPDATE = "o2";
 	public final static String OPLOG_OPERATION = "op";
 	public final static String OPLOG_UPDATE_OPERATION = "u";
 	public final static String OPLOG_INSERT_OPERATION = "i";
 	public final static String OPLOG_DELETE_OPERATION = "d";
+	public final static String OPLOG_COLLECTION_OPERATION = "c";
 	public final static String OPLOG_TIMESTAMP = "ts";
 	public final static String GRIDFS_FILES_SUFFIX = ".files";
 	public final static String GRIDFS_CHUNKS_SUFFIX = ".chunks";
@@ -152,8 +158,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	protected final String mongoAdminPassword;
 	protected final String mongoLocalUser;
 	protected final String mongoLocalPassword;
-	// protected final String mongoDbUser;
-	// protected final String mongoDbPassword;
 	protected final String mongoOplogNamespace;
 	protected final boolean mongoSecondaryReadPreference;
 
@@ -162,6 +166,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	protected final int bulkSize;
 	protected final TimeValue bulkTimeout;
 	protected final int throttleSize;
+	protected final boolean dropCollection;
 
 	private final ExecutableScript script;
 
@@ -238,8 +243,12 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				mongoSecondaryReadPreference = XContentMapValues
 						.nodeBooleanValue(mongoOptionsSettings
 								.get(SECONDARY_READ_PREFERENCE_FIELD), false);
+				dropCollection = XContentMapValues
+						.nodeBooleanValue(mongoOptionsSettings
+								.get(DROP_COLLECTION_FIELD), false);
 			} else {
 				mongoSecondaryReadPreference = false;
+				dropCollection = false;
 			}
 
 			// Credentials
@@ -340,6 +349,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			// mongoDbUser = "";
 			// mongoDbPassword = "";
 			script = null;
+			dropCollection = false;
 		}
 		mongoOplogNamespace = mongoDb + "." + mongoCollection;
 
@@ -470,7 +480,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			logger.trace("serverStatus: {}", cr);
 			logger.trace("process: {}", process);
 		}
-//		return (cr.get("process").equals("mongos"));
+		// return (cr.get("process").equals("mongos"));
 		// Fix for https://jira.mongodb.org/browse/SERVER-9160
 		return (process.contains("mongos"));
 	}
@@ -623,7 +633,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		@SuppressWarnings({ "unchecked" })
 		private BSONTimestamp updateBulkRequest(final BulkRequestBuilder bulk,
 				Map<String, Object> data) {
-			if (data.get(MONGODB_ID_FIELD) == null) {
+			if (data.get(MONGODB_ID_FIELD) == null
+					&& !data.get(OPLOG_OPERATION).equals(
+							OPLOG_COLLECTION_OPERATION)) {
 				logger.warn(
 						"Cannot get object id. Skip the current item: [{}]",
 						data);
@@ -632,7 +644,11 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			BSONTimestamp lastTimestamp = (BSONTimestamp) data
 					.get(OPLOG_TIMESTAMP);
 			String operation = data.get(OPLOG_OPERATION).toString();
-			String objectId = data.get(MONGODB_ID_FIELD).toString();
+			// String objectId = data.get(MONGODB_ID_FIELD).toString();
+			String objectId = "";
+			if (data.get(MONGODB_ID_FIELD) != null) {
+				objectId = data.get(MONGODB_ID_FIELD).toString();
+			}
 			data.remove(OPLOG_TIMESTAMP);
 			data.remove(OPLOG_OPERATION);
 			if (logger.isDebugEnabled()) {
@@ -651,7 +667,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				if (ctx != null) {
 					ctx.put("document", data);
 					ctx.put("operation", operation);
-					ctx.put("id", objectId);
+					if (!objectId.isEmpty()) {
+						ctx.put("id", objectId);
+					}
 					if (logger.isDebugEnabled()) {
 						logger.debug("Context before script executed: {}", ctx);
 					}
@@ -732,6 +750,24 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					bulk.add(new DeleteRequest(index, type, objectId).routing(
 							routing).parent(parent));
 					deletedDocuments++;
+				}
+				if (OPLOG_COLLECTION_OPERATION.equals(operation)) {
+					if (dropCollection) {
+						logger.info("Drop collection request [{}], [{}]", index,
+								type);
+						bulk.request().requests().clear();
+						client.admin().indices().prepareDeleteMapping(index)
+								.setType(type).execute().actionGet();
+						deletedDocuments = 0;
+						updatedDocuments = 0;
+						insertedDocuments = 0;
+						logger.info(
+								"Delete request for index / type [{}] [{}] successfully executed.",
+								index, type);
+					} else {
+						logger.info("Ignore drop collection request [{}], [{}]. The option has been disabled.", index,
+								type);
+					}
 				}
 			} catch (IOException e) {
 				logger.warn("failed to parse {}", e, data);
@@ -998,13 +1034,19 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					: timestampOverride;
 			BasicDBObject filter = new BasicDBObject();
 			List<DBObject> values = new ArrayList<DBObject>();
+			List<DBObject> values2 = new ArrayList<DBObject>();
 
 			if (mongoGridFS) {
 				values.add(new BasicDBObject(OPLOG_NAMESPACE,
 						mongoOplogNamespace + GRIDFS_FILES_SUFFIX));
 			} else {
-				values.add(new BasicDBObject(OPLOG_NAMESPACE,
+				// values.add(new BasicDBObject(OPLOG_NAMESPACE,
+				// mongoOplogNamespace));
+				values2.add(new BasicDBObject(OPLOG_NAMESPACE,
 						mongoOplogNamespace));
+				values2.add(new BasicDBObject(OPLOG_NAMESPACE, mongoDb + "."
+						+ OPLOG_NAMESPACE_COMMAND));
+				values.add(new BasicDBObject(MONGODB_OR_OPERATOR, values2));
 			}
 			if (!mongoFilter.isEmpty()) {
 				values.add(getMongoFilter());
@@ -1015,7 +1057,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				values.add(new BasicDBObject(OPLOG_TIMESTAMP,
 						new BasicDBObject(QueryOperators.GT, time)));
 			}
-			filter = new BasicDBObject("$and", values);
+			filter = new BasicDBObject(MONGODB_AND_OPERATOR, values);
 			if (logger.isDebugEnabled()) {
 				logger.debug("Using filter: {}", filter);
 			}
@@ -1037,14 +1079,14 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					OPLOG_INSERT_OPERATION));
 
 			// include or operation statement in filter2
-			filters2.add(new BasicDBObject("$or", filters3));
+			filters2.add(new BasicDBObject(MONGODB_OR_OPERATOR, filters3));
 
 			// include custom filter in filters2
 			filters2.add((DBObject) JSON.parse(mongoFilter));
 
-			filters.add(new BasicDBObject("$and", filters2));
+			filters.add(new BasicDBObject(MONGODB_AND_OPERATOR, filters2));
 
-			return new BasicDBObject("$or", filters);
+			return new BasicDBObject(MONGODB_OR_OPERATOR, filters);
 		}
 
 		private DBCursor oplogCursor(final BSONTimestamp timestampOverride) {
@@ -1053,7 +1095,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				return null;
 			}
 			return oplogCollection.find(indexFilter)
-					.sort(new BasicDBObject("$natural", 1))
+					.sort(new BasicDBObject(MONGODB_NATURAL_OPERATOR, 1))
 					.addOption(Bytes.QUERYOPTION_TAILABLE)
 					.addOption(Bytes.QUERYOPTION_AWAITDATA);
 		}
@@ -1116,9 +1158,11 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		GetResponse lastTimestampResponse = client
 				.prepareGet(riverIndexName, riverName.getName(), namespace)
 				.execute().actionGet();
-		// API changes since 0.90.0 lastTimestampResponse.exists() replaced by lastTimestampResponse.isExists()
+		// API changes since 0.90.0 lastTimestampResponse.exists() replaced by
+		// lastTimestampResponse.isExists()
 		if (lastTimestampResponse.isExists()) {
-			// API changes since 0.90.0 lastTimestampResponse.sourceAsMap() replaced by lastTimestampResponse.getSourceAsMap()
+			// API changes since 0.90.0 lastTimestampResponse.sourceAsMap()
+			// replaced by lastTimestampResponse.getSourceAsMap()
 			Map<String, Object> mongodbState = (Map<String, Object>) lastTimestampResponse
 					.getSourceAsMap().get(ROOT_NAME);
 			if (mongodbState != null) {

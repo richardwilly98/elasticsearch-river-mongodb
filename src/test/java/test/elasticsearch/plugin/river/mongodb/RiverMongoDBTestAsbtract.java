@@ -97,6 +97,7 @@ public abstract class RiverMongoDBTestAsbtract {
 
 	private boolean useDynamicPorts;
 	private String mongoVersion;
+
 	private final String river;
 	private final String database;
 	private final String collection;
@@ -409,5 +410,21 @@ public abstract class RiverMongoDBTestAsbtract {
 
 	protected static int getMongoPort3() {
 		return mongoPort3;
+	}
+
+	protected String getRiver() {
+		return river;
+	}
+
+	protected String getDatabase() {
+		return database;
+	}
+
+	protected String getCollection() {
+		return collection;
+	}
+
+	protected String getIndex() {
+		return index;
 	}
 }

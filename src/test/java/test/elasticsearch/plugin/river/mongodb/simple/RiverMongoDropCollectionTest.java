@@ -18,16 +18,11 @@
  */
 package test.elasticsearch.plugin.river.mongodb.simple;
 
-import static org.elasticsearch.client.Requests.countRequest;
 import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath;
-import static org.elasticsearch.index.query.QueryBuilders.fieldQuery;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
-import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
-import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
-import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.testng.Assert;
@@ -37,24 +32,28 @@ import org.testng.annotations.Test;
 
 import test.elasticsearch.plugin.river.mongodb.RiverMongoDBTestAsbtract;
 
-import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.DBObject;
 import com.mongodb.WriteConcern;
-import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
 
 @Test
-public class RiverMongoDBTest extends RiverMongoDBTestAsbtract {
+public class RiverMongoDropCollectionTest extends RiverMongoDBTestAsbtract {
 
 	private final ESLogger logger = Loggers.getLogger(getClass());
 
 	private DB mongoDB;
 	private DBCollection mongoCollection;
+	protected boolean dropCollectionOption = true;
 
-	protected RiverMongoDBTest() {
-		super("testmongodb-"+ System.currentTimeMillis(), "testriver-"+ System.currentTimeMillis(), "person-"+ System.currentTimeMillis(), "personindex-" + System.currentTimeMillis());
+	protected RiverMongoDropCollectionTest() {
+		super("drop-river-1", "drop-river-1", "drop-collection-1", "drop-index-1");
+	}
+
+	protected RiverMongoDropCollectionTest(String river, String database,
+			String collection, String index) {
+		super(river, database, collection, index);
 	}
 
 	@BeforeClass
@@ -63,7 +62,15 @@ public class RiverMongoDBTest extends RiverMongoDBTestAsbtract {
 		try {
 			mongoDB = getMongo().getDB(getDatabase());
 			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
-			super.createRiver("/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river.json");
+			super.createRiver(
+					"/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river-drop-collection.json",
+					getRiver(),
+					(Object) String.valueOf(getMongoPort1()),
+					(Object) String.valueOf(getMongoPort2()),
+					(Object) String.valueOf(getMongoPort3()),
+					(Object) dropCollectionOption,
+					(Object) getDatabase(), (Object) getCollection(),
+					(Object) getIndex(), (Object) getDatabase());
 			logger.info("Start createCollection");
 			mongoCollection = mongoDB.createCollection(getCollection(), null);
 			Assert.assertNotNull(mongoCollection);
@@ -79,58 +86,25 @@ public class RiverMongoDBTest extends RiverMongoDBTestAsbtract {
 		mongoDB.dropDatabase();
 	}
 
-	@Test(enabled = false)
-	public void mongoCRUDTest() {
-		logger.info("Start mongoCRUDTest");
-		DBObject dbObject = new BasicDBObject("count", "-1");
-		mongoCollection.insert(dbObject, WriteConcern.REPLICAS_SAFE);
-		logger.debug("New object inserted: {}", dbObject.toString());
-		DBObject dbObject2 = mongoCollection.findOne(new BasicDBObject("_id",
-				dbObject.get("_id")));
-		Assert.assertEquals(dbObject.get("count"), dbObject2.get("count"));
-		mongoCollection.remove(dbObject, WriteConcern.REPLICAS_SAFE);
-	}
-
 	@Test
-	public void simpleBSONObject() throws Throwable {
-		logger.debug("Start simpleBSONObject");
+	public void testDropCollection() throws Throwable {
+		logger.debug("Start testDropCollection");
 		try {
 			String mongoDocument = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-document.json");
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
-			WriteResult result = mongoCollection.insert(dbObject);
+			mongoCollection.insert(dbObject);
 			Thread.sleep(1000);
-			String id = dbObject.get("_id").toString();
-			logger.info("WriteResult: {}", result.toString());
-			ActionFuture<IndicesExistsResponse> response = getNode().client()
+
+			assertThat(getNode().client()
 					.admin().indices()
-					.exists(new IndicesExistsRequest(getIndex()));
-			assertThat(response.actionGet().isExists(), equalTo(true));
-			refreshIndex();
-			CountResponse countResponse = getNode()
-					.client()
-					.count(countRequest(getIndex()).query(
-							fieldQuery("name", "Richard"))).actionGet();
-			logger.info("Document count: {}", countResponse.getCount());
-			countResponse = getNode()
-					.client()
-					.count(countRequest(getIndex())
-							.query(fieldQuery("_id", id))).actionGet();
-			assertThat(countResponse.getCount(), equalTo(1l));
-
-			mongoCollection.remove(dbObject, WriteConcern.REPLICAS_SAFE);
-
+					.exists(new IndicesExistsRequest(getIndex())).actionGet().isExists(), equalTo(true));
+			assertThat(getNode().client().admin().indices().prepareTypesExists(getIndex()).setTypes(getDatabase()).execute().actionGet().isExists(), equalTo(true));
+			mongoCollection.drop();
 			Thread.sleep(1000);
 			refreshIndex();
-			countResponse = getNode()
-					.client()
-					.count(countRequest(getIndex())
-							.query(fieldQuery("_id", id))).actionGet();
-			logger.debug("Count after delete request: {}",
-					countResponse.getCount());
-			assertThat(countResponse.getCount(), equalTo(0L));
-
+			assertThat(getNode().client().admin().indices().prepareTypesExists(getIndex()).setTypes(getDatabase()).execute().actionGet().isExists(), equalTo(!dropCollectionOption));
 		} catch (Throwable t) {
-			logger.error("simpleBSONObject failed.", t);
+			logger.error("testDropCollection failed.", t);
 			t.printStackTrace();
 			throw t;
 		}
