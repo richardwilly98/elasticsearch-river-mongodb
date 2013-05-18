@@ -1,0 +1,1 @@
+curl -XPUT "http://localhost:9200/_river/river76/_meta" -d @mongodb-river-simple.json

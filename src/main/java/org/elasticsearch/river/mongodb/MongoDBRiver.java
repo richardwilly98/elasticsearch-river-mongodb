@@ -555,12 +555,12 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	private Mongo getMongoClient() {
 		if (mongo == null) {
 			// TODO: MongoClientOptions should be configurable
-			MongoClientOptions mo = MongoClientOptions.builder()
+			MongoClientOptions mco = MongoClientOptions.builder()
 					.autoConnectRetry(true)
 					.connectTimeout(15000)
 					.socketTimeout(60000)
 					.build();
-			mongo = new MongoClient(mongoServers, mo);
+			mongo = new MongoClient(mongoServers, mco);
 		}
 		return mongo;
 	}
