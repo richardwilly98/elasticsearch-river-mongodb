@@ -4,6 +4,7 @@ MongoDB River Plugin for ElasticSearch
 | MongoDB River Plugin     | ElasticSearch    | MongoDB |
 |--------------------------|------------------|---------|
 | master                   | 0.90.0 -> master | 2.4.3   |
+| 1.6.8                    | 0.90.0           | 2.4.3   |
 | 1.6.7                    | 0.90.0           | 2.4.3   |
 | 1.6.6                    | 0.90.0           | 2.4.3   |
 | 1.6.5                    | 0.20.6           | 2.4.1   |
@@ -135,3 +136,8 @@ Changelog
 
 #### 1.6.7 
 - Issue with sharded collection (see issue #46)
+
+#### 1.6.8 
+- Implement exclude fields (see issue #76)
+- Improve reconnection to MongoDB when connection is lost (see issue #77)
+- Implement drop collection feature (see issue #79). The river will drop all documents from the index type.
