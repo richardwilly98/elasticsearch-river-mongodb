@@ -76,6 +76,7 @@ import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.Mongo;
 import com.mongodb.MongoClient;
+import com.mongodb.MongoClientOptions;
 import com.mongodb.MongoException;
 import com.mongodb.MongoInterruptedException;
 import com.mongodb.QueryOperators;
@@ -247,15 +248,17 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				mongoSecondaryReadPreference = XContentMapValues
 						.nodeBooleanValue(mongoOptionsSettings
 								.get(SECONDARY_READ_PREFERENCE_FIELD), false);
-				dropCollection = XContentMapValues
-						.nodeBooleanValue(mongoOptionsSettings
-								.get(DROP_COLLECTION_FIELD), false);
-				
+				dropCollection = XContentMapValues.nodeBooleanValue(
+						mongoOptionsSettings.get(DROP_COLLECTION_FIELD), false);
+
 				if (mongoOptionsSettings.containsKey(EXCLUDE_FIELDS_FIELD)) {
 					excludeFields = new HashSet<String>();
-					Object excludeFieldsSettings = mongoOptionsSettings.get(EXCLUDE_FIELDS_FIELD);
-					logger.info("excludeFieldsSettings: " + excludeFieldsSettings);
-					boolean array = XContentMapValues.isArray(excludeFieldsSettings);
+					Object excludeFieldsSettings = mongoOptionsSettings
+							.get(EXCLUDE_FIELDS_FIELD);
+					logger.info("excludeFieldsSettings: "
+							+ excludeFieldsSettings);
+					boolean array = XContentMapValues
+							.isArray(excludeFieldsSettings);
 
 					if (array) {
 						ArrayList<String> fields = (ArrayList<String>) excludeFieldsSettings;
@@ -551,7 +554,13 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 	private Mongo getMongoClient() {
 		if (mongo == null) {
-			mongo = new MongoClient(mongoServers);
+			// TODO: MongoClientOptions should be configurable
+			MongoClientOptions mo = MongoClientOptions.builder()
+					.autoConnectRetry(true)
+					.connectTimeout(15000)
+					.socketTimeout(60000)
+					.build();
+			mongo = new MongoClient(mongoServers, mo);
 		}
 		return mongo;
 	}
@@ -776,12 +785,15 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				}
 				if (OPLOG_COMMAND_OPERATION.equals(operation)) {
 					if (dropCollection) {
-						if (data.containsKey(OPLOG_DROP_COMMAND_OPERATION) && data.get(OPLOG_DROP_COMMAND_OPERATION).equals(mongoCollection)) {
-							logger.info("Drop collection request [{}], [{}]", index,
-									type);
+						if (data.containsKey(OPLOG_DROP_COMMAND_OPERATION)
+								&& data.get(OPLOG_DROP_COMMAND_OPERATION)
+										.equals(mongoCollection)) {
+							logger.info("Drop collection request [{}], [{}]",
+									index, type);
 							bulk.request().requests().clear();
-							client.admin().indices().prepareDeleteMapping(index)
-									.setType(type).execute().actionGet();
+							client.admin().indices()
+									.prepareDeleteMapping(index).setType(type)
+									.execute().actionGet();
 							deletedDocuments = 0;
 							updatedDocuments = 0;
 							insertedDocuments = 0;
@@ -792,8 +804,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 							logger.debug("Database command {}", data);
 						}
 					} else {
-						logger.info("Ignore drop collection request [{}], [{}]. The option has been disabled.", index,
-								type);
+						logger.info(
+								"Ignore drop collection request [{}], [{}]. The option has been disabled.",
+								index, type);
 					}
 				}
 			} catch (IOException e) {
@@ -1002,11 +1015,11 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			DBObject object = (DBObject) entry.get(OPLOG_OBJECT);
 
 			if (excludeFields != null) {
-				for(String excludeField : excludeFields) {
+				for (String excludeField : excludeFields) {
 					object.removeField(excludeField);
 				}
 			}
-			
+
 			// Initial support for sharded collection -
 			// https://jira.mongodb.org/browse/SERVER-4333
 			// Not interested in operation from migration or sharding
