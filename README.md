@@ -4,6 +4,7 @@ MongoDB River Plugin for ElasticSearch
 | MongoDB River Plugin     | ElasticSearch    | MongoDB |
 |--------------------------|------------------|---------|
 | master                   | 0.90.0 -> master | 2.4.3   |
+| 1.6.7                    | 0.90.0           | 2.4.3   |
 | 1.6.6                    | 0.90.0           | 2.4.3   |
 | 1.6.5                    | 0.20.6           | 2.4.1   |
 | 1.6.4                    | 0.20.5           | 2.2.3   |
@@ -110,28 +111,27 @@ License
 Changelog
 -------
 
-	#### 1.6.0 
-	- Support for sharded collection
-	- Script filters
-	- MongoDB driver 2.10.1 (use of MongoClient)
+#### 1.6.0 
+- Support for sharded collection
+- Script filters
+- MongoDB driver 2.10.1 (use of MongoClient)
 
-	#### 1.6.2 
-	- Support for secured sharded collection (see issue #60)
+#### 1.6.2 
+- Support for secured sharded collection (see issue #60)
 
-	#### 1.6.3 
-	- First attempt to stored the artifact in Maven central (please ignore this version
+#### 1.6.3 
+- First attempt to stored the artifact in Maven central (please ignore this version
 
-	#### 1.6.4 
-	- Fix NPE (see issue #60)
-	- Remove database user, password river settings. Local or admin user, password should be used instead.
+#### 1.6.4 
+- Fix NPE (see issue #60)
+- Remove database user, password river settings. Local or admin user, password should be used instead.
 
-	#### 1.6.5 
-	- Add support for _parent, _routing (see issue #64)
-	
-	#### 1.6.6 
-	- Support for Elasticsearch 0.90.0 and MongoDB 2.4.3
-	- MongoDB driver 2.11.1 (use of MongoClient)	
+#### 1.6.5 
+- Add support for _parent, _routing (see issue #64)
 
-	#### 1.6.7 
-	- Issue with sharded collection (see issue #46)
-	
+#### 1.6.6 
+- Support for Elasticsearch 0.90.0 and MongoDB 2.4.3
+- MongoDB driver 2.11.1 (use of MongoClient)	
+
+#### 1.6.7 
+- Issue with sharded collection (see issue #46)
