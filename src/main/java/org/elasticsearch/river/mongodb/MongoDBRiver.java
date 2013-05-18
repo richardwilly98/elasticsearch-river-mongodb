@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -103,6 +104,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	public final static String OPTIONS_FIELD = "options";
 	public final static String SECONDARY_READ_PREFERENCE_FIELD = "secondary_read_preference";
 	public final static String DROP_COLLECTION_FIELD = "drop_collection";
+	public final static String EXCLUDE_FIELDS_FIELD = "exclude_fields";
 	public final static String FILTER_FIELD = "filter";
 	public final static String CREDENTIALS_FIELD = "credentials";
 	public final static String USER_FIELD = "user";
@@ -140,7 +142,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	public final static String OPLOG_UPDATE_OPERATION = "u";
 	public final static String OPLOG_INSERT_OPERATION = "i";
 	public final static String OPLOG_DELETE_OPERATION = "d";
-	public final static String OPLOG_COLLECTION_OPERATION = "c";
+	public final static String OPLOG_COMMAND_OPERATION = "c";
 	public final static String OPLOG_TIMESTAMP = "ts";
 	public final static String GRIDFS_FILES_SUFFIX = ".files";
 	public final static String GRIDFS_CHUNKS_SUFFIX = ".chunks";
@@ -167,6 +169,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	protected final TimeValue bulkTimeout;
 	protected final int throttleSize;
 	protected final boolean dropCollection;
+	protected final Set<String> excludeFields;
 
 	private final ExecutableScript script;
 
@@ -246,9 +249,27 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				dropCollection = XContentMapValues
 						.nodeBooleanValue(mongoOptionsSettings
 								.get(DROP_COLLECTION_FIELD), false);
+				
+				if (mongoOptionsSettings.containsKey(EXCLUDE_FIELDS_FIELD)) {
+					excludeFields = new HashSet<String>();
+					Object excludeFieldsSettings = mongoOptionsSettings.get(EXCLUDE_FIELDS_FIELD);
+					logger.info("excludeFieldsSettings: " + excludeFieldsSettings);
+					boolean array = XContentMapValues.isArray(excludeFieldsSettings);
+
+					if (array) {
+						ArrayList<String> fields = (ArrayList<String>) excludeFieldsSettings;
+						for (String field : fields) {
+							logger.info("Field: " + field);
+							excludeFields.add(field);
+						}
+					}
+				} else {
+					excludeFields = null;
+				}
 			} else {
 				mongoSecondaryReadPreference = false;
 				dropCollection = false;
+				excludeFields = null;
 			}
 
 			// Credentials
@@ -350,6 +371,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			// mongoDbPassword = "";
 			script = null;
 			dropCollection = false;
+			excludeFields = null;
 		}
 		mongoOplogNamespace = mongoDb + "." + mongoCollection;
 
@@ -635,7 +657,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				Map<String, Object> data) {
 			if (data.get(MONGODB_ID_FIELD) == null
 					&& !data.get(OPLOG_OPERATION).equals(
-							OPLOG_COLLECTION_OPERATION)) {
+							OPLOG_COMMAND_OPERATION)) {
 				logger.warn(
 						"Cannot get object id. Skip the current item: [{}]",
 						data);
@@ -751,7 +773,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 							routing).parent(parent));
 					deletedDocuments++;
 				}
-				if (OPLOG_COLLECTION_OPERATION.equals(operation)) {
+				if (OPLOG_COMMAND_OPERATION.equals(operation)) {
 					if (dropCollection) {
 						logger.info("Drop collection request [{}], [{}]", index,
 								type);
@@ -974,6 +996,12 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					.get(OPLOG_TIMESTAMP);
 			DBObject object = (DBObject) entry.get(OPLOG_OBJECT);
 
+			if (excludeFields != null) {
+				for(String excludeField : excludeFields) {
+					object.removeField(excludeField);
+				}
+			}
+			
 			// Initial support for sharded collection -
 			// https://jira.mongodb.org/browse/SERVER-4333
 			// Not interested in operation from migration or sharding
