@@ -143,6 +143,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	public final static String OPLOG_INSERT_OPERATION = "i";
 	public final static String OPLOG_DELETE_OPERATION = "d";
 	public final static String OPLOG_COMMAND_OPERATION = "c";
+	public final static String OPLOG_DROP_COMMAND_OPERATION = "drop";
 	public final static String OPLOG_TIMESTAMP = "ts";
 	public final static String GRIDFS_FILES_SUFFIX = ".files";
 	public final static String GRIDFS_CHUNKS_SUFFIX = ".chunks";
@@ -775,17 +776,21 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				}
 				if (OPLOG_COMMAND_OPERATION.equals(operation)) {
 					if (dropCollection) {
-						logger.info("Drop collection request [{}], [{}]", index,
-								type);
-						bulk.request().requests().clear();
-						client.admin().indices().prepareDeleteMapping(index)
-								.setType(type).execute().actionGet();
-						deletedDocuments = 0;
-						updatedDocuments = 0;
-						insertedDocuments = 0;
-						logger.info(
-								"Delete request for index / type [{}] [{}] successfully executed.",
-								index, type);
+						if (data.containsKey(OPLOG_DROP_COMMAND_OPERATION) && data.get(OPLOG_DROP_COMMAND_OPERATION).equals(mongoCollection)) {
+							logger.info("Drop collection request [{}], [{}]", index,
+									type);
+							bulk.request().requests().clear();
+							client.admin().indices().prepareDeleteMapping(index)
+									.setType(type).execute().actionGet();
+							deletedDocuments = 0;
+							updatedDocuments = 0;
+							insertedDocuments = 0;
+							logger.info(
+									"Delete request for index / type [{}] [{}] successfully executed.",
+									index, type);
+						} else {
+							logger.debug("Database command {}", data);
+						}
 					} else {
 						logger.info("Ignore drop collection request [{}], [{}]. The option has been disabled.", index,
 								type);
