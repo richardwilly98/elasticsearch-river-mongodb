@@ -51,6 +51,7 @@ import com.mongodb.gridfs.GridFSInputFile;
 public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 
 	private final ESLogger logger = Loggers.getLogger(getClass());
+	private final static long wait = 5000;
 
 	private DB mongoDB;
 	private DBCollection mongoCollection;
@@ -107,16 +108,16 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 		logger.debug("GridFS from findOne: {}", out);
 		Assert.assertEquals(out.getId(), in.getId());
 
-		Thread.sleep(1000);
+		Thread.sleep(wait);
 		refreshIndex();
 
-//		CountResponse countResponse = getNode().client()
-//				.count(countRequest(getIndex()))
-//				.actionGet();
-//		logger.debug("Index total count: {}", countResponse.getCount());
-//		assertThat(countResponse.getCount(), equalTo(1l));
-		
 		CountResponse countResponse = getNode().client()
+				.count(countRequest(getIndex()))
+				.actionGet();
+		logger.debug("Index total count: {}", countResponse.getCount());
+		assertThat(countResponse.getCount(), equalTo(1l));
+		
+		countResponse = getNode().client()
 				.count(countRequest(getIndex()).query(fieldQuery("_id", id)))
 				.actionGet();
 		logger.debug("Index count for id {}: {}", id, countResponse.getCount());
@@ -130,7 +131,7 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 
 		gridFS.remove(new ObjectId(id));
 
-		Thread.sleep(1000);
+		Thread.sleep(wait);
 		refreshIndex();
 
 		countResponse = getNode()
@@ -163,7 +164,7 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 		logger.debug("GridFS from findOne: {}", out);
 		Assert.assertEquals(out.getId(), in.getId());
 
-		Thread.sleep(1000);
+		Thread.sleep(wait);
 		refreshIndex();
 
 		CountResponse countResponse = getNode().client()
@@ -186,7 +187,7 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 
 		gridFS.remove(new ObjectId(id));
 
-		Thread.sleep(1000);
+		Thread.sleep(wait);
 		refreshIndex();
 
 		countResponse = getNode()
