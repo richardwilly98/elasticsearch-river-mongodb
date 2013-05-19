@@ -1,6 +1,30 @@
+# Note, that for development on a local machine, with small indices, it usually
+# makes sense to "disable" the distributed features:
+#
+node:
+	local: true
+	
+path:
+	data: target/data
+	plugins: target/plugins
+	logs: target/log
+	conf: target/conf
+	
+index:
+	number_of_shards: 1
+	number_of_replicas: 0
+	store:
+		type: memory
+	gateway:
+		type: none
+		
+cluster:
+	name: es-test-cluster
+	
 plugins:
   mapper-attachments: elasticsearch/elasticsearch-mapper-attachments/1.7.0
   lang-javascript: elasticsearch/elasticsearch-lang-javascript/1.3.0
+
 mongodb:
   version: 2.4.3
   use_dynamic_ports: false

@@ -34,7 +34,6 @@ import org.elasticsearch.common.collect.Tuple;
 import org.elasticsearch.common.io.FileSystemUtils;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.common.network.NetworkUtils;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.node.Node;
@@ -51,7 +50,8 @@ import com.mongodb.CommandResult;
 import com.mongodb.DB;
 import com.mongodb.DBObject;
 import com.mongodb.Mongo;
-import com.mongodb.MongoOptions;
+import com.mongodb.MongoClient;
+import com.mongodb.MongoClientOptions;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 import com.mongodb.WriteConcern;
@@ -61,9 +61,9 @@ import de.flapdoodle.embed.mongo.MongodExecutable;
 import de.flapdoodle.embed.mongo.MongodProcess;
 import de.flapdoodle.embed.mongo.MongodStarter;
 import de.flapdoodle.embed.mongo.config.AbstractMongoConfig.Net;
-import de.flapdoodle.embed.mongo.config.MongodConfig;
 import de.flapdoodle.embed.mongo.config.AbstractMongoConfig.Storage;
 import de.flapdoodle.embed.mongo.config.AbstractMongoConfig.Timeout;
+import de.flapdoodle.embed.mongo.config.MongodConfig;
 import de.flapdoodle.embed.process.distribution.GenericVersion;
 import de.flapdoodle.embed.process.runtime.Network;
 
@@ -132,15 +132,9 @@ public abstract class RiverMongoDBTestAsbtract {
 		settings = settingsBuilder()
 				.loadFromStream(
 						"settings.yml",
-						this.getClass().getClassLoader()
+						ClassLoader
 								.getSystemResourceAsStream("settings.yml"))
-				.put("path.data", "target/data")
-				.put("path.plugins", "target/plugins")
-				.put("path.logs", "target/log")
-				.put("path.conf", "target/conf")
-				.put("cluster.name",
-						"test-cluster-" + NetworkUtils.getLocalAddress())
-				.put("gateway.type", "none").build();
+				.build();
 
 		this.useDynamicPorts = settings.getAsBoolean(
 				"mongodb.use_dynamic_ports", Boolean.FALSE);
@@ -178,10 +172,13 @@ public abstract class RiverMongoDBTestAsbtract {
 		logger.debug("Server #2: {}", server2);
 		logger.debug("Server #3: {}", server3);
 		Thread.sleep(2000);
-		MongoOptions mo = new MongoOptions();
-		mo.autoConnectRetry = true;
-		mongo = new Mongo(new ServerAddress(Network.getLocalHost()
-				.getHostName(), mongodConfig1.net().getPort()), mo);
+		MongoClientOptions mco = MongoClientOptions.builder()
+				.autoConnectRetry(true)
+				.connectTimeout(15000)
+				.socketTimeout(60000)
+				.build();
+		mongo = new MongoClient(new ServerAddress(Network.getLocalHost()
+				.getHostName(), mongodConfig1.net().getPort()), mco);
 		mongoAdminDB = mongo.getDB(ADMIN_DATABASE_NAME);
 
 		cr = mongoAdminDB.command(new BasicDBObject("isMaster", 1));
@@ -222,7 +219,7 @@ public abstract class RiverMongoDBTestAsbtract {
 		mongoServers.add(new ServerAddress(
 				Network.getLocalHost().getHostName(), mongodConfig3.net()
 						.getPort()));
-		mongo = new Mongo(mongoServers, mo);
+		mongo = new MongoClient(mongoServers, mco);
 		Assert.assertNotNull(mongo);
 		mongo.setReadPreference(ReadPreference.secondaryPreferred());
 		mongo.setWriteConcern(WriteConcern.REPLICAS_SAFE);
