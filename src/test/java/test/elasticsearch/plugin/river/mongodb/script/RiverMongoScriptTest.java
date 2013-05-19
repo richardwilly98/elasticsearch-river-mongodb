@@ -49,6 +49,7 @@ import com.mongodb.util.JSON;
 public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 
 	private final ESLogger logger = Loggers.getLogger(getClass());
+	private final static long wait = 200;
 
 	private static final String DATABASE_NAME = "testscript";
 	private static final String COLLECTION_NAME = "documents";
@@ -106,7 +107,7 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 			String mongoDocument = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/script/test-simple-mongodb-document.json");
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
 			WriteResult result = mongoCollection.insert(dbObject);
-			Thread.sleep(500);
+			Thread.sleep(wait);
 			logger.info("WriteResult: {}", result.toString());
 			refreshIndex();
 
@@ -148,7 +149,7 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 			String mongoDocument = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/script/test-simple-mongodb-document.json");
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
 			WriteResult result = mongoCollection.insert(dbObject);
-			Thread.sleep(500);
+			Thread.sleep(wait);
 			String id = dbObject.get("_id").toString();
 			logger.info("WriteResult: {}", result.toString());
 			refreshIndex();
@@ -203,7 +204,7 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 			String mongoDocument = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/script/test-simple-mongodb-document.json");
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
 			WriteResult result = mongoCollection.insert(dbObject);
-			Thread.sleep(500);
+			Thread.sleep(wait);
 			String id = dbObject.get("_id").toString();
 			logger.info("WriteResult: {}", result.toString());
 			refreshIndex();
@@ -251,7 +252,7 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 			String mongoDocument = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/script/test-simple-mongodb-document.json");
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
 			WriteResult result = mongoCollection.insert(dbObject);
-			Thread.sleep(500);
+			Thread.sleep(wait);
 			String id = dbObject.get("_id").toString();
 			logger.info("WriteResult: {}", result.toString());
 			refreshIndex();
@@ -299,7 +300,7 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 			String mongoDocument = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/script/test-simple-mongodb-document.json");
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
 			WriteResult result = mongoCollection.insert(dbObject);
-			Thread.sleep(1000);
+			Thread.sleep(wait);
 			String id = dbObject.get("_id").toString();
 			logger.info("WriteResult: {}", result.toString());
 			refreshIndex();
@@ -319,7 +320,7 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 			dbObject.put("to_be_deleted", Boolean.TRUE);
 			mongoCollection.save(dbObject);
 
-			Thread.sleep(1000);
+			Thread.sleep(wait);
 			refreshIndex();
 
 			CountResponse countResponse = getNode().client()
