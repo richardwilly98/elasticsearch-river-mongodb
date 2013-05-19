@@ -149,8 +149,8 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAsbtract {
 	}
 
 	@Test
-	public void testUpdateAttribute() throws Throwable {
-		logger.debug("Start testUpdateAttribute");
+	public void testParentChildScript() throws Throwable {
+		logger.debug("Start testParentChildScript");
 		try {
 			String authorDocument = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-author-document.json");
 			DBObject dbObject = (DBObject) JSON.parse(authorDocument);
@@ -203,11 +203,12 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAsbtract {
 			mongoBooksCollection.remove(dbObject, WriteConcern.REPLICAS_SAFE);
 			mongoAuthorsCollection.remove(dbObject, WriteConcern.REPLICAS_SAFE);
 		} catch (Throwable t) {
-			logger.error("testUpdateAttribute failed.", t);
+			logger.error("testParentChildScript failed.", t);
 			t.printStackTrace();
 			throw t;
 		} finally {
-			super.deleteRiver();
+			super.deleteRiver(AUTHORS_RIVER_NAME);
+			super.deleteRiver(BOOKS_RIVER_NAME);
 			super.deleteIndex();
 		}
 	}

@@ -52,31 +52,26 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 
 	private final ESLogger logger = Loggers.getLogger(getClass());
 
-	private static final String DATABASE_NAME = "testgridfs";
-	private static final String COLLECTION_NAME = "fs";
-	private static final String RIVER_NAME = "testgridfs";
-	private static final String INDEX_NAME = "testattachmentindex";
-
 	private DB mongoDB;
 	private DBCollection mongoCollection;
 
 	protected RiverMongoWithGridFSTest() {
-		super(RIVER_NAME, DATABASE_NAME, COLLECTION_NAME, INDEX_NAME);
+		super("testgridfs-" + System.currentTimeMillis(), "testgridfs-" + System.currentTimeMillis(), "fs", "testattachmentindex-" + System.currentTimeMillis());
 	}
 
 	@BeforeClass
 	public void createDatabase() {
-		logger.debug("createDatabase {}", DATABASE_NAME);
+		logger.debug("createDatabase {}", getDatabase());
 		try {
-			mongoDB = getMongo().getDB(DATABASE_NAME);
+			mongoDB = getMongo().getDB(getDatabase());
 			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
 			super.createRiver("/test/elasticsearch/plugin/river/mongodb/gridfs/test-gridfs-mongodb-river.json");
 			ActionFuture<IndicesExistsResponse> response = getNode().client()
 					.admin().indices()
-					.exists(new IndicesExistsRequest(INDEX_NAME));
+					.exists(new IndicesExistsRequest(getIndex()));
 			assertThat(response.actionGet().isExists(), equalTo(true));
 			logger.info("Start createCollection");
-			mongoCollection = mongoDB.createCollection(COLLECTION_NAME, null);
+			mongoCollection = mongoDB.createCollection(getCollection(), null);
 			Assert.assertNotNull(mongoCollection);
 		} catch (Throwable t) {
 			logger.error("createDatabase failed.", t);
@@ -116,18 +111,18 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 		refreshIndex();
 
 		CountResponse countResponse = getNode().client()
-				.count(countRequest(INDEX_NAME))
+				.count(countRequest(getIndex()))
 				.actionGet();
 		logger.debug("Index total count: {}", countResponse.getCount());
 		assertThat(countResponse.getCount(), equalTo(1l));
 		
 		countResponse = getNode().client()
-				.count(countRequest(INDEX_NAME).query(fieldQuery("_id", id)))
+				.count(countRequest(getIndex()).query(fieldQuery("_id", id)))
 				.actionGet();
 		logger.debug("Index count for id {}: {}", id, countResponse.getCount());
 		assertThat(countResponse.getCount(), equalTo(1l));
 		
-		SearchResponse response = getNode().client().prepareSearch(INDEX_NAME).setQuery(QueryBuilders.queryString("Aliquam")).execute().actionGet();
+		SearchResponse response = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.queryString("Aliquam")).execute().actionGet();
 		logger.debug("SearchResponse {}", response.toString());
 		long totalHits = response.getHits().getTotalHits();
 		logger.debug("TotalHits: {}", totalHits);
@@ -140,7 +135,7 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 
 		countResponse = getNode()
 				.client()
-				.count(countRequest(INDEX_NAME)
+				.count(countRequest(getIndex())
 						.query(fieldQuery("_id", id))).actionGet();
 		logger.debug("Count after delete request: {}", countResponse.getCount());
 		 assertThat(countResponse.getCount(), equalTo(0L));
@@ -172,18 +167,18 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 		refreshIndex();
 
 		CountResponse countResponse = getNode().client()
-				.count(countRequest(INDEX_NAME))
+				.count(countRequest(getIndex()))
 				.actionGet();
 		logger.debug("Index total count: {}", countResponse.getCount());
 		assertThat(countResponse.getCount(), equalTo(1l));
 		
 		countResponse = getNode().client()
-				.count(countRequest(INDEX_NAME).query(fieldQuery("_id", id)))
+				.count(countRequest(getIndex()).query(fieldQuery("_id", id)))
 				.actionGet();
 		logger.debug("Index count for id {}: {}", id, countResponse.getCount());
 		assertThat(countResponse.getCount(), equalTo(1l));
 		
-		SearchResponse response = getNode().client().prepareSearch(INDEX_NAME).setQuery(QueryBuilders.queryString("Lorem ipsum dolor")).execute().actionGet();
+		SearchResponse response = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.queryString("Lorem ipsum dolor")).execute().actionGet();
 		logger.debug("SearchResponse {}", response.toString());
 		long totalHits = response.getHits().getTotalHits();
 		logger.debug("TotalHits: {}", totalHits);
@@ -196,7 +191,7 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 
 		countResponse = getNode()
 				.client()
-				.count(countRequest(INDEX_NAME)
+				.count(countRequest(getIndex())
 						.query(fieldQuery("_id", id))).actionGet();
 		logger.debug("Count after delete request: {}", countResponse.getCount());
 		 assertThat(countResponse.getCount(), equalTo(0L));
