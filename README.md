@@ -18,6 +18,8 @@ MongoDB River Plugin for ElasticSearch
 | 1.1.0                    | 0.19.0           | 2.0.2   |
 | 1.0.0                    | 0.18             |         |
 
+[![Build Status](https://buildhive.cloudbees.com/job/richardwilly98/job/elasticsearch-river-mongodb/badge/icon)](https://buildhive.cloudbees.com/job/richardwilly98/job/elasticsearch-river-mongodb/)
+
 Initial implementation by [aparo](https://github.com/aparo)
 
 Modified to get the same structure as the others Elasticsearch river (like [CouchDB](http://www.elasticsearch.org/blog/2010/09/28/the_river_searchable_couchdb.html))
