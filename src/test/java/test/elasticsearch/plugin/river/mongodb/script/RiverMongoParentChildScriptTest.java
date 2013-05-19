@@ -47,6 +47,7 @@ import com.mongodb.util.JSON;
 public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAsbtract {
 
 	private final ESLogger logger = Loggers.getLogger(getClass());
+	private final static long wait = 2000;
 
 	private static final String DATABASE_NAME = "testparentchild";
 	private static final String AUTHORS_COLLECTION = "authors";
@@ -155,7 +156,7 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAsbtract {
 			String authorDocument = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-author-document.json");
 			DBObject dbObject = (DBObject) JSON.parse(authorDocument);
 			WriteResult result = mongoAuthorsCollection.insert(dbObject);
-			Thread.sleep(500);
+			Thread.sleep(wait);
 			String authorId = dbObject.get("_id").toString();
 			logger.info("WriteResult: {}", result.toString());
 			refreshIndex(INDEX_NAME);
@@ -176,7 +177,7 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAsbtract {
 			String book1Document = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-book1-document.json");
 			dbObject = (DBObject) JSON.parse(book1Document);
 			result = mongoBooksCollection.insert(dbObject);
-			Thread.sleep(500);
+			Thread.sleep(wait);
 			String bookId = dbObject.get("_id").toString();
 			logger.info("WriteResult: {}", result.toString());
 			refreshIndex(INDEX_NAME);

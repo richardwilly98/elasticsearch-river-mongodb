@@ -49,6 +49,7 @@ import com.mongodb.util.JSON;
 public class RiverMongoDBTest extends RiverMongoDBTestAsbtract {
 
 	private final ESLogger logger = Loggers.getLogger(getClass());
+	private final static long wait = 2000;
 
 	private DB mongoDB;
 	private DBCollection mongoCollection;
@@ -98,7 +99,7 @@ public class RiverMongoDBTest extends RiverMongoDBTestAsbtract {
 			String mongoDocument = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-document.json");
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
 			WriteResult result = mongoCollection.insert(dbObject);
-			Thread.sleep(1000);
+			Thread.sleep(wait);
 			String id = dbObject.get("_id").toString();
 			logger.info("WriteResult: {}", result.toString());
 			ActionFuture<IndicesExistsResponse> response = getNode().client()
@@ -119,7 +120,7 @@ public class RiverMongoDBTest extends RiverMongoDBTestAsbtract {
 
 			mongoCollection.remove(dbObject, WriteConcern.REPLICAS_SAFE);
 
-			Thread.sleep(1000);
+			Thread.sleep(wait);
 			refreshIndex();
 			countResponse = getNode()
 					.client()

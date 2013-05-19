@@ -42,13 +42,14 @@ import com.mongodb.util.JSON;
 public class RiverMongoDropCollectionTest extends RiverMongoDBTestAsbtract {
 
 	private final ESLogger logger = Loggers.getLogger(getClass());
+	private final static long wait = 2000;
 
 	private DB mongoDB;
 	private DBCollection mongoCollection;
 	protected boolean dropCollectionOption = true;
 
 	protected RiverMongoDropCollectionTest() {
-		super("drop-river-1", "drop-river-1", "drop-collection-1", "drop-index-1");
+		super("drop-river-"+ System.currentTimeMillis(), "drop-river-"+ System.currentTimeMillis(), "drop-collection"+ System.currentTimeMillis(), "drop-index-"+ System.currentTimeMillis());
 	}
 
 	protected RiverMongoDropCollectionTest(String river, String database,
@@ -93,14 +94,14 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAsbtract {
 			String mongoDocument = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-document.json");
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
 			mongoCollection.insert(dbObject);
-			Thread.sleep(1000);
+			Thread.sleep(wait);
 
 			assertThat(getNode().client()
 					.admin().indices()
 					.exists(new IndicesExistsRequest(getIndex())).actionGet().isExists(), equalTo(true));
 			assertThat(getNode().client().admin().indices().prepareTypesExists(getIndex()).setTypes(getDatabase()).execute().actionGet().isExists(), equalTo(true));
 			mongoCollection.drop();
-			Thread.sleep(1000);
+			Thread.sleep(wait);
 			refreshIndex();
 			assertThat(getNode().client().admin().indices().prepareTypesExists(getIndex()).setTypes(getDatabase()).execute().actionGet().isExists(), equalTo(!dropCollectionOption));
 		} catch (Throwable t) {

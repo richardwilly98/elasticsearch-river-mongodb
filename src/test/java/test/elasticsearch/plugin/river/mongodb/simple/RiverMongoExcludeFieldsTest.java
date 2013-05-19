@@ -45,13 +45,17 @@ import com.mongodb.WriteConcern;
 public class RiverMongoExcludeFieldsTest extends RiverMongoDBTestAsbtract {
 
 	private final ESLogger logger = Loggers.getLogger(getClass());
+	private final static long wait = 2000;
 
 	private DB mongoDB;
 	private DBCollection mongoCollection;
 	protected boolean dropCollectionOption = true;
 
 	protected RiverMongoExcludeFieldsTest() {
-		super("exclude-fields-river-1", "exclude-fields-db-1", "exclude-fields-collection-1", "exclude-fields-index-1");
+		super("exclude-fields-river-" + System.currentTimeMillis(),
+				"exclude-fields-db-" + System.currentTimeMillis(),
+				"exclude-fields-collection-" + System.currentTimeMillis(),
+				"exclude-fields-index-" + System.currentTimeMillis());
 	}
 
 	protected RiverMongoExcludeFieldsTest(String river, String database,
@@ -67,8 +71,7 @@ public class RiverMongoExcludeFieldsTest extends RiverMongoDBTestAsbtract {
 			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
 			super.createRiver(
 					"/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river-exclude-fields.json",
-					getRiver(),
-					(Object) String.valueOf(getMongoPort1()),
+					getRiver(), (Object) String.valueOf(getMongoPort1()),
 					(Object) String.valueOf(getMongoPort2()),
 					(Object) String.valueOf(getMongoPort3()),
 					(Object) "[\"exclude-field-1\", \"exclude-field-2\"]",
@@ -98,11 +101,12 @@ public class RiverMongoExcludeFieldsTest extends RiverMongoDBTestAsbtract {
 			dbObject.put("exclude-field-2", System.currentTimeMillis());
 			dbObject.put("include-field-1", System.currentTimeMillis());
 			mongoCollection.insert(dbObject);
-			Thread.sleep(1000);
+			Thread.sleep(wait);
 			String id = dbObject.get("_id").toString();
-			assertThat(getNode().client()
-					.admin().indices()
-					.exists(new IndicesExistsRequest(getIndex())).actionGet().isExists(), equalTo(true));
+			assertThat(
+					getNode().client().admin().indices()
+							.exists(new IndicesExistsRequest(getIndex()))
+							.actionGet().isExists(), equalTo(true));
 			refreshIndex();
 
 			SearchResponse sr = getNode().client().prepareSearch(getIndex())
@@ -112,15 +116,16 @@ public class RiverMongoExcludeFieldsTest extends RiverMongoDBTestAsbtract {
 			logger.debug("TotalHits: {}", totalHits);
 			assertThat(totalHits, equalTo(1l));
 
-			Map<String, Object> object = sr.getHits().getHits()[0].sourceAsMap();
-			assertThat( object.containsKey("exclude-field-1"), equalTo(false));
-			assertThat( object.containsKey("exclude-field-1"), equalTo(false));
-			assertThat( object.containsKey("include-field-1"), equalTo(true));
+			Map<String, Object> object = sr.getHits().getHits()[0]
+					.sourceAsMap();
+			assertThat(object.containsKey("exclude-field-1"), equalTo(false));
+			assertThat(object.containsKey("exclude-field-1"), equalTo(false));
+			assertThat(object.containsKey("include-field-1"), equalTo(true));
 		} catch (Throwable t) {
 			logger.error("testExcludeFields failed.", t);
 			t.printStackTrace();
 			throw t;
 		}
 	}
-	
+
 }
