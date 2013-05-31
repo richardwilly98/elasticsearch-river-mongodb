@@ -744,6 +744,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				String type = extractType(ctx);
 				String parent = extractParent(ctx);
 				String routing = extractRouting(ctx);
+				objectId = extractObjectId(ctx);
 				if (logger.isDebugEnabled()) {
 					logger.debug(
 							"Operation: {} - index: {} - type: {} - routing: {} - parent: {}",
@@ -827,6 +828,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			}
 		}
 
+		private String extractObjectId(Map<String, Object> ctx) {
+			return (String) ctx.get("id");
+		}
 		private String extractParent(Map<String, Object> ctx) {
 			return (String) ctx.get("_parent");
 		}
