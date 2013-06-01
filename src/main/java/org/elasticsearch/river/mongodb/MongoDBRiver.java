@@ -471,6 +471,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 							"mongodb_river_slurper-" + replicaName).newThread(
 							new Slurper(servers));
 					tailerThreads.add(tailerThread);
+					logger.info("XXXXX [mongos] Setup Slurper for servers {}", servers);
 				}
 			}
 		} else {
@@ -478,6 +479,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					settings.globalSettings(), "mongodb_river_slurper")
 					.newThread(new Slurper(mongoServers));
 			tailerThreads.add(tailerThread);
+			logger.info("XXXXX Setup Slurper for servers {}", mongoServers);
 		}
 
 		for (Thread thread : tailerThreads) {
@@ -488,6 +490,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				settings.globalSettings(), "mongodb_river_indexer").newThread(
 				new Indexer());
 		indexerThread.start();
+		logger.info("XXXXX Launched Indexer");
 	}
 
 	private boolean isMongos() {
@@ -609,6 +612,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		@Override
 		public void run() {
 			while (active) {
+			    logger.info("XXXXX [indexer] start another loop");
 				sw = new StopWatch().start();
 				deletedDocuments = 0;
 				insertedDocuments = 0;
@@ -621,9 +625,12 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					// possible
 					Map<String, Object> data = stream.take();
 					lastTimestamp = updateBulkRequest(bulk, data);
+					logger.info("XXXXX [indexer] updateBulkRequest - lastTimestamp={}",lastTimestamp);
+					
 					while ((data = stream.poll(bulkTimeout.millis(),
 							MILLISECONDS)) != null) {
 						lastTimestamp = updateBulkRequest(bulk, data);
+						logger.info("XXXXX [indexer] updateBulkRequest - lastTimestamp={}",lastTimestamp);
 						if (bulk.numberOfActions() >= bulkSize) {
 							break;
 						}
@@ -633,6 +640,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					if (lastTimestamp != null) {
 						updateLastTimestamp(mongoOplogNamespace, lastTimestamp,
 								bulk);
+						logger.info("XXXXX [indexer] updateLastTimestamp - lastTimestamp={}",lastTimestamp);
 					}
 
 					// 3. Execute the bulk requests
@@ -642,6 +650,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 							// TODO write to exception queue?
 							logger.warn("failed to execute"
 									+ response.buildFailureMessage());
+						} else {
+							logger.info("XXXXX [indexer] executed bulk request - response={}", response);
 						}
 					} catch (ElasticSearchInterruptedException esie) {
 						logger.warn(
@@ -675,6 +685,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			}
 			BSONTimestamp lastTimestamp = (BSONTimestamp) data
 					.get(OPLOG_TIMESTAMP);
+			logger.info("XXXXX [indexer]      getting lastTimestamp from data - lastTimestamp={}",lastTimestamp);		
+					
 			String operation = data.get(OPLOG_OPERATION).toString();
 			// String objectId = data.get(MONGODB_ID_FIELD).toString();
 			String objectId = "";
@@ -687,7 +699,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				logger.debug("updateBulkRequest for id: [{}], operation: [{}]",
 						objectId, operation);
 			}
-
+			logger.info("XXXXX [indexer]      updateBulkRequest for id: [{}], operation: [{}]",objectId, operation);
+		
 			Map<String, Object> ctx = null;
 			try {
 				ctx = XContentFactory.xContent(XContentType.JSON)
@@ -697,6 +710,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			}
 			if (script != null) {
 				if (ctx != null) {
+					logger.info("XXXXX [indexer]      start executing script filter");
 					ctx.put("document", data);
 					ctx.put("operation", operation);
 					if (!objectId.isEmpty()) {
@@ -745,6 +759,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				String parent = extractParent(ctx);
 				String routing = extractRouting(ctx);
 				objectId = extractObjectId(ctx, objectId);
+				logger.info("XXXXX [indexer]      extracted from context - index={},type={},parent={},routing={},id={}", index, type, parent, routing, objectId);
+				
 				if (logger.isDebugEnabled()) {
 					logger.debug(
 							"Operation: {} - index: {} - type: {} - routing: {} - parent: {}",
@@ -753,8 +769,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				if (OPLOG_INSERT_OPERATION.equals(operation)) {
 					if (logger.isDebugEnabled()) {
 						logger.debug(
-								"Insert operation - id: {} - contains attachment: {}",
-								operation, objectId,
+								"Insert operation - id: {} - contains attachment: {}", objectId,
 								data.containsKey(IS_MONGODB_ATTACHMENT));
 					}
 					bulk.add(indexRequest(index).type(type).id(objectId)
@@ -810,6 +825,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 								index, type);
 					}
 				}
+				
+				logger.info("XXXXX [indexer]      Done operation: {} on id: {}",operation, objectId);
 			} catch (IOException e) {
 				logger.warn("failed to parse {}", e, data);
 			}
@@ -887,6 +904,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		private boolean assignCollections() {
 			DB adminDb = mongo.getDB(MONGODB_ADMIN);
 			oplogDb = mongo.getDB(MONGODB_LOCAL);
+			
+			logger.info("XXXXX [Slurper] Start assigning collections");
 
 			if (!mongoAdminUser.isEmpty() && !mongoAdminPassword.isEmpty()) {
 				logger.info("Authenticate {} with {}", MONGODB_ADMIN,
@@ -930,6 +949,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					&& adminDb.isAuthenticated()) {
 				slurpedDb = adminDb.getMongo().getDB(mongoDb);
 			}
+			
+			
 
 			// Not necessary as local user has access to all databases.
 			// http://docs.mongodb.org/manual/reference/local-database/
@@ -945,6 +966,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			// }
 			// }
 			slurpedCollection = slurpedDb.getCollection(mongoCollection);
+			
+			logger.info("XXXXX [Slurper] SlurpedDb={}, SlurpedCollection={}", slurpedDb, slurpedCollection);
 
 			return true;
 		}
@@ -958,6 +981,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			}
 
 			while (active) {
+				logger.info("XXXXX [Slurper] start loop");
+			
 				try {
 					if (!assignCollections()) {
 						break; // failed to assign oplogCollection or
@@ -972,7 +997,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					while (oplogCursor.hasNext()) {
 						DBObject item = oplogCursor.next();
 						processOplogEntry(item);
+						logger.info("XXXXX [Slurper] processed item={}", item);
 					}
+					logger.info("XXXXX [Slurper] end loop");
 					Thread.sleep(500);
 				} catch (MongoInterruptedException mIEx) {
 					logger.error("Mongo driver has been interrupted", mIEx);
@@ -999,10 +1026,13 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			// CommandResult lockResult = mongo.fsyncAndLock();
 			// if (lockResult.ok()) {
 			try {
+			   logger.info("XXXXX [Slurper]      processing full collection");
 				BSONTimestamp currentTimestamp = (BSONTimestamp) oplogCollection
 						.find().sort(new BasicDBObject(OPLOG_TIMESTAMP, -1))
 						.limit(1).next().get(OPLOG_TIMESTAMP);
+				logger.info("XXXXX [Slurper]      processing full collection - currentTimestamp={}", currentTimestamp);
 				addQueryToStream(OPLOG_INSERT_OPERATION, currentTimestamp, null);
+				logger.info("XXXXX [Slurper]      inserted currentTimestamp into stream");
 				return oplogCursor(currentTimestamp);
 			} finally {
 				// mongo.unlock();
@@ -1020,11 +1050,13 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			String namespace = entry.get(OPLOG_NAMESPACE).toString();
 			BSONTimestamp oplogTimestamp = (BSONTimestamp) entry
 					.get(OPLOG_TIMESTAMP);
+			logger.info("XXXXX [Slurper]      processing item - operation={},namespace={}, timestamp={}", operation, namespace, oplogTimestamp);
 			DBObject object = (DBObject) entry.get(OPLOG_OBJECT);
 
 			if (excludeFields != null) {
 				for (String excludeField : excludeFields) {
 					object.removeField(excludeField);
+					logger.info("XXXXX [Slurper]      processing item - remove field={}", excludeField);
 				}
 			}
 
@@ -1048,6 +1080,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						namespace, operation);
 				logger.trace("oplog processing item {}", entry);
 			}
+			
+			logger.info("XXXXX [Slurper]      processing item - oplog entry - namespace [{}], operation [{}]", namespace, operation);
 
 			if (mongoGridFS
 					&& namespace.endsWith(GRIDFS_FILES_SUFFIX)
@@ -1076,6 +1110,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				if (OPLOG_UPDATE_OPERATION.equals(operation)) {
 					DBObject update = (DBObject) entry.get(OPLOG_UPDATE);
 					logger.debug("Updated item: {}", update);
+					logger.info("XXXXX [Slurper]      processing item - updated item={}", update);
 					addQueryToStream(operation, oplogTimestamp, update);
 				} else {
 					addToStream(operation, oplogTimestamp, object.toMap());
@@ -1084,8 +1119,14 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		}
 
 		private DBObject getIndexFilter(final BSONTimestamp timestampOverride) {
+		
+			logger.info("XXXXX [Slurper]      getIndexFilter - timestampOverride={}", timestampOverride);
+		
 			BSONTimestamp time = timestampOverride == null ? getLastTimestamp(mongoOplogNamespace)
 					: timestampOverride;
+					
+			logger.info("XXXXX [Slurper]      getIndexFilter - time={}", time);
+					
 			BasicDBObject filter = new BasicDBObject();
 			List<DBObject> values = new ArrayList<DBObject>();
 			List<DBObject> values2 = new ArrayList<DBObject>();
@@ -1115,6 +1156,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			if (logger.isDebugEnabled()) {
 				logger.debug("Using filter: {}", filter);
 			}
+			logger.info("XXXXX [Slurper]      Using filter: {}", filter);
 			return filter;
 		}
 
@@ -1139,6 +1181,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			filters2.add((DBObject) JSON.parse(mongoFilter));
 
 			filters.add(new BasicDBObject(MONGODB_AND_OPERATOR, filters2));
+			
+			logger.info("XXXXX [Slurper]      Using filters: {}", filters);
 
 			return new BasicDBObject(MONGODB_OR_OPERATOR, filters);
 		}
@@ -1176,6 +1220,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						"addToStream - operation [{}], currentTimestamp [{}], data [{}]",
 						operation, currentTimestamp, data);
 			}
+			
+			logger.info("XXXXX [Slurper]  addToStream - operation [{}], currentTimestamp [{}], data [{}]",
+						operation, currentTimestamp, data);
 			data.put(OPLOG_TIMESTAMP, currentTimestamp);
 			data.put(OPLOG_OPERATION, operation);
 
@@ -1212,26 +1259,37 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		GetResponse lastTimestampResponse = client
 				.prepareGet(riverIndexName, riverName.getName(), namespace)
 				.execute().actionGet();
+				
+		logger.info("XXXXX [Slurper]  getLastTimestamp - riverIndexName={}, name={}, namespace={}",
+						riverIndexName, riverName.getName(), namespace);
+				
 		// API changes since 0.90.0 lastTimestampResponse.exists() replaced by
 		// lastTimestampResponse.isExists()
+		
+		logger.info("XXXXX [Slurper]  glastTimestampResponse.isExists()={}",lastTimestampResponse.isExists());
 		if (lastTimestampResponse.isExists()) {
 			// API changes since 0.90.0 lastTimestampResponse.sourceAsMap()
 			// replaced by lastTimestampResponse.getSourceAsMap()
 			Map<String, Object> mongodbState = (Map<String, Object>) lastTimestampResponse
 					.getSourceAsMap().get(ROOT_NAME);
+			logger.info("XXXXX [Slurper]  getLastTimestamp - mongodbState={}",mongodbState);
 			if (mongodbState != null) {
 				String lastTimestamp = mongodbState.get(LAST_TIMESTAMP_FIELD)
 						.toString();
+				logger.info("XXXXX [Slurper]  getLastTimestamp - LAST_TIMESTAMP_FIELD={}",lastTimestamp);
 				if (lastTimestamp != null) {
 					if (logger.isDebugEnabled()) {
 						logger.debug("{} last timestamp: {}", namespace,
 								lastTimestamp);
 					}
+					logger.info("XXXXX [Slurper]  getLastTimestamp - returning={}",lastTimestamp);
 					return (BSONTimestamp) JSON.parse(lastTimestamp);
 
 				}
 			}
 		}
+		
+		logger.info("XXXXX [Slurper]  getLastTimestamp - returning={}",""+null);
 		return null;
 	}
 
@@ -1250,6 +1308,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					.source(jsonBuilder().startObject().startObject(ROOT_NAME)
 							.field(LAST_TIMESTAMP_FIELD, JSON.serialize(time))
 							.endObject().endObject()));
+							
+			String body = jsonBuilder().startObject().startObject(ROOT_NAME).field(LAST_TIMESTAMP_FIELD, JSON.serialize(time)).endObject().endObject();
+		logger.info("XXXXX [Slurper]  updateLastTimestamp - riverIndexName={}, name={}, namespace={}, body={}",
+						riverIndexName, riverName.getName(), namespace, body);
 		} catch (IOException e) {
 			logger.error("error updating last timestamp for namespace {}",
 					namespace);
