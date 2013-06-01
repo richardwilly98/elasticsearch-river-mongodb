@@ -1309,7 +1309,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 							.field(LAST_TIMESTAMP_FIELD, JSON.serialize(time))
 							.endObject().endObject()));
 							
-			String body = jsonBuilder().startObject().startObject(ROOT_NAME).field(LAST_TIMESTAMP_FIELD, JSON.serialize(time)).endObject().endObject();
+			String body = jsonBuilder().startObject().startObject(ROOT_NAME).field(LAST_TIMESTAMP_FIELD, JSON.serialize(time)).endObject().endObject().toString();
 		logger.info("XXXXX [Slurper]  updateLastTimestamp - riverIndexName={}, name={}, namespace={}, body={}",
 						riverIndexName, riverName.getName(), namespace, body);
 		} catch (IOException e) {
