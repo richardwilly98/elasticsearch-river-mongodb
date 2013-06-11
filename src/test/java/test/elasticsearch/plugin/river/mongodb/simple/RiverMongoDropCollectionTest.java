@@ -42,7 +42,7 @@ import com.mongodb.util.JSON;
 public class RiverMongoDropCollectionTest extends RiverMongoDBTestAsbtract {
 
 	private final ESLogger logger = Loggers.getLogger(getClass());
-	private final static long wait = 2000;
+	private final static long wait = 4000;
 
 	private DB mongoDB;
 	private DBCollection mongoCollection;
