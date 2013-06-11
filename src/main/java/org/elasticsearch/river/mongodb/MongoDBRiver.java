@@ -25,6 +25,7 @@ import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -63,7 +64,7 @@ import org.elasticsearch.river.River;
 import org.elasticsearch.river.RiverIndexName;
 import org.elasticsearch.river.RiverName;
 import org.elasticsearch.river.RiverSettings;
-import org.elasticsearch.river.mongodb.util.GridFSHelper;
+import org.elasticsearch.river.mongodb.util.MongoDBHelper;
 import org.elasticsearch.script.ExecutableScript;
 import org.elasticsearch.script.ScriptService;
 
@@ -556,10 +557,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		if (mongo == null) {
 			// TODO: MongoClientOptions should be configurable
 			MongoClientOptions mco = MongoClientOptions.builder()
-					.autoConnectRetry(true)
-					.connectTimeout(15000)
-					.socketTimeout(60000)
-					.build();
+					.autoConnectRetry(true).connectTimeout(15000)
+					.socketTimeout(60000).build();
 			mongo = new MongoClient(mongoServers, mco);
 		}
 		return mongo;
@@ -821,7 +820,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			if (data.containsKey(IS_MONGODB_ATTACHMENT)) {
 				logger.info("Add Attachment: {} to index {} / type {}",
 						objectId, indexName, typeName);
-				return GridFSHelper.serialize((GridFSDBFile) data
+				return MongoDBHelper.serialize((GridFSDBFile) data
 						.get(MONGODB_ATTACHMENT));
 			} else {
 				return XContentFactory.jsonBuilder().map(data);
@@ -829,12 +828,13 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		}
 
 		private String extractObjectId(Map<String, Object> ctx, String objectId) {
-			String id =  (String) ctx.get("id");
+			String id = (String) ctx.get("id");
 			if (id == null) {
 				id = objectId;
 			}
 			return id;
 		}
+
 		private String extractParent(Map<String, Object> ctx) {
 			return (String) ctx.get("_parent");
 		}
@@ -1022,11 +1022,12 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					.get(OPLOG_TIMESTAMP);
 			DBObject object = (DBObject) entry.get(OPLOG_OBJECT);
 
-			if (excludeFields != null) {
-				for (String excludeField : excludeFields) {
-					object.removeField(excludeField);
-				}
-			}
+			object = MongoDBHelper.applyExcludeFields(object, excludeFields);
+			// if (excludeFields != null) {
+			// for (String excludeField : excludeFields) {
+			// object.removeField(excludeField);
+			// }
+			// }
 
 			// Initial support for sharded collection -
 			// https://jira.mongodb.org/browse/SERVER-4333

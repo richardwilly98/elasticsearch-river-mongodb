@@ -1,0 +1,15 @@
+{
+	"firstName": "John",
+	"lastName": "Doe",
+	"address": {
+		"street": "Main Street",
+		"apartment": "1A",
+		"state": "MA",
+		"city": "Boston",
+		"country": "USA"
+	},
+	"hobbies": [
+		"movie",
+		"soccer"
+	]
+}
