@@ -1,0 +1,19 @@
+{
+	"document": {
+		"properties": {
+			"firstName": {
+				"type": "string"
+			},
+			"lastName": {
+				"type": "string"
+			},
+			"nickName": {
+			  "type": "string", "index":"not_analyzed"
+			},
+			"creationDate": {
+				"type": "date",
+				"format": "dateOptionalTime"
+			}
+		}
+	}
+}
