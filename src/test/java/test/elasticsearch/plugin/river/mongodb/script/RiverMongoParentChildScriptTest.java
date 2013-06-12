@@ -27,8 +27,6 @@ import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.common.logging.ESLogger;
-import org.elasticsearch.common.logging.Loggers;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -46,18 +44,15 @@ import com.mongodb.util.JSON;
 @Test
 public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAsbtract {
 
-	private final ESLogger logger = Loggers.getLogger(getClass());
-	private final static long wait = 4000;
-
 	private static final String DATABASE_NAME = "testparentchild";
 	private static final String AUTHORS_COLLECTION = "authors";
 	private static final String AUTHORS_RIVER_NAME = "authors_river";
-//	private static final String AUTHORS_INDEX_NAME = "authors_index";
+	// private static final String AUTHORS_INDEX_NAME = "authors_index";
 	private static final String INDEX_NAME = "authors_books_index";
 	private static final String AUTHOR_TYPE = "author";
 	private static final String BOOKS_COLLECTION = "books";
 	private static final String BOOKS_RIVER_NAME = "books_river";
-//	private static final String BOOKS_INDEX_NAME = "books_index";
+	// private static final String BOOKS_INDEX_NAME = "books_index";
 	private static final String BOOK_TYPE = "book";
 
 	private DB mongoDB;
@@ -65,8 +60,7 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAsbtract {
 	private DBCollection mongoBooksCollection;
 
 	protected RiverMongoParentChildScriptTest() {
-		super(AUTHORS_RIVER_NAME, DATABASE_NAME, AUTHORS_COLLECTION,
-				INDEX_NAME);
+		super(AUTHORS_RIVER_NAME, DATABASE_NAME, AUTHORS_COLLECTION, INDEX_NAME);
 	}
 
 	@BeforeClass
@@ -94,8 +88,8 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAsbtract {
 
 	private void createIndicesAndMappings() {
 		try {
-			getNode().client().admin().indices()
-					.prepareCreate(INDEX_NAME).execute().actionGet();
+			getNode().client().admin().indices().prepareCreate(INDEX_NAME)
+					.execute().actionGet();
 
 			getNode()
 					.client()
@@ -106,7 +100,7 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAsbtract {
 					.setSource(
 							getJsonSettings("/test/elasticsearch/plugin/river/mongodb/script/authors-mapping.json"))
 					.execute().actionGet();
-			
+
 			getNode()
 					.client()
 					.admin()
@@ -116,7 +110,7 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAsbtract {
 					.setSource(
 							getJsonSettings("/test/elasticsearch/plugin/river/mongodb/script/books-mapping.json"))
 					.execute().actionGet();
-			
+
 			super.createRiver(
 					"/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river-with-type.json",
 					AUTHORS_RIVER_NAME,
@@ -125,7 +119,7 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAsbtract {
 					(Object) String.valueOf(getMongoPort3()),
 					(Object) DATABASE_NAME, (Object) AUTHORS_COLLECTION,
 					(Object) INDEX_NAME, (Object) AUTHOR_TYPE);
-			
+
 			String script = "if(ctx.document._parentId) { ctx._parent = ctx.document._parentId; delete ctx.document._parentId;}";
 			super.createRiver(
 					"/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-river-with-script.json",
@@ -133,8 +127,7 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAsbtract {
 					(Object) String.valueOf(getMongoPort2()),
 					(Object) String.valueOf(getMongoPort3()),
 					(Object) DATABASE_NAME, (Object) BOOKS_COLLECTION,
-					(Object) script, (Object) INDEX_NAME,
-					(Object) BOOK_TYPE);
+					(Object) script, (Object) INDEX_NAME, (Object) BOOK_TYPE);
 		} catch (Throwable t) {
 			logger.error("createIndicesAndMappings failed.", t);
 			Assert.fail("createIndicesAndMappings failed.", t);
@@ -166,9 +159,9 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAsbtract {
 					.exists(new IndicesExistsRequest(INDEX_NAME));
 			assertThat(response.actionGet().isExists(), equalTo(true));
 
-			SearchResponse sr = getNode().client()
-					.prepareSearch(INDEX_NAME)
-					.setQuery(fieldQuery("_id", authorId)).execute().actionGet();
+			SearchResponse sr = getNode().client().prepareSearch(INDEX_NAME)
+					.setQuery(fieldQuery("_id", authorId)).execute()
+					.actionGet();
 			logger.debug("SearchResponse {}", sr.toString());
 			long totalHits = sr.getHits().getTotalHits();
 			logger.debug("TotalHits: {}", totalHits);
@@ -182,21 +175,24 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAsbtract {
 			logger.info("WriteResult: {}", result.toString());
 			refreshIndex(INDEX_NAME);
 
-			response = getNode().client()
-					.admin().indices()
+			response = getNode().client().admin().indices()
 					.exists(new IndicesExistsRequest(INDEX_NAME));
 			assertThat(response.actionGet().isExists(), equalTo(true));
 
-			sr = getNode().client()
-					.prepareSearch(INDEX_NAME)
+			sr = getNode().client().prepareSearch(INDEX_NAME)
 					.setQuery(fieldQuery("_id", bookId)).execute().actionGet();
 			logger.debug("SearchResponse {}", sr.toString());
 			totalHits = sr.getHits().getTotalHits();
 			logger.debug("TotalHits: {}", totalHits);
 			assertThat(totalHits, equalTo(1l));
 
-			sr = getNode().client()
-					.prepareSearch(INDEX_NAME).setTypes(AUTHOR_TYPE).setSource(getJsonSettings("/test/elasticsearch/plugin/river/mongodb/script/query-books.json")).execute().actionGet();
+			sr = getNode()
+					.client()
+					.prepareSearch(INDEX_NAME)
+					.setTypes(AUTHOR_TYPE)
+					.setSource(
+							getJsonSettings("/test/elasticsearch/plugin/river/mongodb/script/query-books.json"))
+					.execute().actionGet();
 			logger.debug("SearchResponse {}", sr.toString());
 			totalHits = sr.getHits().getTotalHits();
 			logger.debug("Filtered - TotalHits: {}", totalHits);

@@ -29,8 +29,6 @@ import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsReques
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.common.logging.ESLogger;
-import org.elasticsearch.common.logging.Loggers;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -47,9 +45,6 @@ import com.mongodb.util.JSON;
 
 @Test
 public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
-
-	private final ESLogger logger = Loggers.getLogger(getClass());
-	private final static long wait = 4000;
 
 	private DB mongoDB;
 	private DBCollection mongoCollection;

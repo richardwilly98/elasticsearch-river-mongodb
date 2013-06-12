@@ -30,8 +30,6 @@ import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsReques
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.common.logging.ESLogger;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -49,9 +47,6 @@ import com.mongodb.gridfs.GridFSInputFile;
 
 @Test
 public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
-
-	private final ESLogger logger = Loggers.getLogger(getClass());
-	private final static long wait = 5000;
 
 	private DB mongoDB;
 	private DBCollection mongoCollection;

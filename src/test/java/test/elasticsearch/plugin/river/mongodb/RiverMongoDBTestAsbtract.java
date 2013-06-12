@@ -70,7 +70,8 @@ import de.flapdoodle.embed.process.runtime.Network;
 @Test
 public abstract class RiverMongoDBTestAsbtract {
 
-	private final ESLogger logger = Loggers.getLogger(getClass());
+	protected final ESLogger logger = Loggers.getLogger(getClass());
+	protected final static long wait = 6000;
 
 	public static final String ADMIN_DATABASE_NAME = "admin";
 	public static final String LOCAL_DATABASE_NAME = "local";

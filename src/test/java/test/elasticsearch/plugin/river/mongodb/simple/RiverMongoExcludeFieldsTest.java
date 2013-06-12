@@ -26,8 +26,6 @@ import java.util.Map;
 
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.common.logging.ESLogger;
-import org.elasticsearch.common.logging.Loggers;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -43,9 +41,6 @@ import com.mongodb.WriteConcern;
 
 @Test
 public class RiverMongoExcludeFieldsTest extends RiverMongoDBTestAsbtract {
-
-	private final ESLogger logger = Loggers.getLogger(getClass());
-	private final static long wait = 4000;
 
 	private DB mongoDB;
 	private DBCollection mongoCollection;

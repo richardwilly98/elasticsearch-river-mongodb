@@ -23,8 +23,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
-import org.elasticsearch.common.logging.ESLogger;
-import org.elasticsearch.common.logging.Loggers;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -41,15 +39,15 @@ import com.mongodb.util.JSON;
 @Test
 public class RiverMongoDropCollectionTest extends RiverMongoDBTestAsbtract {
 
-	private final ESLogger logger = Loggers.getLogger(getClass());
-	private final static long wait = 4000;
-
 	private DB mongoDB;
 	private DBCollection mongoCollection;
 	protected boolean dropCollectionOption = true;
 
 	protected RiverMongoDropCollectionTest() {
-		super("drop-river-"+ System.currentTimeMillis(), "drop-river-"+ System.currentTimeMillis(), "drop-collection"+ System.currentTimeMillis(), "drop-index-"+ System.currentTimeMillis());
+		super("drop-river-" + System.currentTimeMillis(), "drop-river-"
+				+ System.currentTimeMillis(), "drop-collection"
+				+ System.currentTimeMillis(), "drop-index-"
+				+ System.currentTimeMillis());
 	}
 
 	protected RiverMongoDropCollectionTest(String river, String database,
@@ -65,13 +63,12 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAsbtract {
 			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
 			super.createRiver(
 					"/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river-drop-collection.json",
-					getRiver(),
-					(Object) String.valueOf(getMongoPort1()),
+					getRiver(), (Object) String.valueOf(getMongoPort1()),
 					(Object) String.valueOf(getMongoPort2()),
 					(Object) String.valueOf(getMongoPort3()),
-					(Object) dropCollectionOption,
-					(Object) getDatabase(), (Object) getCollection(),
-					(Object) getIndex(), (Object) getDatabase());
+					(Object) dropCollectionOption, (Object) getDatabase(),
+					(Object) getCollection(), (Object) getIndex(),
+					(Object) getDatabase());
 			logger.info("Start createCollection");
 			mongoCollection = mongoDB.createCollection(getCollection(), null);
 			Assert.assertNotNull(mongoCollection);
@@ -96,14 +93,23 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAsbtract {
 			mongoCollection.insert(dbObject);
 			Thread.sleep(wait);
 
-			assertThat(getNode().client()
-					.admin().indices()
-					.exists(new IndicesExistsRequest(getIndex())).actionGet().isExists(), equalTo(true));
-			assertThat(getNode().client().admin().indices().prepareTypesExists(getIndex()).setTypes(getDatabase()).execute().actionGet().isExists(), equalTo(true));
+			assertThat(
+					getNode().client().admin().indices()
+							.exists(new IndicesExistsRequest(getIndex()))
+							.actionGet().isExists(), equalTo(true));
+			assertThat(
+					getNode().client().admin().indices()
+							.prepareTypesExists(getIndex())
+							.setTypes(getDatabase()).execute().actionGet()
+							.isExists(), equalTo(true));
 			mongoCollection.drop();
 			Thread.sleep(wait);
 			refreshIndex();
-			assertThat(getNode().client().admin().indices().prepareTypesExists(getIndex()).setTypes(getDatabase()).execute().actionGet().isExists(), equalTo(!dropCollectionOption));
+			assertThat(
+					getNode().client().admin().indices()
+							.prepareTypesExists(getIndex())
+							.setTypes(getDatabase()).execute().actionGet()
+							.isExists(), equalTo(!dropCollectionOption));
 		} catch (Throwable t) {
 			logger.error("testDropCollection failed.", t);
 			t.printStackTrace();
