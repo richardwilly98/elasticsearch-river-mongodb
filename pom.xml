@@ -127,6 +127,7 @@
             </testResource>
             <testResource>
                 <directory>${basedir}/src/test/resources</directory>
+                <filtering>true</filtering>
                 <includes>
                     <include>**/*.*</include>
                 </includes>
