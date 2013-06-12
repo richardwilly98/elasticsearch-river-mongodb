@@ -25,9 +25,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
 import org.bson.types.ObjectId;
-import org.elasticsearch.action.ActionFuture;
-import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
-import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -48,6 +45,8 @@ import com.mongodb.gridfs.GridFSInputFile;
 @Test
 public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 
+	private static final String TEST_ATTACHMENT_PDF = "/test/elasticsearch/plugin/river/mongodb/gridfs/lorem.pdf";
+	private static final String TEST_ATTACHMENT_HTML = "/test/elasticsearch/plugin/river/mongodb/gridfs/test-attachment.html";
 	private DB mongoDB;
 	private DBCollection mongoCollection;
 
@@ -63,7 +62,7 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 		try {
 			mongoDB = getMongo().getDB(getDatabase());
 			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
-			super.createRiver("/test/elasticsearch/plugin/river/mongodb/gridfs/test-gridfs-mongodb-river.json");
+			super.createRiver(TEST_MONGODB_RIVER_GRIDFS_JSON);
 			logger.info("Start createCollection");
 			mongoCollection = mongoDB.createCollection(getCollection(), null);
 			Assert.assertNotNull(mongoCollection);
@@ -82,7 +81,7 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 	@Test
 	public void testImportAttachment() throws Exception {
 		logger.debug("*** testImportAttachment ***");
-		byte[] content = copyToBytesFromClasspath("/test/elasticsearch/plugin/river/mongodb/gridfs/test-attachment.html");
+		byte[] content = copyToBytesFromClasspath(TEST_ATTACHMENT_HTML);
 		logger.debug("Content in bytes: {}", content.length);
 		GridFS gridFS = new GridFS(mongoDB);
 		GridFSInputFile in = gridFS.createFile(content);
@@ -138,7 +137,7 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 	@Test
 	public void testImportPDFAttachment() throws Exception {
 		logger.debug("*** testImportPDFAttachment ***");
-		byte[] content = copyToBytesFromClasspath("/test/elasticsearch/plugin/river/mongodb/gridfs/lorem.pdf");
+		byte[] content = copyToBytesFromClasspath(TEST_ATTACHMENT_PDF);
 		logger.debug("Content in bytes: {}", content.length);
 		GridFS gridFS = new GridFS(mongoDB);
 		GridFSInputFile in = gridFS.createFile(content);

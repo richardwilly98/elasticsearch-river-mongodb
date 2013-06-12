@@ -65,7 +65,7 @@ public class RiverMongoExcludeFieldsTest extends RiverMongoDBTestAsbtract {
 			mongoDB = getMongo().getDB(getDatabase());
 			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
 			super.createRiver(
-					"/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river-exclude-fields.json",
+					TEST_MONGODB_RIVER_EXCLUDE_FIELDS_JSON,
 					getRiver(), (Object) String.valueOf(getMongoPort1()),
 					(Object) String.valueOf(getMongoPort2()),
 					(Object) String.valueOf(getMongoPort3()),

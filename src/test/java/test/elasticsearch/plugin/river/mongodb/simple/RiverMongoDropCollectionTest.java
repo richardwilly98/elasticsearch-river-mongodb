@@ -39,6 +39,7 @@ import com.mongodb.util.JSON;
 @Test
 public class RiverMongoDropCollectionTest extends RiverMongoDBTestAsbtract {
 
+	private static final String TEST_SIMPLE_MONGODB_RIVER_DROP_COLLECTION_JSON = "/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river-drop-collection.json";
 	private DB mongoDB;
 	private DBCollection mongoCollection;
 	protected boolean dropCollectionOption = true;
@@ -62,7 +63,7 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAsbtract {
 			mongoDB = getMongo().getDB(getDatabase());
 			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
 			super.createRiver(
-					"/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river-drop-collection.json",
+					TEST_SIMPLE_MONGODB_RIVER_DROP_COLLECTION_JSON,
 					getRiver(), (Object) String.valueOf(getMongoPort1()),
 					(Object) String.valueOf(getMongoPort2()),
 					(Object) String.valueOf(getMongoPort3()),
@@ -88,7 +89,7 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAsbtract {
 	public void testDropCollection() throws Throwable {
 		logger.debug("Start testDropCollection");
 		try {
-			String mongoDocument = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-document.json");
+			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
 			mongoCollection.insert(dbObject);
 			Thread.sleep(wait);

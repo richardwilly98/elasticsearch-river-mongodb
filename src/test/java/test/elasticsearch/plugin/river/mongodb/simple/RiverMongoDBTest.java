@@ -62,7 +62,7 @@ public class RiverMongoDBTest extends RiverMongoDBTestAsbtract {
 		try {
 			mongoDB = getMongo().getDB(getDatabase());
 			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
-			super.createRiver("/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river.json");
+			super.createRiver(TEST_MONGODB_RIVER_SIMPLE_JSON);
 			logger.info("Start createCollection");
 			mongoCollection = mongoDB.createCollection(getCollection(), null);
 			Assert.assertNotNull(mongoCollection);
@@ -94,7 +94,7 @@ public class RiverMongoDBTest extends RiverMongoDBTestAsbtract {
 	public void simpleBSONObject() throws Throwable {
 		logger.debug("Start simpleBSONObject");
 		try {
-			String mongoDocument = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-document.json");
+			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
 			WriteResult result = mongoCollection.insert(dbObject);
 			Thread.sleep(wait);

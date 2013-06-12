@@ -46,8 +46,6 @@ import com.mongodb.util.JSON;
 @Test
 public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 
-	public static final String TEST_MONGODB_RIVER_WITH_SCRIPT_JSON = "/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-river-with-script.json";
-	public static final String TEST_SIMPLE_MONGODB_DOCUMENT_JSON = "/test/elasticsearch/plugin/river/mongodb/script/test-simple-mongodb-document.json";
 	private DB mongoDB;
 	private DBCollection mongoCollection;
 
@@ -65,7 +63,7 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 			mongoDB = getMongo().getDB(getDatabase());
 			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
 			// logger.debug("Create river {}", getRiver());
-			// super.createRiver("test-mongodb-river-with-script.json",
+			// super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON,
 			// String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
 			// String.valueOf(getMongoPort3()), getDatabase(), COLLECTION_NAME,
 			// SCRIPT, INDEX_NAME);

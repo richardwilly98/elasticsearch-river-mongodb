@@ -29,7 +29,6 @@ import static org.hamcrest.Matchers.equalTo;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.elasticsearch.action.admin.indices.mapping.delete.DeleteMappingRequest;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
@@ -73,6 +72,13 @@ import de.flapdoodle.embed.process.runtime.Network;
 
 @Test
 public abstract class RiverMongoDBTestAsbtract {
+
+	public static final String TEST_MONGODB_RIVER_SIMPLE_JSON = "/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river.json";
+	public static final String TEST_MONGODB_RIVER_SIMPLE_WITH_TYPE_JSON = "/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river-with-type.json";
+	public static final String TEST_MONGODB_RIVER_GRIDFS_JSON = "/test/elasticsearch/plugin/river/mongodb/gridfs/test-gridfs-mongodb-river.json";
+	public static final String TEST_MONGODB_RIVER_WITH_SCRIPT_JSON = "/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-river-with-script.json";
+	public static final String TEST_MONGODB_RIVER_EXCLUDE_FIELDS_JSON = "/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river-exclude-fields.json";
+	public static final String TEST_SIMPLE_MONGODB_DOCUMENT_JSON = "/test/elasticsearch/plugin/river/mongodb/script/test-simple-mongodb-document.json";
 
 	protected final ESLogger logger = Loggers.getLogger(getClass());
 	protected final static long wait = 6000;

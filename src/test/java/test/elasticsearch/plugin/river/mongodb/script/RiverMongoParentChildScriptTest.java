@@ -44,6 +44,12 @@ import com.mongodb.util.JSON;
 @Test
 public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAsbtract {
 
+	private static final String QUERY_BOOKS_JSON = "/test/elasticsearch/plugin/river/mongodb/script/query-books.json";
+	private static final String BOOK1_DOCUMENT_JSON = "/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-book1-document.json";
+	private static final String AUTHOR_DOCUMENT_JSON = "/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-author-document.json";
+	private static final String BOOKS_MAPPING_JSON = "/test/elasticsearch/plugin/river/mongodb/script/books-mapping.json";
+	private static final String AUTHORS_MAPPING_JSON = "/test/elasticsearch/plugin/river/mongodb/script/authors-mapping.json";
+	
 	private static final String DATABASE_NAME = "testparentchild";
 	private static final String AUTHORS_COLLECTION = "authors";
 	private static final String AUTHORS_RIVER_NAME = "authors_river";
@@ -98,7 +104,7 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAsbtract {
 					.preparePutMapping(INDEX_NAME)
 					.setType(AUTHOR_TYPE)
 					.setSource(
-							getJsonSettings("/test/elasticsearch/plugin/river/mongodb/script/authors-mapping.json"))
+							getJsonSettings(AUTHORS_MAPPING_JSON))
 					.execute().actionGet();
 
 			getNode()
@@ -108,11 +114,11 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAsbtract {
 					.preparePutMapping(INDEX_NAME)
 					.setType(BOOK_TYPE)
 					.setSource(
-							getJsonSettings("/test/elasticsearch/plugin/river/mongodb/script/books-mapping.json"))
+							getJsonSettings(BOOKS_MAPPING_JSON))
 					.execute().actionGet();
 
 			super.createRiver(
-					"/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river-with-type.json",
+					TEST_MONGODB_RIVER_SIMPLE_WITH_TYPE_JSON,
 					AUTHORS_RIVER_NAME,
 					(Object) String.valueOf(getMongoPort1()),
 					(Object) String.valueOf(getMongoPort2()),
@@ -122,7 +128,7 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAsbtract {
 
 			String script = "if(ctx.document._parentId) { ctx._parent = ctx.document._parentId; delete ctx.document._parentId;}";
 			super.createRiver(
-					"/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-river-with-script.json",
+					TEST_MONGODB_RIVER_WITH_SCRIPT_JSON,
 					BOOKS_RIVER_NAME, (Object) String.valueOf(getMongoPort1()),
 					(Object) String.valueOf(getMongoPort2()),
 					(Object) String.valueOf(getMongoPort3()),
@@ -146,7 +152,7 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAsbtract {
 	public void testParentChildScript() throws Throwable {
 		logger.debug("Start testParentChildScript");
 		try {
-			String authorDocument = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-author-document.json");
+			String authorDocument = copyToStringFromClasspath(AUTHOR_DOCUMENT_JSON);
 			DBObject dbObject = (DBObject) JSON.parse(authorDocument);
 			WriteResult result = mongoAuthorsCollection.insert(dbObject);
 			Thread.sleep(wait);
@@ -167,7 +173,7 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAsbtract {
 			logger.debug("TotalHits: {}", totalHits);
 			assertThat(totalHits, equalTo(1l));
 
-			String book1Document = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-book1-document.json");
+			String book1Document = copyToStringFromClasspath(BOOK1_DOCUMENT_JSON);
 			dbObject = (DBObject) JSON.parse(book1Document);
 			result = mongoBooksCollection.insert(dbObject);
 			Thread.sleep(wait);
@@ -191,7 +197,7 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAsbtract {
 					.prepareSearch(INDEX_NAME)
 					.setTypes(AUTHOR_TYPE)
 					.setSource(
-							getJsonSettings("/test/elasticsearch/plugin/river/mongodb/script/query-books.json"))
+							getJsonSettings(QUERY_BOOKS_JSON))
 					.execute().actionGet();
 			logger.debug("SearchResponse {}", sr.toString());
 			totalHits = sr.getHits().getTotalHits();
