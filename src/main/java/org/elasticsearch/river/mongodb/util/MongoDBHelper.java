@@ -34,7 +34,7 @@ import com.mongodb.DBObject;
 import com.mongodb.gridfs.GridFSDBFile;
 
 /*
- * GridFS Helper class
+ * MongoDB Helper class
  */
 public abstract class MongoDBHelper {
 
