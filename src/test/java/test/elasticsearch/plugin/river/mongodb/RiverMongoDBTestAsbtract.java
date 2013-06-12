@@ -23,13 +23,17 @@ import static org.elasticsearch.client.Requests.deleteIndexRequest;
 import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath;
 import static org.elasticsearch.common.settings.ImmutableSettings.settingsBuilder;
 import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.elasticsearch.action.admin.indices.mapping.delete.DeleteMappingRequest;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
+import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.common.collect.Tuple;
 import org.elasticsearch.common.io.FileSystemUtils;
 import org.elasticsearch.common.logging.ESLogger;
@@ -313,7 +317,9 @@ public abstract class RiverMongoDBTestAsbtract {
 				.health(clusterHealthRequest().waitForGreenStatus())
 				.actionGet();
 		logger.info("Done Cluster Health, status " + clusterHealth.getStatus());
-	}
+		GetResponse response = getNode().client()
+				.prepareGet("_river", river, "_meta").execute().actionGet();
+		assertThat(response.isExists(), equalTo(true));	}
 
 	protected void createRiver(String jsonDefinition, Object... args)
 			throws Exception {
@@ -356,6 +362,11 @@ public abstract class RiverMongoDBTestAsbtract {
 				.type(name);
 		node.client().admin().indices().deleteMapping(deleteMapping)
 				.actionGet();
+		logger.debug("Running Cluster Health");
+		ClusterHealthResponse clusterHealth = node.client().admin().cluster()
+				.health(clusterHealthRequest().waitForGreenStatus())
+				.actionGet();
+		logger.info("Done Cluster Health, status " + clusterHealth.getStatus());
 	}
 
 	@AfterSuite

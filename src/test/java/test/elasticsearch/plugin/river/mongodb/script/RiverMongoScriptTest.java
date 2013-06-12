@@ -46,6 +46,8 @@ import com.mongodb.util.JSON;
 @Test
 public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 
+	public static final String TEST_MONGODB_RIVER_WITH_SCRIPT_JSON = "/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-river-with-script.json";
+	public static final String TEST_SIMPLE_MONGODB_DOCUMENT_JSON = "/test/elasticsearch/plugin/river/mongodb/script/test-simple-mongodb-document.json";
 	private DB mongoDB;
 	private DBCollection mongoCollection;
 
@@ -89,13 +91,13 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 			logger.debug("Create river {}", getRiver());
 			String script = "ctx.ignore = true;";
 			super.createRiver(
-					"/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-river-with-script.json",
+					TEST_MONGODB_RIVER_WITH_SCRIPT_JSON,
 					getRiver(), String.valueOf(getMongoPort1()),
 					String.valueOf(getMongoPort2()),
 					String.valueOf(getMongoPort3()), getDatabase(),
 					getCollection(), script, getIndex(), getDatabase());
 
-			String mongoDocument = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/script/test-simple-mongodb-document.json");
+			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
 			WriteResult result = mongoCollection.insert(dbObject);
 			Thread.sleep(wait);
@@ -130,13 +132,13 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 			logger.debug("Create river {}", getRiver());
 			String script = "ctx.document.score = 200;";
 			super.createRiver(
-					"/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-river-with-script.json",
+					TEST_MONGODB_RIVER_WITH_SCRIPT_JSON,
 					getRiver(), String.valueOf(getMongoPort1()),
 					String.valueOf(getMongoPort2()),
 					String.valueOf(getMongoPort3()), getDatabase(),
 					getCollection(), script, getIndex(), getDatabase());
 
-			String mongoDocument = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/script/test-simple-mongodb-document.json");
+			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
 			WriteResult result = mongoCollection.insert(dbObject);
 			Thread.sleep(wait);
@@ -184,13 +186,13 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 			logger.debug("Create river {}", getRiver());
 			String script = "delete ctx.document.score;";
 			super.createRiver(
-					"/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-river-with-script.json",
+					TEST_MONGODB_RIVER_WITH_SCRIPT_JSON,
 					getRiver(), String.valueOf(getMongoPort1()),
 					String.valueOf(getMongoPort2()),
 					String.valueOf(getMongoPort3()), getDatabase(),
 					getCollection(), script, getIndex(), getDatabase());
 
-			String mongoDocument = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/script/test-simple-mongodb-document.json");
+			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
 			WriteResult result = mongoCollection.insert(dbObject);
 			Thread.sleep(wait);
@@ -231,13 +233,13 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 			logger.debug("Create river {}", getRiver());
 			String script = "ctx.document.score2 = ctx.document.score; delete ctx.document.score;";
 			super.createRiver(
-					"/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-river-with-script.json",
+					TEST_MONGODB_RIVER_WITH_SCRIPT_JSON,
 					getRiver(), String.valueOf(getMongoPort1()),
 					String.valueOf(getMongoPort2()),
 					String.valueOf(getMongoPort3()), getDatabase(),
 					getCollection(), script, getIndex(), getDatabase());
 
-			String mongoDocument = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/script/test-simple-mongodb-document.json");
+			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
 			WriteResult result = mongoCollection.insert(dbObject);
 			Thread.sleep(wait);
@@ -278,13 +280,13 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 			logger.debug("Create river {}", getRiver());
 			String script = "if (ctx.document.to_be_deleted == true) { ctx.operation = 'd' };";
 			super.createRiver(
-					"/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-river-with-script.json",
+					TEST_MONGODB_RIVER_WITH_SCRIPT_JSON,
 					getRiver(), String.valueOf(getMongoPort1()),
 					String.valueOf(getMongoPort2()),
 					String.valueOf(getMongoPort3()), getDatabase(),
 					getCollection(), script, getIndex(), getDatabase());
 
-			String mongoDocument = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/script/test-simple-mongodb-document.json");
+			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
 			WriteResult result = mongoCollection.insert(dbObject);
 			Thread.sleep(wait);
