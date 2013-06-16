@@ -1,0 +1,12 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"db": "mydb90",
+		"collection": "mycollec90",
+		"script": "testdate"
+	},
+	"index": {
+		"name": "mydb-90",
+		"type": "mycollec-90"
+	}
+}
