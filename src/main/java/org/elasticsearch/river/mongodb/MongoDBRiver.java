@@ -827,27 +827,39 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		}
 
 		private String extractObjectId(Map<String, Object> ctx, String objectId) {
-			String id = (String) ctx.get("id");
+			Object id = ctx.get("id");
 			if (id == null) {
-				id = objectId;
+				return objectId;
+			} else {
+				return id.toString();
 			}
-			return id;
 		}
 
 		private String extractParent(Map<String, Object> ctx) {
-			return (String) ctx.get("_parent");
+			Object parent = ctx.get("_parent"); 
+			if (parent == null) {
+				return null;
+			} else {
+				return parent.toString();
+			}
 		}
 
 		private String extractRouting(Map<String, Object> ctx) {
-			return (String) ctx.get("_routing");
+			Object routing = ctx.get("_routing");
+			if (routing == null) {
+				return null;
+			} else {
+				return routing.toString();
+			}
 		}
 
 		private String extractType(Map<String, Object> ctx) {
-			String type = (String) ctx.get("_type");
+			Object type = ctx.get("_type");
 			if (type == null) {
-				type = typeName;
+				return typeName;
+			} else {
+				return type.toString();
 			}
-			return type;
 		}
 
 		private String extractIndex(Map<String, Object> ctx) {
@@ -1020,6 +1032,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			BSONTimestamp oplogTimestamp = (BSONTimestamp) entry
 					.get(OPLOG_TIMESTAMP);
 			DBObject object = (DBObject) entry.get(OPLOG_OBJECT);
+			
+			if (logger.isTraceEnabled()) {
+				logger.trace("MongoDB object deserialized: {}", object.toString());
+			}
 
 			object = MongoDBHelper.applyExcludeFields(object, excludeFields);
 			// if (excludeFields != null) {
