@@ -1,0 +1,12 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"db": "mydb89",
+		"collection": "mycollec89",
+		"script": "testuuid"
+	},
+	"index": {
+		"name": "mydb-89",
+		"type": "mycollec-89"
+	}
+}
