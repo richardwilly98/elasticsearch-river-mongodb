@@ -46,6 +46,7 @@ import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.block.ClusterBlockException;
 import org.elasticsearch.common.StopWatch;
+import org.elasticsearch.common.collect.ImmutableMap;
 import org.elasticsearch.common.collect.Maps;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.logging.ESLogger;
@@ -350,7 +351,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				}
 
 				script = scriptService.executable(scriptType, mongoSettings
-						.get(SCRIPT_FIELD).toString(), Maps.newHashMap());
+						.get(SCRIPT_FIELD).toString(), ImmutableMap.of("logger", logger));
 			} else {
 				script = null;
 			}
