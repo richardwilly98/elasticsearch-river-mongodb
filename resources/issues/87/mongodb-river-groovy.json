@@ -1,0 +1,13 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"db": "mydb87",
+		"collection": "mycollec87",
+		"scriptType": "groovy",
+		"script": "testscript"
+	},
+	"index": {
+		"name": "mydb-87",
+		"type": "mycollec-87"
+	}
+}
