@@ -146,3 +146,11 @@ Changelog
 - Implement exclude fields (see issue #76)
 - Improve reconnection to MongoDB when connection is lost (see issue #77)
 - Implement drop collection feature (see issue #79). The river will drop all documents from the index type.
+
+### 1.6.9
+- Allow the script filters to modify the document id (see [#83] (https://github.com/richardwilly98/elasticsearch-river-mongodb/pull/83))
+- Support for Elasticsearch 0.90.1 and MongoDB 2.4.4
+- Improve exclude fields (support multi-level - see [#76](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/76))
+- Fix to support ObjectId (see issue [#85](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/85))
+- Add logger object to script filters
+- Provide example for Groovy script (see issue[#87](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/87))
