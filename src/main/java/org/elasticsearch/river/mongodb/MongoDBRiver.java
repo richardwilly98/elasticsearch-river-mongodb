@@ -47,7 +47,6 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.block.ClusterBlockException;
 import org.elasticsearch.common.StopWatch;
 import org.elasticsearch.common.collect.ImmutableMap;
-import org.elasticsearch.common.collect.Maps;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.ESLoggerFactory;
@@ -351,7 +350,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				}
 
 				script = scriptService.executable(scriptType, mongoSettings
-						.get(SCRIPT_FIELD).toString(), ImmutableMap.of("logger", logger));
+						.get(SCRIPT_FIELD).toString(), ImmutableMap.of(
+						"logger", logger));
 			} else {
 				script = null;
 			}
@@ -837,7 +837,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		}
 
 		private String extractParent(Map<String, Object> ctx) {
-			Object parent = ctx.get("_parent"); 
+			Object parent = ctx.get("_parent");
 			if (parent == null) {
 				return null;
 			} else {
@@ -1033,9 +1033,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			BSONTimestamp oplogTimestamp = (BSONTimestamp) entry
 					.get(OPLOG_TIMESTAMP);
 			DBObject object = (DBObject) entry.get(OPLOG_OBJECT);
-			
+
 			if (logger.isTraceEnabled()) {
-				logger.trace("MongoDB object deserialized: {}", object.toString());
+				logger.trace("MongoDB object deserialized: {}",
+						object.toString());
 			}
 
 			object = MongoDBHelper.applyExcludeFields(object, excludeFields);
