@@ -117,40 +117,41 @@ License
 Changelog
 -------
 
-#### 1.6.0 
-- Support for sharded collection
-- Script filters
-- MongoDB driver 2.10.1 (use of MongoClient)
-
-#### 1.6.2 
-- Support for secured sharded collection (see issue #60)
-
-#### 1.6.3 
-- First attempt to stored the artifact in Maven central (please ignore this version
-
-#### 1.6.4 
-- Fix NPE (see issue #60)
-- Remove database user, password river settings. Local or admin user, password should be used instead.
-
-#### 1.6.5 
-- Add support for _parent, _routing (see issue #64)
-
-#### 1.6.6 
-- Support for Elasticsearch 0.90.0 and MongoDB 2.4.3
-- MongoDB driver 2.11.1 (use of MongoClient)	
-
-#### 1.6.7 
-- Issue with sharded collection (see issue #46)
-
-#### 1.6.8 
-- Implement exclude fields (see issue #76)
-- Improve reconnection to MongoDB when connection is lost (see issue #77)
-- Implement drop collection feature (see issue #79). The river will drop all documents from the index type.
-
-### 1.6.9
+#### 1.6.9
 - Allow the script filters to modify the document id (see [#83] (https://github.com/richardwilly98/elasticsearch-river-mongodb/pull/83))
 - Support for Elasticsearch 0.90.1 and MongoDB 2.4.4
 - Improve exclude fields (support multi-level - see [#76](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/76))
 - Fix to support ObjectId (see issue [#85](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/85))
 - Add logger object to script filters
 - Provide example for Groovy script (see issue[#87](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/87))
+
+#### 1.6.8 
+- Implement exclude fields (see issue #76)
+- Improve reconnection to MongoDB when connection is lost (see issue #77)
+- Implement drop collection feature (see issue #79). The river will drop all documents from the index type.
+
+#### 1.6.7 
+- Issue with sharded collection (see issue #46)
+
+#### 1.6.6 
+- Support for Elasticsearch 0.90.0 and MongoDB 2.4.3
+- MongoDB driver 2.11.1 (use of MongoClient)	
+
+#### 1.6.5 
+- Add support for _parent, _routing (see issue #64)
+
+#### 1.6.4 
+- Fix NPE (see issue #60)
+- Remove database user, password river settings. Local or admin user, password should be used instead.
+
+#### 1.6.3 
+- First attempt to stored the artifact in Maven central (please ignore this version
+
+#### 1.6.2 
+- Support for secured sharded collection (see issue #60)
+
+#### 1.6.0 
+- Support for sharded collection
+- Script filters
+- MongoDB driver 2.10.1 (use of MongoClient)
+
