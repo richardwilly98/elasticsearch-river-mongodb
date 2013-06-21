@@ -34,6 +34,8 @@ import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
+import javax.net.ssl.SSLSocketFactory;
+
 import org.bson.BasicBSONObject;
 import org.bson.types.BSONTimestamp;
 import org.bson.types.ObjectId;
@@ -77,6 +79,7 @@ import com.mongodb.DBObject;
 import com.mongodb.Mongo;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientOptions;
+import com.mongodb.MongoClientOptions.Builder;
 import com.mongodb.MongoException;
 import com.mongodb.MongoInterruptedException;
 import com.mongodb.QueryOperators;
@@ -104,6 +107,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	public final static String PORT_FIELD = "port";
 	public final static String OPTIONS_FIELD = "options";
 	public final static String SECONDARY_READ_PREFERENCE_FIELD = "secondary_read_preference";
+	public final static String SSL_CONNECTION_FIELD = "ssl";
 	public final static String DROP_COLLECTION_FIELD = "drop_collection";
 	public final static String EXCLUDE_FIELDS_FIELD = "exclude_fields";
 	public final static String FILTER_FIELD = "filter";
@@ -164,6 +168,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	protected final String mongoLocalPassword;
 	protected final String mongoOplogNamespace;
 	protected final boolean mongoSecondaryReadPreference;
+	protected final boolean mongoUseSSL;
 
 	protected final String indexName;
 	protected final String typeName;
@@ -250,7 +255,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 								.get(SECONDARY_READ_PREFERENCE_FIELD), false);
 				dropCollection = XContentMapValues.nodeBooleanValue(
 						mongoOptionsSettings.get(DROP_COLLECTION_FIELD), false);
-
+				mongoUseSSL = XContentMapValues.nodeBooleanValue(
+						mongoOptionsSettings.get(SSL_CONNECTION_FIELD), false);
+				
 				if (mongoOptionsSettings.containsKey(EXCLUDE_FIELDS_FIELD)) {
 					excludeFields = new HashSet<String>();
 					Object excludeFieldsSettings = mongoOptionsSettings
@@ -274,6 +281,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				mongoSecondaryReadPreference = false;
 				dropCollection = false;
 				excludeFields = null;
+				mongoUseSSL = false;
 			}
 
 			// Credentials
@@ -377,6 +385,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			script = null;
 			dropCollection = false;
 			excludeFields = null;
+			mongoUseSSL = false;
 		}
 		mongoOplogNamespace = mongoDb + "." + mongoCollection;
 
@@ -555,10 +564,16 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 	private Mongo getMongoClient() {
 		if (mongo == null) {
-			// TODO: MongoClientOptions should be configurable
-			MongoClientOptions mco = MongoClientOptions.builder()
+			
+			Builder builder = MongoClientOptions.builder()
 					.autoConnectRetry(true).connectTimeout(15000)
-					.socketTimeout(60000).build();
+					.socketKeepAlive(true).socketTimeout(60000);
+			if (mongoUseSSL){
+				builder.socketFactory(SSLSocketFactory.getDefault());
+			}
+			
+			// TODO: MongoClientOptions should be configurable
+			MongoClientOptions mco = builder.build();
 			mongo = new MongoClient(mongoServers, mco);
 		}
 		return mongo;
@@ -963,7 +978,16 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 		@Override
 		public void run() {
-			mongo = new MongoClient(mongoServers);
+			Builder builder = MongoClientOptions.builder()
+					.autoConnectRetry(true).connectTimeout(15000)
+					.socketKeepAlive(true).socketTimeout(60000);
+			if (mongoUseSSL){
+				builder.socketFactory(SSLSocketFactory.getDefault());
+			}
+			
+			// TODO: MongoClientOptions should be configurable
+			MongoClientOptions mco = builder.build();
+			mongo = new MongoClient(mongoServers, mco);
 
 			if (mongoSecondaryReadPreference) {
 				mongo.setReadPreference(ReadPreference.secondaryPreferred());
