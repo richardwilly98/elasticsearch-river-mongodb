@@ -24,6 +24,10 @@ import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 
 import java.io.IOException;
 import java.net.UnknownHostException;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -34,7 +38,11 @@ import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
+import javax.net.SocketFactory;
+import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 import org.bson.BasicBSONObject;
 import org.bson.types.BSONTimestamp;
@@ -108,6 +116,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	public final static String OPTIONS_FIELD = "options";
 	public final static String SECONDARY_READ_PREFERENCE_FIELD = "secondary_read_preference";
 	public final static String SSL_CONNECTION_FIELD = "ssl";
+	public final static String SSL_VERIFY_CERT_FIELD = "sslverifycertificate";
 	public final static String DROP_COLLECTION_FIELD = "drop_collection";
 	public final static String EXCLUDE_FIELDS_FIELD = "exclude_fields";
 	public final static String FILTER_FIELD = "filter";
@@ -169,6 +178,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	protected final String mongoOplogNamespace;
 	protected final boolean mongoSecondaryReadPreference;
 	protected final boolean mongoUseSSL;
+	protected final boolean mongoSSLVerifyCertificate;
 
 	protected final String indexName;
 	protected final String typeName;
@@ -187,6 +197,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	// private final TransferQueue<Map<String, Object>> stream = new
 	// LinkedTransferQueue<Map<String, Object>>();
 	private final BlockingQueue<Map<String, Object>> stream;
+	private SocketFactory sslSocketFactory;
 
 	private Mongo mongo;
 	private DB adminDb;
@@ -257,6 +268,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						mongoOptionsSettings.get(DROP_COLLECTION_FIELD), false);
 				mongoUseSSL = XContentMapValues.nodeBooleanValue(
 						mongoOptionsSettings.get(SSL_CONNECTION_FIELD), false);
+				mongoSSLVerifyCertificate = XContentMapValues.nodeBooleanValue(
+						mongoOptionsSettings.get(SSL_VERIFY_CERT_FIELD), true);
 				
 				if (mongoOptionsSettings.containsKey(EXCLUDE_FIELDS_FIELD)) {
 					excludeFields = new HashSet<String>();
@@ -282,6 +295,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				dropCollection = false;
 				excludeFields = null;
 				mongoUseSSL = false;
+				mongoSSLVerifyCertificate = false;
 			}
 
 			// Credentials
@@ -386,6 +400,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			dropCollection = false;
 			excludeFields = null;
 			mongoUseSSL = false;
+			mongoSSLVerifyCertificate = false;
 		}
 		mongoOplogNamespace = mongoDb + "." + mongoCollection;
 
@@ -569,7 +584,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					.autoConnectRetry(true).connectTimeout(15000)
 					.socketKeepAlive(true).socketTimeout(60000);
 			if (mongoUseSSL){
-				builder.socketFactory(SSLSocketFactory.getDefault());
+				builder.socketFactory(getSSLSocketFactory());
 			}
 			
 			// TODO: MongoClientOptions should be configurable
@@ -609,6 +624,42 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			}
 			indexerThread.interrupt();
 		}
+	}
+	
+	private SocketFactory getSSLSocketFactory() {
+		if (sslSocketFactory != null)
+			return sslSocketFactory;
+		
+		if (!mongoSSLVerifyCertificate) {
+			try {
+				final TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
+					
+					@Override
+					public X509Certificate[] getAcceptedIssuers() {
+						return null;
+					}
+					
+					@Override
+					public void checkServerTrusted(X509Certificate[] chain, String authType)
+							throws CertificateException {
+					}
+					
+					@Override
+					public void checkClientTrusted(X509Certificate[] chain, String authType)
+							throws CertificateException {
+					}
+				}};
+				final SSLContext sslContext = SSLContext.getInstance( "SSL" );
+		        sslContext.init( null, trustAllCerts, new java.security.SecureRandom() );
+		        // Create an ssl socket factory with our all-trusting manager
+		        sslSocketFactory = sslContext.getSocketFactory();
+		        return sslSocketFactory;
+			} catch(Exception ex) {
+				logger.error("Unable to build ssl socket factory without certificate validation, using default instead.", ex);
+			}
+		}
+		sslSocketFactory = SSLSocketFactory.getDefault();
+		return sslSocketFactory;
 	}
 
 	private class Indexer implements Runnable {
@@ -982,7 +1033,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					.autoConnectRetry(true).connectTimeout(15000)
 					.socketKeepAlive(true).socketTimeout(60000);
 			if (mongoUseSSL){
-				builder.socketFactory(SSLSocketFactory.getDefault());
+				builder.socketFactory(getSSLSocketFactory());
 			}
 			
 			// TODO: MongoClientOptions should be configurable
