@@ -133,7 +133,7 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAsbtract {
 					(Object) String.valueOf(getMongoPort2()),
 					(Object) String.valueOf(getMongoPort3()),
 					(Object) DATABASE_NAME, (Object) BOOKS_COLLECTION,
-					(Object) script, (Object) INDEX_NAME, (Object) BOOK_TYPE);
+					(Object) "js",script, (Object) INDEX_NAME, (Object) BOOK_TYPE);
 		} catch (Throwable t) {
 			logger.error("createIndicesAndMappings failed.", t);
 			Assert.fail("createIndicesAndMappings failed.", t);

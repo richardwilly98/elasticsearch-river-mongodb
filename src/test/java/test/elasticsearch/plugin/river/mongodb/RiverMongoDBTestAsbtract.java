@@ -28,6 +28,7 @@ import static org.hamcrest.Matchers.equalTo;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.elasticsearch.action.admin.indices.mapping.delete.DeleteMappingRequest;
@@ -260,9 +261,6 @@ public abstract class RiverMongoDBTestAsbtract {
 		try {
 			Tuple<Settings, Environment> initialSettings = InternalSettingsPerparer
 					.prepareSettings(settings, true);
-			PluginManager pluginManager = new PluginManager(
-					initialSettings.v2(), null);
-
 			if (!initialSettings.v2().configFile().exists()) {
 				FileSystemUtils.mkdirs(initialSettings.v2().configFile());
 			}
@@ -273,10 +271,16 @@ public abstract class RiverMongoDBTestAsbtract {
 
 			if (!initialSettings.v2().pluginsFile().exists()) {
 				FileSystemUtils.mkdirs(initialSettings.v2().pluginsFile());
-				pluginManager.downloadAndExtract(
-						settings.get("plugins.mapper-attachments"), false);
-				pluginManager.downloadAndExtract(
-						settings.get("plugins.lang-javascript"), false);
+				if (settings.getByPrefix("plugins") != null) {
+					PluginManager pluginManager = new PluginManager(
+							initialSettings.v2(), null);
+
+					Map<String, String> plugins = settings.getByPrefix("plugins").getAsMap();
+					for(String key : plugins.keySet()) {
+						pluginManager.downloadAndExtract(
+								plugins.get(key), false);
+					}
+				}
 			} else {
 				logger.info("Plugin {} has been already installed.",
 						settings.get("plugins.mapper-attachments"));

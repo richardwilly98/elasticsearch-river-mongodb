@@ -24,6 +24,7 @@ cluster:
 plugins:
   mapper-attachments: elasticsearch/elasticsearch-mapper-attachments/1.7.0
   lang-javascript: elasticsearch/elasticsearch-lang-javascript/1.4.0
+  lang-groovy: elasticsearch/elasticsearch-lang-groovy/1.4.0
 
 mongodb:
   version: 2.4.4

@@ -19,6 +19,7 @@
 		"db": "%s",
 		"collection": "%s",
 		"gridfs": false,
+		"scriptType": "%s",
 		"script": "%s"
 	},
 	"index": {
