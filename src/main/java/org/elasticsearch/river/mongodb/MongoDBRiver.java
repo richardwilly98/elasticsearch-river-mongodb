@@ -1116,11 +1116,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			}
 
 			object = MongoDBHelper.applyExcludeFields(object, excludeFields);
-			// if (excludeFields != null) {
-			// for (String excludeField : excludeFields) {
-			// object.removeField(excludeField);
-			// }
-			// }
 
 			// Initial support for sharded collection -
 			// https://jira.mongodb.org/browse/SERVER-4333
@@ -1143,11 +1138,14 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				logger.trace("oplog processing item {}", entry);
 			}
 
+			String objectId = getObjectIdFromOplogEntry(entry);
 			if (mongoGridFS
 					&& namespace.endsWith(GRIDFS_FILES_SUFFIX)
 					&& (OPLOG_INSERT_OPERATION.equals(operation) || OPLOG_UPDATE_OPERATION
 							.equals(operation))) {
-				String objectId = object.get(MONGODB_ID_FIELD).toString();
+				if (objectId == null) {
+					throw new NullPointerException(MONGODB_ID_FIELD);
+				}
 				GridFS grid = new GridFS(mongo.getDB(mongoDb), mongoCollection);
 				GridFSDBFile file = grid.findOne(new ObjectId(objectId));
 				if (file != null) {
@@ -1160,11 +1158,14 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			}
 
 			if (object instanceof GridFSDBFile) {
-				logger.info("Add attachment: {}", object.get(MONGODB_ID_FIELD));
+				if (objectId == null) {
+					throw new NullPointerException(MONGODB_ID_FIELD);
+				}
+				logger.info("Add attachment: {}", objectId);
 				HashMap<String, Object> data = new HashMap<String, Object>();
 				data.put(IS_MONGODB_ATTACHMENT, true);
 				data.put(MONGODB_ATTACHMENT, object);
-				data.put(MONGODB_ID_FIELD, object.get(MONGODB_ID_FIELD));
+				data.put(MONGODB_ID_FIELD, objectId);
 				addToStream(operation, oplogTimestamp, data);
 			} else {
 				if (OPLOG_UPDATE_OPERATION.equals(operation)) {
@@ -1175,6 +1176,26 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					addToStream(operation, oplogTimestamp, object.toMap());
 				}
 			}
+		}
+
+		/*
+		 * Extract "_id" from "o" if it fails try to extract from "o2"
+		 */
+		private String getObjectIdFromOplogEntry(DBObject entry) {
+			if (entry.containsField(OPLOG_OBJECT)) {
+				DBObject object = (DBObject) entry.get(OPLOG_OBJECT);
+				if (object.containsField(MONGODB_ID_FIELD)) {
+					return object.get(MONGODB_ID_FIELD).toString();
+				}
+			}
+			if (entry.containsField(OPLOG_UPDATE)) {
+				DBObject object = (DBObject) entry.get(OPLOG_UPDATE);
+				if (object.containsField(MONGODB_ID_FIELD)) {
+					return object.get(MONGODB_ID_FIELD).toString();
+				}
+			}
+			logger.trace("Oplog entry {}", entry);
+			return null;
 		}
 
 		private DBObject getIndexFilter(final BSONTimestamp timestampOverride) {
