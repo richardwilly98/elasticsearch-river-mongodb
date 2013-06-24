@@ -103,7 +103,10 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAsbtract {
 							.prepareTypesExists(getIndex())
 							.setTypes(getDatabase()).execute().actionGet()
 							.isExists(), equalTo(true));
+			String collectionName = mongoCollection.getName();
 			mongoCollection.drop();
+			Thread.sleep(wait);
+			assertThat(mongoDB.collectionExists(collectionName), equalTo(false));
 			Thread.sleep(wait);
 			refreshIndex();
 			assertThat(
