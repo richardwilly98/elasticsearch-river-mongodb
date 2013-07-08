@@ -3,7 +3,7 @@ MongoDB River Plugin for ElasticSearch
 
 | MongoDB River Plugin     | ElasticSearch    | MongoDB |
 |--------------------------|------------------|---------|
-| master                   | 0.90.1 -> master | 2.4.4   |
+| master                   | 0.90.2 -> master | 2.4.5   |
 | 1.6.9                    | 0.90.1           | 2.4.4   |
 | 1.6.8                    | 0.90.0           | 2.4.3   |
 | 1.6.7                    | 0.90.0           | 2.4.3   |
@@ -119,7 +119,7 @@ Changelog
 -------
 
 #### 1.6.9
-- Allow the script filters to modify the document id (see [#83] (https://github.com/richardwilly98/elasticsearch-river-mongodb/pull/83))
+- Allow the script filters to modify the document id (see [#83](https://github.com/richardwilly98/elasticsearch-river-mongodb/pull/83))
 - Support for Elasticsearch 0.90.1 and MongoDB 2.4.4
 - Improve exclude fields (support multi-level - see [#76](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/76))
 - Fix to support ObjectId (see issue [#85](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/85))
