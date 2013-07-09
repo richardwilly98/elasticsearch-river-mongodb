@@ -35,6 +35,7 @@ import org.testng.annotations.Test;
 
 import test.elasticsearch.plugin.river.mongodb.RiverMongoDBTestAsbtract;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.WriteConcern;
@@ -173,6 +174,69 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
 		SearchResponse response = getNode().client().prepareSearch(getIndex())
 				.setQuery(QueryBuilders.queryString("Lorem ipsum dolor"))
 				.execute().actionGet();
+		logger.debug("SearchResponse {}", response.toString());
+		long totalHits = response.getHits().getTotalHits();
+		logger.debug("TotalHits: {}", totalHits);
+		assertThat(totalHits, equalTo(1l));
+
+		gridFS.remove(new ObjectId(id));
+
+		Thread.sleep(wait);
+		refreshIndex();
+
+		countResponse = getNode().client()
+				.count(countRequest(getIndex()).query(fieldQuery("_id", id)))
+				.actionGet();
+		logger.debug("Count after delete request: {}", countResponse.getCount());
+		assertThat(countResponse.getCount(), equalTo(0L));
+	}
+
+	/*
+	 * Example for issue #100
+	 */
+	@Test
+	public void testImportAttachmentWithCustomMetadata() throws Exception {
+		logger.debug("*** testImportAttachment ***");
+		byte[] content = copyToBytesFromClasspath(TEST_ATTACHMENT_HTML);
+		logger.debug("Content in bytes: {}", content.length);
+		GridFS gridFS = new GridFS(mongoDB);
+		GridFSInputFile in = gridFS.createFile(content);
+		in.setFilename("test-attachment.html");
+		in.setContentType("text/html");
+		BasicDBObject metadata = new BasicDBObject();
+		metadata.put("attribut1", "value1");
+		metadata.put("attribut2", "value2");
+		in.put("metadata", metadata);
+		in.save();
+		in.validate();
+
+		String id = in.getId().toString();
+		logger.debug("GridFS in: {}", in);
+		logger.debug("Document created with id: {}", id);
+
+		GridFSDBFile out = gridFS.findOne(in.getFilename());
+		logger.debug("GridFS from findOne: {}", out);
+		out = gridFS.findOne(new ObjectId(id));
+		logger.debug("GridFS from findOne: {}", out);
+		Assert.assertEquals(out.getId(), in.getId());
+
+		Thread.sleep(wait);
+		refreshIndex();
+
+		CountResponse countResponse = getNode().client()
+				.count(countRequest(getIndex())).actionGet();
+		logger.debug("Index total count: {}", countResponse.getCount());
+		assertThat(countResponse.getCount(), equalTo(1l));
+
+		countResponse = getNode().client()
+				.count(countRequest(getIndex()).query(fieldQuery("_id", id)))
+				.actionGet();
+		logger.debug("Index count for id {}: {}", id, countResponse.getCount());
+		assertThat(countResponse.getCount(), equalTo(1l));
+
+		SearchResponse response = getNode().client().prepareSearch(getIndex())
+				.setQuery(QueryBuilders.queryString("metadata.attribut1:value1")).execute()
+				.actionGet();
 		logger.debug("SearchResponse {}", response.toString());
 		long totalHits = response.getHits().getTotalHits();
 		logger.debug("TotalHits: {}", totalHits);
