@@ -1,0 +1,14 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"db": "mydb79",
+		"collection": "mycollec79",
+		"options": {
+			"drop_collection": true
+		}
+	},
+	"index": {
+		"name": "mydb79",
+		"type": "type79"
+	}
+}

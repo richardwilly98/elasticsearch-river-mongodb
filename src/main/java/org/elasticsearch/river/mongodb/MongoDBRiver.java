@@ -47,12 +47,14 @@ import org.bson.types.BSONTimestamp;
 import org.bson.types.ObjectId;
 import org.elasticsearch.ElasticSearchInterruptedException;
 import org.elasticsearch.ExceptionsHelper;
+import org.elasticsearch.action.admin.indices.mapping.delete.DeleteMappingRequest;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.block.ClusterBlockException;
+import org.elasticsearch.cluster.metadata.MappingMetaData;
 import org.elasticsearch.common.StopWatch;
 import org.elasticsearch.common.collect.ImmutableMap;
 import org.elasticsearch.common.inject.Inject;
@@ -444,8 +446,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		// TODO: include plugin version from pom.properties file.
 		// http://stackoverflow.com/questions/5270611/read-maven-properties-file-inside-jar-war-file
 		logger.info(
-				"starting mongodb stream. options: secondaryreadpreference [{}], throttlesize [{}], gridfs [{}], filter [{}], db [{}], collection [{}], script [{}], indexing to [{}]/[{}]",
-				mongoSecondaryReadPreference, throttleSize, mongoGridFS,
+				"starting mongodb stream. options: secondaryreadpreference [{}], drop_collection [{}], throttlesize [{}], gridfs [{}], filter [{}], db [{}], collection [{}], script [{}], indexing to [{}]/[{}]",
+				mongoSecondaryReadPreference, dropCollection, throttleSize, mongoGridFS,
 				mongoFilter, mongoDb, mongoCollection, script, indexName,
 				typeName);
 		try {
@@ -858,9 +860,14 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 							logger.info("Drop collection request [{}], [{}]",
 									index, type);
 							bulk.request().requests().clear();
-							client.admin().indices()
-									.prepareDeleteMapping(index).setType(type)
-									.execute().actionGet();
+							client.admin().indices().prepareRefresh(index).execute().actionGet();
+							ImmutableMap<String, MappingMetaData> mappings = client.admin().cluster().prepareState().execute().actionGet().getState().getMetaData().index(index).mappings();
+							if (mappings.containsKey(type)) {
+								DeleteMappingRequest deleteMappingRequest = new DeleteMappingRequest(index);
+								deleteMappingRequest.type(type);
+								client.admin().indices().deleteMapping(deleteMappingRequest);
+							}
+
 							deletedDocuments = 0;
 							updatedDocuments = 0;
 							insertedDocuments = 0;

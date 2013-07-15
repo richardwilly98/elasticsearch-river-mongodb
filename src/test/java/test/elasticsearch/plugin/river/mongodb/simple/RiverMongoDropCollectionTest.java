@@ -18,11 +18,14 @@
  */
 package test.elasticsearch.plugin.river.mongodb.simple;
 
+import static org.elasticsearch.client.Requests.countRequest;
 import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath;
+import static org.elasticsearch.index.query.QueryBuilders.fieldQuery;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
+import org.elasticsearch.action.count.CountResponse;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -121,4 +124,58 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAsbtract {
 		}
 	}
 
+	@Test
+	public void testDropCollectionIssue79() throws Throwable {
+		logger.debug("Start testDropCollectionIssue79");
+		try {
+			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
+			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
+			mongoCollection.insert(dbObject);
+			Thread.sleep(wait);
+
+			assertThat(
+					getNode().client().admin().indices()
+							.exists(new IndicesExistsRequest(getIndex()))
+							.actionGet().isExists(), equalTo(true));
+			assertThat(
+					getNode().client().admin().indices()
+							.prepareTypesExists(getIndex())
+							.setTypes(getDatabase()).execute().actionGet()
+							.isExists(), equalTo(true));
+			String collectionName = mongoCollection.getName();
+			mongoCollection.drop();
+			Thread.sleep(wait);
+			assertThat(mongoDB.collectionExists(collectionName), equalTo(false));
+			Thread.sleep(wait);
+			refreshIndex();
+			assertThat(
+					getNode().client().admin().indices()
+							.prepareTypesExists(getIndex())
+							.setTypes(getDatabase()).execute().actionGet()
+							.isExists(), equalTo(!dropCollectionOption));
+			dbObject = (DBObject) JSON.parse(mongoDocument);
+			String value = String.valueOf(System.currentTimeMillis());
+			dbObject.put("attribute1", value);
+			mongoCollection.insert(dbObject);
+			Thread.sleep(wait);
+			assertThat(
+					getNode().client().admin().indices()
+							.exists(new IndicesExistsRequest(getIndex()))
+							.actionGet().isExists(), equalTo(true));
+			assertThat(
+					getNode().client().admin().indices()
+							.prepareTypesExists(getIndex())
+							.setTypes(getDatabase()).execute().actionGet()
+							.isExists(), equalTo(true));
+			CountResponse countResponse = getNode()
+					.client()
+					.count(countRequest(getIndex())
+							.query(fieldQuery("attribute1", value))).actionGet();
+			assertThat(countResponse.getCount(), equalTo(1L));
+		} catch (Throwable t) {
+			logger.error("testDropCollectionIssue79 failed.", t);
+			t.printStackTrace();
+			throw t;
+		}
+	}
 }
