@@ -1,0 +1,14 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"db": "mydb101",
+		"collection": "mycollec101",
+		"options": {
+			"include_collection": "collection"
+		}
+	},
+	"index": {
+		"name": "mydb101",
+		"type": "type101"
+	}
+}

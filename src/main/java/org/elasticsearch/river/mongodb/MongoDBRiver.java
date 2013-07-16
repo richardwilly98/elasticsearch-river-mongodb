@@ -119,6 +119,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	public final static String SSL_VERIFY_CERT_FIELD = "ssl_verify_certificate";
 	public final static String DROP_COLLECTION_FIELD = "drop_collection";
 	public final static String EXCLUDE_FIELDS_FIELD = "exclude_fields";
+	public final static String INCLUDE_COLLECTION_FIELD = "include_collection";
 	public final static String FILTER_FIELD = "filter";
 	public final static String CREDENTIALS_FIELD = "credentials";
 	public final static String USER_FIELD = "user";
@@ -187,6 +188,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	protected final int throttleSize;
 	protected final boolean dropCollection;
 	protected final Set<String> excludeFields;
+	protected final String includeCollection;
 
 	private final ExecutableScript script;
 
@@ -271,6 +273,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				mongoSSLVerifyCertificate = XContentMapValues.nodeBooleanValue(
 						mongoOptionsSettings.get(SSL_VERIFY_CERT_FIELD), true);
 
+				includeCollection = XContentMapValues.nodeStringValue(
+						mongoOptionsSettings.get(INCLUDE_COLLECTION_FIELD), "");
 				if (mongoOptionsSettings.containsKey(EXCLUDE_FIELDS_FIELD)) {
 					excludeFields = new HashSet<String>();
 					Object excludeFieldsSettings = mongoOptionsSettings
@@ -293,6 +297,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			} else {
 				mongoSecondaryReadPreference = false;
 				dropCollection = false;
+				includeCollection = "";
 				excludeFields = null;
 				mongoUseSSL = false;
 				mongoSSLVerifyCertificate = false;
@@ -398,6 +403,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			// mongoDbPassword = "";
 			script = null;
 			dropCollection = false;
+			includeCollection = "";
 			excludeFields = null;
 			mongoUseSSL = false;
 			mongoSSLVerifyCertificate = false;
@@ -754,6 +760,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			if (logger.isDebugEnabled()) {
 				logger.debug("updateBulkRequest for id: [{}], operation: [{}]",
 						objectId, operation);
+			}
+			
+			if (!includeCollection.isEmpty()) {
+				data.put(includeCollection, mongoCollection);
 			}
 
 			Map<String, Object> ctx = null;
