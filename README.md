@@ -4,6 +4,7 @@ MongoDB River Plugin for ElasticSearch
 | MongoDB River Plugin     | ElasticSearch    | MongoDB |
 |--------------------------|------------------|---------|
 | master                   | 0.90.2 -> master | 2.4.5   |
+| 1.6.11                   | 0.90.2           | 2.4.5   |
 | 1.6.9                    | 0.90.1           | 2.4.4   |
 | 1.6.8                    | 0.90.0           | 2.4.3   |
 | 1.6.7                    | 0.90.0           | 2.4.3   |
@@ -117,6 +118,14 @@ License
 
 Changelog
 -------
+
+#### 1.6.11
+- Add SSL support by @alistair (see [#94](https://github.com/richardwilly98/elasticsearch-river-mongodb/pull/94))
+- Add support for $set operation (see issue [#91](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/91))
+- Add Groovy unit test (for feature [#87](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/87))
+- Update versions ES 0.90.2, MongoDB 2.4.5 and MongoDB driver 2.11.2
+- Fix for ```options/drop_collection``` option (issue [#79](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/79))
+- New ```options/include_collection``` parameter to include the collection name in the document indexed. (see [#101](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/101))
 
 #### 1.6.9
 - Allow the script filters to modify the document id (see [#83](https://github.com/richardwilly98/elasticsearch-river-mongodb/pull/83))
