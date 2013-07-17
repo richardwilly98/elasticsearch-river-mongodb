@@ -944,7 +944,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			long totalDocumentsPerSecond = (totalTimeInSeconds == 0) ? totalDocuments
 					: totalDocuments / totalTimeInSeconds;
 			logger.info(
-					"Indexed {} documents, {} insertions {}, updates, {} deletions, {} documents per second",
+					"Indexed {} documents, {} insertions, {} updates, {} deletions, {} documents per second",
 					totalDocuments, insertedDocuments, updatedDocuments,
 					deletedDocuments, totalDocumentsPerSecond);
 		}
