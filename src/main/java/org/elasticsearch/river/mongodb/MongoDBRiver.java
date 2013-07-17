@@ -1115,8 +1115,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						object.toString());
 			}
 
-			object = MongoDBHelper.applyExcludeFields(object, excludeFields);
-
 			// Initial support for sharded collection -
 			// https://jira.mongodb.org/browse/SERVER-4333
 			// Not interested in operation from migration or sharding
@@ -1162,6 +1160,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					throw new NullPointerException(MONGODB_ID_FIELD);
 				}
 				logger.info("Add attachment: {}", objectId);
+				object = MongoDBHelper.applyExcludeFields(object, excludeFields);
 				HashMap<String, Object> data = new HashMap<String, Object>();
 				data.put(IS_MONGODB_ATTACHMENT, true);
 				data.put(MONGODB_ATTACHMENT, object);
@@ -1173,6 +1172,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					logger.debug("Updated item: {}", update);
 					addQueryToStream(operation, oplogTimestamp, update);
 				} else {
+				    object = MongoDBHelper.applyExcludeFields(object, excludeFields);
 					addToStream(operation, oplogTimestamp, object.toMap());
 				}
 			}
@@ -1279,6 +1279,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						operation, currentTimestamp, update);
 			}
 			for (DBObject item : slurpedCollection.find(update)) {
+			    item = MongoDBHelper.applyExcludeFields(item, excludeFields);
 				addToStream(operation, currentTimestamp, item.toMap());
 			}
 		}
