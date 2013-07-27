@@ -1,6 +1,5 @@
 target
 test-output
-
 /build.gradle
 *.log
 .idea
