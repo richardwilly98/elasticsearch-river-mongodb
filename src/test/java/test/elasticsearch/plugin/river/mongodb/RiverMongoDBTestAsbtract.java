@@ -71,7 +71,6 @@ import de.flapdoodle.embed.mongo.config.MongodConfig;
 import de.flapdoodle.embed.process.distribution.GenericVersion;
 import de.flapdoodle.embed.process.runtime.Network;
 
-@Test
 public abstract class RiverMongoDBTestAsbtract {
 
 	public static final String TEST_MONGODB_RIVER_SIMPLE_JSON = "/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river.json";
