@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import org.elasticsearch.common.Base64;
@@ -113,5 +114,35 @@ public abstract class MongoDBHelper {
 		}
 		return filteredObject;
 	}
+
+    // Retrieves a nested value. e.g.: getNestedValue("a.b.c.d", [a:[b:[c:[d:"test"]]]]) returns "test"
+    public static Object getNestedValue(String key, Map object) {
+        String[] keys = key.split("\\.", 2);
+        Object value = object.get(keys[0]);
+
+        if(value == null) return null;
+
+        if(keys.length > 1) {
+            if (value instanceof Map) {
+                return getNestedValue(keys[1], (Map) value);
+            } else {
+                return null;
+            }
+
+        } else {
+            return value;
+        }
+    }
+
+    // Return true if the key is in a flatten map. e.g: hasFlattenKey("a.b.c.d", [a.b.c.d.0.e:"test"]) returns true
+    public static boolean hasFlattenKey(String nestedKey, Map map) {
+        for(Object key: map.keySet()) {
+            if(key instanceof String && ((String) key).startsWith(nestedKey)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
 }
