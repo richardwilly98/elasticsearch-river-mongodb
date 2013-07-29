@@ -28,7 +28,6 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -187,7 +186,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	protected final TimeValue bulkTimeout;
 	protected final int throttleSize;
 	protected final boolean dropCollection;
-	protected final Set<String> excludeFields;
+	protected final BasicDBObject excludeFields;
 	protected final String includeCollection;
 
 	private final ExecutableScript script;
@@ -276,7 +275,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				includeCollection = XContentMapValues.nodeStringValue(
 						mongoOptionsSettings.get(INCLUDE_COLLECTION_FIELD), "");
 				if (mongoOptionsSettings.containsKey(EXCLUDE_FIELDS_FIELD)) {
-					excludeFields = new HashSet<String>();
+					excludeFields = new BasicDBObject();
 					Object excludeFieldsSettings = mongoOptionsSettings
 							.get(EXCLUDE_FIELDS_FIELD);
 					logger.info("excludeFieldsSettings: "
@@ -288,7 +287,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						ArrayList<String> fields = (ArrayList<String>) excludeFieldsSettings;
 						for (String field : fields) {
 							logger.info("Field: " + field);
-							excludeFields.add(field);
+							excludeFields.put(field,0);
 						}
 					}
 				} else {
@@ -961,7 +960,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			long totalDocumentsPerSecond = (totalTimeInSeconds == 0) ? totalDocuments
 					: totalDocuments / totalTimeInSeconds;
 			logger.info(
-					"Indexed {} documents, {} insertions {}, updates, {} deletions, {} documents per second",
+					"Indexed {} documents, {} insertions, {} updates, {} deletions, {} documents per second",
 					totalDocuments, insertedDocuments, updatedDocuments,
 					deletedDocuments, totalDocumentsPerSecond);
 		}
@@ -1132,8 +1131,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						object.toString());
 			}
 
-			object = MongoDBHelper.applyExcludeFields(object, excludeFields);
-
 			// Initial support for sharded collection -
 			// https://jira.mongodb.org/browse/SERVER-4333
 			// Not interested in operation from migration or sharding
@@ -1179,6 +1176,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					throw new NullPointerException(MONGODB_ID_FIELD);
 				}
 				logger.info("Add attachment: {}", objectId);
+				object = MongoDBHelper.applyExcludeFields(object, excludeFields.keySet());
 				HashMap<String, Object> data = new HashMap<String, Object>();
 				data.put(IS_MONGODB_ATTACHMENT, true);
 				data.put(MONGODB_ATTACHMENT, object);
@@ -1190,6 +1188,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					logger.debug("Updated item: {}", update);
 					addQueryToStream(operation, oplogTimestamp, update);
 				} else {
+				    object = MongoDBHelper.applyExcludeFields(object, excludeFields.keySet());
 					addToStream(operation, oplogTimestamp, object.toMap());
 				}
 			}
@@ -1295,7 +1294,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						"addQueryToStream - operation [{}], currentTimestamp [{}], update [{}]",
 						operation, currentTimestamp, update);
 			}
-			for (DBObject item : slurpedCollection.find(update)) {
+			for (DBObject item : slurpedCollection.find(update,excludeFields)) {
 				addToStream(operation, currentTimestamp, item.toMap());
 			}
 		}

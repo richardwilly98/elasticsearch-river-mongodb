@@ -24,6 +24,7 @@ import static org.hamcrest.Matchers.equalTo;
 
 import java.util.Map;
 
+import org.bson.types.ObjectId;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.testng.Assert;
@@ -64,8 +65,7 @@ public class RiverMongoExcludeFieldsTest extends RiverMongoDBTestAsbtract {
 		try {
 			mongoDB = getMongo().getDB(getDatabase());
 			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
-			super.createRiver(
-					TEST_MONGODB_RIVER_EXCLUDE_FIELDS_JSON,
+			super.createRiver(TEST_MONGODB_RIVER_EXCLUDE_FIELDS_JSON,
 					getRiver(), (Object) String.valueOf(getMongoPort1()),
 					(Object) String.valueOf(getMongoPort2()),
 					(Object) String.valueOf(getMongoPort3()),
@@ -116,6 +116,25 @@ public class RiverMongoExcludeFieldsTest extends RiverMongoDBTestAsbtract {
 			assertThat(object.containsKey("exclude-field-1"), equalTo(false));
 			assertThat(object.containsKey("exclude-field-1"), equalTo(false));
 			assertThat(object.containsKey("include-field-1"), equalTo(true));
+
+			// Update Mongo object
+			dbObject = mongoCollection.findOne(new BasicDBObject("_id", new ObjectId(id)));
+			dbObject.put("include-field-2", System.currentTimeMillis());
+			mongoCollection.save(dbObject);
+			Thread.sleep(wait);
+
+			sr = getNode().client().prepareSearch(getIndex())
+					.setQuery(fieldQuery("_id", id)).execute().actionGet();
+			logger.debug("SearchResponse {}", sr.toString());
+			totalHits = sr.getHits().getTotalHits();
+			logger.debug("TotalHits: {}", totalHits);
+			assertThat(totalHits, equalTo(1l));
+
+			object = sr.getHits().getHits()[0].sourceAsMap();
+			assertThat(object.containsKey("exclude-field-1"), equalTo(false));
+			assertThat(object.containsKey("exclude-field-1"), equalTo(false));
+			assertThat(object.containsKey("include-field-1"), equalTo(true));
+			assertThat(object.containsKey("include-field-2"), equalTo(true));
 		} catch (Throwable t) {
 			logger.error("testExcludeFields failed.", t);
 			t.printStackTrace();
