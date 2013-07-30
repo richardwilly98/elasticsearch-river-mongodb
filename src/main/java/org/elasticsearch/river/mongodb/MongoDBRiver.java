@@ -191,6 +191,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	protected final Set<String> excludeFields;
 	protected final String includeCollection;
 
+	private final BasicDBObject findKeys = new BasicDBObject();
 	private final ExecutableScript script;
 
 	protected volatile List<Thread> tailerThreads = new ArrayList<Thread>();
@@ -290,6 +291,12 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						for (String field : fields) {
 							logger.info("Field: " + field);
 							excludeFields.add(field);
+						}
+					}
+
+					if (excludeFields != null) {
+						for (String key : excludeFields) {
+							findKeys.put(key, 0);
 						}
 					}
 				} else {
@@ -1317,9 +1324,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						"addQueryToStream - operation [{}], currentTimestamp [{}], update [{}]",
 						operation, currentTimestamp, update);
 			}
-			for (DBObject item : slurpedCollection.find(update)) {
-				item = MongoDBHelper.applyExcludeFields(item,
-						excludeFields);
+			
+			for (DBObject item : slurpedCollection.find(update, findKeys)) {
 				addToStream(operation, currentTimestamp, item.toMap());
 			}
 		}
