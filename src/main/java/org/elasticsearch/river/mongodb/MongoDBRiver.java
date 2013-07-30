@@ -28,6 +28,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -47,6 +48,7 @@ import org.bson.types.ObjectId;
 import org.elasticsearch.ElasticSearchInterruptedException;
 import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.action.admin.indices.mapping.delete.DeleteMappingRequest;
+import org.elasticsearch.action.admin.indices.mapping.put.PutMappingRequest;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.delete.DeleteRequest;
@@ -186,7 +188,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	protected final TimeValue bulkTimeout;
 	protected final int throttleSize;
 	protected final boolean dropCollection;
-	protected final BasicDBObject excludeFields;
+	protected final Set<String> excludeFields;
 	protected final String includeCollection;
 
 	private final ExecutableScript script;
@@ -275,7 +277,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				includeCollection = XContentMapValues.nodeStringValue(
 						mongoOptionsSettings.get(INCLUDE_COLLECTION_FIELD), "");
 				if (mongoOptionsSettings.containsKey(EXCLUDE_FIELDS_FIELD)) {
-					excludeFields = new BasicDBObject();
+					excludeFields = new HashSet<String>();
 					Object excludeFieldsSettings = mongoOptionsSettings
 							.get(EXCLUDE_FIELDS_FIELD);
 					logger.info("excludeFieldsSettings: "
@@ -287,7 +289,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						ArrayList<String> fields = (ArrayList<String>) excludeFieldsSettings;
 						for (String field : fields) {
 							logger.info("Field: " + field);
-							excludeFields.put(field,0);
+							excludeFields.add(field);
 						}
 					}
 				} else {
@@ -452,9 +454,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		// http://stackoverflow.com/questions/5270611/read-maven-properties-file-inside-jar-war-file
 		logger.info(
 				"starting mongodb stream. options: secondaryreadpreference [{}], drop_collection [{}], throttlesize [{}], gridfs [{}], filter [{}], db [{}], collection [{}], script [{}], indexing to [{}]/[{}]",
-				mongoSecondaryReadPreference, dropCollection, throttleSize, mongoGridFS,
-				mongoFilter, mongoDb, mongoCollection, script, indexName,
-				typeName);
+				mongoSecondaryReadPreference, dropCollection, throttleSize,
+				mongoGridFS, mongoFilter, mongoDb, mongoCollection, script,
+				indexName, typeName);
 		try {
 			client.admin().indices().prepareCreate(indexName).execute()
 					.actionGet();
@@ -760,7 +762,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				logger.debug("updateBulkRequest for id: [{}], operation: [{}]",
 						objectId, operation);
 			}
-			
+
 			if (!includeCollection.isEmpty()) {
 				data.put(includeCollection, mongoCollection);
 			}
@@ -869,12 +871,31 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 							logger.info("Drop collection request [{}], [{}]",
 									index, type);
 							bulk.request().requests().clear();
-							client.admin().indices().prepareRefresh(index).execute().actionGet();
-							ImmutableMap<String, MappingMetaData> mappings = client.admin().cluster().prepareState().execute().actionGet().getState().getMetaData().index(index).mappings();
+							client.admin().indices().prepareRefresh(index)
+									.execute().actionGet();
+							ImmutableMap<String, MappingMetaData> mappings = client
+									.admin().cluster().prepareState().execute()
+									.actionGet().getState().getMetaData()
+									.index(index).mappings();
 							if (mappings.containsKey(type)) {
-								DeleteMappingRequest deleteMappingRequest = new DeleteMappingRequest(index);
+								/*
+								 * Issue #105 - Mapping changing from custom
+								 * mapping to dynamic when drop_collection =
+								 * true Should capture the existing mapping
+								 * metadata (in case it is has been customized
+								 * before to delete.
+								 */
+								MappingMetaData mapping = mappings.get(type);
+								DeleteMappingRequest deleteMappingRequest = new DeleteMappingRequest(
+										index);
 								deleteMappingRequest.type(type);
-								client.admin().indices().deleteMapping(deleteMappingRequest);
+								client.admin().indices()
+										.deleteMapping(deleteMappingRequest);
+								PutMappingRequest putMapping = new PutMappingRequest(
+										index);
+								putMapping.type(type);
+								putMapping.source(mapping.getSourceAsMap());
+								client.admin().indices().putMapping(putMapping);
 							}
 
 							deletedDocuments = 0;
@@ -1176,7 +1197,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					throw new NullPointerException(MONGODB_ID_FIELD);
 				}
 				logger.info("Add attachment: {}", objectId);
-				object = MongoDBHelper.applyExcludeFields(object, excludeFields.keySet());
+				object = MongoDBHelper.applyExcludeFields(object,
+						excludeFields);
 				HashMap<String, Object> data = new HashMap<String, Object>();
 				data.put(IS_MONGODB_ATTACHMENT, true);
 				data.put(MONGODB_ATTACHMENT, object);
@@ -1188,7 +1210,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					logger.debug("Updated item: {}", update);
 					addQueryToStream(operation, oplogTimestamp, update);
 				} else {
-				    object = MongoDBHelper.applyExcludeFields(object, excludeFields.keySet());
+					object = MongoDBHelper.applyExcludeFields(object,
+							excludeFields);
 					addToStream(operation, oplogTimestamp, object.toMap());
 				}
 			}
@@ -1294,7 +1317,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						"addQueryToStream - operation [{}], currentTimestamp [{}], update [{}]",
 						operation, currentTimestamp, update);
 			}
-			for (DBObject item : slurpedCollection.find(update,excludeFields)) {
+			for (DBObject item : slurpedCollection.find(update)) {
 				addToStream(operation, currentTimestamp, item.toMap());
 			}
 		}
