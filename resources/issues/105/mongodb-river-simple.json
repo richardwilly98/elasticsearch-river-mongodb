@@ -1,0 +1,14 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"db": "mydb105",
+		"collection": "document",
+		"options": {
+			"drop_collection": true
+		}
+	},
+	"index": {
+		"name": "mydb105",
+		"type": "document"
+	}
+}

@@ -47,8 +47,7 @@ import org.bson.types.BSONTimestamp;
 import org.bson.types.ObjectId;
 import org.elasticsearch.ElasticSearchInterruptedException;
 import org.elasticsearch.ExceptionsHelper;
-import org.elasticsearch.action.admin.indices.mapping.delete.DeleteMappingRequest;
-import org.elasticsearch.action.admin.indices.mapping.put.PutMappingRequest;
+import org.elasticsearch.action.admin.indices.mapping.put.PutMappingResponse;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.delete.DeleteRequest;
@@ -884,6 +883,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 									.admin().cluster().prepareState().execute()
 									.actionGet().getState().getMetaData()
 									.index(index).mappings();
+							logger.trace("mappings contains type {}: {}", type,
+									mappings.containsKey(type));
 							if (mappings.containsKey(type)) {
 								/*
 								 * Issue #105 - Mapping changing from custom
@@ -893,16 +894,15 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 								 * before to delete.
 								 */
 								MappingMetaData mapping = mappings.get(type);
-								DeleteMappingRequest deleteMappingRequest = new DeleteMappingRequest(
-										index);
-								deleteMappingRequest.type(type);
-								client.admin().indices()
-										.deleteMapping(deleteMappingRequest);
-								PutMappingRequest putMapping = new PutMappingRequest(
-										index);
-								putMapping.type(type);
-								putMapping.source(mapping.getSourceAsMap());
-								client.admin().indices().putMapping(putMapping);
+								client.admin().indices().prepareDeleteMapping(index).setType(type).execute().actionGet();
+								PutMappingResponse pmr = client.admin()
+								.indices().preparePutMapping(index)
+								.setType(type)
+								.setSource(mapping.source().string())
+								.execute().actionGet();
+								if (!pmr.isAcknowledged()) {
+									logger.error("Failed to put mapping {} / {} / {}.", index, type, mapping.source());
+								}
 							}
 
 							deletedDocuments = 0;
@@ -1204,8 +1204,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					throw new NullPointerException(MONGODB_ID_FIELD);
 				}
 				logger.info("Add attachment: {}", objectId);
-				object = MongoDBHelper.applyExcludeFields(object,
-						excludeFields);
+				object = MongoDBHelper
+						.applyExcludeFields(object, excludeFields);
 				HashMap<String, Object> data = new HashMap<String, Object>();
 				data.put(IS_MONGODB_ATTACHMENT, true);
 				data.put(MONGODB_ATTACHMENT, object);
@@ -1324,7 +1324,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						"addQueryToStream - operation [{}], currentTimestamp [{}], update [{}]",
 						operation, currentTimestamp, update);
 			}
-			
+
 			for (DBObject item : slurpedCollection.find(update, findKeys)) {
 				addToStream(operation, currentTimestamp, item.toMap());
 			}
