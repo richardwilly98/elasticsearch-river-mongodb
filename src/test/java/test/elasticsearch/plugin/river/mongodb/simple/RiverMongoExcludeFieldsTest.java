@@ -114,7 +114,7 @@ public class RiverMongoExcludeFieldsTest extends RiverMongoDBTestAsbtract {
 			Map<String, Object> object = sr.getHits().getHits()[0]
 					.sourceAsMap();
 			assertThat(object.containsKey("exclude-field-1"), equalTo(false));
-			assertThat(object.containsKey("exclude-field-1"), equalTo(false));
+			assertThat(object.containsKey("exclude-field-2"), equalTo(false));
 			assertThat(object.containsKey("include-field-1"), equalTo(true));
 
 			// Update Mongo object
@@ -132,7 +132,7 @@ public class RiverMongoExcludeFieldsTest extends RiverMongoDBTestAsbtract {
 
 			object = sr.getHits().getHits()[0].sourceAsMap();
 			assertThat(object.containsKey("exclude-field-1"), equalTo(false));
-			assertThat(object.containsKey("exclude-field-1"), equalTo(false));
+			assertThat(object.containsKey("exclude-field-2"), equalTo(false));
 			assertThat(object.containsKey("include-field-1"), equalTo(true));
 			assertThat(object.containsKey("include-field-2"), equalTo(true));
 		} catch (Throwable t) {

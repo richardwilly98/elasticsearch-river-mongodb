@@ -1318,6 +1318,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						operation, currentTimestamp, update);
 			}
 			for (DBObject item : slurpedCollection.find(update)) {
+				item = MongoDBHelper.applyExcludeFields(item,
+						excludeFields);
 				addToStream(operation, currentTimestamp, item.toMap());
 			}
 		}
