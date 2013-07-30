@@ -23,6 +23,7 @@ import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath;
 import static org.elasticsearch.index.query.QueryBuilders.fieldQuery;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
 
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.count.CountResponse;
@@ -65,8 +66,7 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAsbtract {
 		try {
 			mongoDB = getMongo().getDB(getDatabase());
 			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
-			super.createRiver(
-					TEST_SIMPLE_MONGODB_RIVER_DROP_COLLECTION_JSON,
+			super.createRiver(TEST_SIMPLE_MONGODB_RIVER_DROP_COLLECTION_JSON,
 					getRiver(), (Object) String.valueOf(getMongoPort1()),
 					(Object) String.valueOf(getMongoPort2()),
 					(Object) String.valueOf(getMongoPort3()),
@@ -107,17 +107,23 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAsbtract {
 							.setTypes(getDatabase()).execute().actionGet()
 							.isExists(), equalTo(true));
 			String collectionName = mongoCollection.getName();
+			long countRequest = getNode().client()
+					.count(countRequest(getIndex())).actionGet().getCount();
 			mongoCollection.drop();
 			Thread.sleep(wait);
 			assertThat(mongoDB.collectionExists(collectionName), equalTo(false));
 			Thread.sleep(wait);
 			refreshIndex();
-			//TODO: check that no documents exist for this mapping
-//			assertThat(
-//					getNode().client().admin().indices()
-//							.prepareTypesExists(getIndex())
-//							.setTypes(getDatabase()).execute().actionGet()
-//							.isExists(), equalTo(!dropCollectionOption));
+
+			if (!dropCollectionOption) {
+				countRequest = getNode().client()
+						.count(countRequest(getIndex())).actionGet().getCount();
+				assertThat(countRequest, greaterThan(0L));
+			} else {
+				countRequest = getNode().client()
+						.count(countRequest(getIndex())).actionGet().getCount();
+				assertThat(countRequest, equalTo(0L));
+			}
 		} catch (Throwable t) {
 			logger.error("testDropCollection failed.", t);
 			t.printStackTrace();
@@ -144,16 +150,22 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAsbtract {
 							.setTypes(getDatabase()).execute().actionGet()
 							.isExists(), equalTo(true));
 			String collectionName = mongoCollection.getName();
+			long countRequest = getNode().client()
+					.count(countRequest(getIndex())).actionGet().getCount();
 			mongoCollection.drop();
 			Thread.sleep(wait);
 			assertThat(mongoDB.collectionExists(collectionName), equalTo(false));
 			Thread.sleep(wait);
 			refreshIndex();
-			assertThat(
-					getNode().client().admin().indices()
-							.prepareTypesExists(getIndex())
-							.setTypes(getDatabase()).execute().actionGet()
-							.isExists(), equalTo(!dropCollectionOption));
+			if (!dropCollectionOption) {
+				countRequest = getNode().client()
+						.count(countRequest(getIndex())).actionGet().getCount();
+				assertThat(countRequest, greaterThan(0L));
+			} else {
+				countRequest = getNode().client()
+						.count(countRequest(getIndex())).actionGet().getCount();
+				assertThat(countRequest, equalTo(0L));
+			}
 			dbObject = (DBObject) JSON.parse(mongoDocument);
 			String value = String.valueOf(System.currentTimeMillis());
 			dbObject.put("attribute1", value);
@@ -170,8 +182,8 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAsbtract {
 							.isExists(), equalTo(true));
 			CountResponse countResponse = getNode()
 					.client()
-					.count(countRequest(getIndex())
-							.query(fieldQuery("attribute1", value))).actionGet();
+					.count(countRequest(getIndex()).query(
+							fieldQuery("attribute1", value))).actionGet();
 			assertThat(countResponse.getCount(), equalTo(1L));
 		} catch (Throwable t) {
 			logger.error("testDropCollectionIssue79 failed.", t);
