@@ -357,8 +357,11 @@ public abstract class RiverMongoDBTestAsbtract {
 
 	protected void deleteIndex(String name) {
 		logger.info("Delete index [{}]", name);
-		node.client().admin().indices().delete(deleteIndexRequest(name))
-				.actionGet();
+		if (!node.client().admin().indices().prepareDelete(name).execute()
+				.actionGet().isAcknowledged()) {
+			logger.error("Counld not delete index: {}. Try waiting 1 sec...",
+					name);
+		}
 		try {
 			Thread.sleep(1000);
 		} catch (InterruptedException e) {
@@ -381,10 +384,8 @@ public abstract class RiverMongoDBTestAsbtract {
 
 	protected void deleteRiver(String name) {
 		logger.info("Delete river [{}]", name);
-		DeleteMappingRequest deleteMapping = new DeleteMappingRequest("_river")
-				.type(name);
-		node.client().admin().indices().deleteMapping(deleteMapping)
-				.actionGet();
+		node.client().admin().indices().prepareDeleteMapping("_river")
+				.setType(name).execute().actionGet();
 		try {
 			Thread.sleep(1000);
 		} catch (InterruptedException e) {
