@@ -31,9 +31,14 @@ import java.util.List;
 import java.util.Map;
 
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
+import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.admin.indices.mapping.delete.DeleteMappingRequest;
+import org.elasticsearch.action.admin.indices.mapping.delete.DeleteMappingResponse;
+import org.elasticsearch.action.admin.indices.mapping.put.PutMappingResponse;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
 import org.elasticsearch.action.get.GetResponse;
+import org.elasticsearch.cluster.metadata.MappingMetaData;
+import org.elasticsearch.common.collect.ImmutableMap;
 import org.elasticsearch.common.collect.Tuple;
 import org.elasticsearch.common.io.FileSystemUtils;
 import org.elasticsearch.common.logging.ESLogger;
@@ -154,31 +159,31 @@ public abstract class RiverMongoDBTestAsbtract {
 
 		// Create 3 mongod processes
 		MongodStarter starter = MongodStarter.getDefaultInstance();
-		Storage storage = new Storage(null,
-				REPLICA_SET_NAME, 20);
+		Storage storage1 = new Storage("target/mongodb/1", REPLICA_SET_NAME, 20);
+		Storage storage2 = new Storage("target/mongodb/2", REPLICA_SET_NAME, 20);
+		Storage storage3 = new Storage("target/mongodb/3", REPLICA_SET_NAME, 20);
 
 		mongodConfig1 = new MongodConfigBuilder()
-		.version(new GenericVersion(mongoVersion))
-		.net(new de.flapdoodle.embed.mongo.config.Net(mongoPort1,
-				Network.localhostIsIPv6()))
-		.replication(
-				storage).build();
+				.version(new GenericVersion(mongoVersion))
+				.net(new de.flapdoodle.embed.mongo.config.Net(mongoPort1,
+						Network.localhostIsIPv6())).replication(storage1)
+				.build();
 		mongodExe1 = starter.prepare(mongodConfig1);
 		mongod1 = mongodExe1.start();
 
 		mongodConfig2 = new MongodConfigBuilder()
 				.version(new GenericVersion(mongoVersion))
 				.net(new de.flapdoodle.embed.mongo.config.Net(mongoPort2,
-						Network.localhostIsIPv6()))
-				.replication(storage).build();
+						Network.localhostIsIPv6())).replication(storage2)
+				.build();
 		mongodExe2 = starter.prepare(mongodConfig2);
 		mongod2 = mongodExe2.start();
 
 		mongodConfig3 = new MongodConfigBuilder()
 				.version(new GenericVersion(mongoVersion))
 				.net(new de.flapdoodle.embed.mongo.config.Net(mongoPort3,
-						Network.localhostIsIPv6()))
-				.replication(storage).build();
+						Network.localhostIsIPv6())).replication(storage3)
+				.build();
 		mongodExe3 = starter.prepare(mongodConfig3);
 		mongod3 = mongodExe3.start();
 		String server1 = Network.getLocalHost().getHostName() + ":"
@@ -359,6 +364,12 @@ public abstract class RiverMongoDBTestAsbtract {
 		logger.info("Delete index [{}]", name);
 		node.client().admin().indices().delete(deleteIndexRequest(name))
 				.actionGet();
+		try {
+			Thread.sleep(2000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		logger.debug("Running Cluster Health");
 		ClusterHealthResponse clusterHealth = node.client().admin().cluster()
 				.health(clusterHealthRequest().waitForGreenStatus())
@@ -380,6 +391,12 @@ public abstract class RiverMongoDBTestAsbtract {
 				.type(name);
 		node.client().admin().indices().deleteMapping(deleteMapping)
 				.actionGet();
+		try {
+			Thread.sleep(2000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		logger.debug("Running Cluster Health");
 		ClusterHealthResponse clusterHealth = node.client().admin().cluster()
 				.health(clusterHealthRequest().waitForGreenStatus())
@@ -387,6 +404,58 @@ public abstract class RiverMongoDBTestAsbtract {
 		logger.info("Done Cluster Health, status " + clusterHealth.getStatus());
 	}
 
+	private void deleteMappingsFromIndex(String name) {
+		logger.info("Delete mapping from index [{}]", name);
+		refreshIndex(name);
+		ImmutableMap<String, MappingMetaData> mappings = node.client()
+				.admin().cluster().prepareState().execute()
+				.actionGet().getState().getMetaData()
+				.index(name).mappings();
+		for(MappingMetaData mapping : mappings.values()) {
+			logger.info("Delete mapping {} / {}", name, mapping.type());
+			node.client().admin().indices().prepareDeleteMapping(name).setType(mapping.type()).execute().actionGet();
+			ClusterHealthResponse clusterHealth = node.client().admin().cluster()
+					.health(clusterHealthRequest().waitForGreenStatus())
+					.actionGet();
+			logger.info("Done Cluster Health, status " + clusterHealth.getStatus());
+		}
+	}
+	
+	private void ensureIndexDeleted(String name) {
+		refreshIndex(name);
+		IndicesExistsResponse indicesExistsResponse = node.client().admin().indices().prepareExists(name).execute().actionGet();
+		while (indicesExistsResponse.isExists()) {
+			logger.warn("Wait for index to be deleted: {}", name);
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			refreshIndex(name);
+			indicesExistsResponse = node.client().admin().indices().prepareExists(name).execute().actionGet();
+		}
+		
+		ImmutableMap<String, MappingMetaData> mappings = node.client()
+				.admin().cluster().prepareState().execute()
+				.actionGet().getState().getMetaData()
+				.index(name).mappings();
+		while (mappings != null || mappings.size() != 0) {
+			logger.warn("Wait for index mapping to be deleted: {}", name);
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			refreshIndex(name);
+			mappings = node.client()
+					.admin().cluster().prepareState().execute()
+					.actionGet().getState().getMetaData()
+					.index(name).mappings();
+		}
+	}
+	
 	@AfterSuite
 	public void afterSuite() {
 		logger.debug("*** afterSuite ***");
