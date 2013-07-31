@@ -607,6 +607,13 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		return mongo;
 	}
 
+	private void closeMongoClient() {
+		if (mongo != null) {
+			mongo.close();
+			mongo = null;
+		}
+	}
+
 	private List<ServerAddress> getServerAddressForReplica(DBObject item) {
 		String definition = item.get("host").toString();
 		if (definition.contains("/")) {
@@ -635,8 +642,11 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			for (Thread thread : tailerThreads) {
 				thread.interrupt();
 			}
-			indexerThread.interrupt();
+			if (indexerThread != null) {
+				indexerThread.interrupt();
+			}
 		}
+		closeMongoClient();
 	}
 
 	private SocketFactory getSSLSocketFactory() {
@@ -894,14 +904,18 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 								 * before to delete.
 								 */
 								MappingMetaData mapping = mappings.get(type);
-								client.admin().indices().prepareDeleteMapping(index).setType(type).execute().actionGet();
+								client.admin().indices()
+										.prepareDeleteMapping(index)
+										.setType(type).execute().actionGet();
 								PutMappingResponse pmr = client.admin()
-								.indices().preparePutMapping(index)
-								.setType(type)
-								.setSource(mapping.source().string())
-								.execute().actionGet();
+										.indices().preparePutMapping(index)
+										.setType(type)
+										.setSource(mapping.source().string())
+										.execute().actionGet();
 								if (!pmr.isAcknowledged()) {
-									logger.error("Failed to put mapping {} / {} / {}.", index, type, mapping.source());
+									logger.error(
+											"Failed to put mapping {} / {} / {}.",
+											index, type, mapping.source());
 								}
 							}
 
