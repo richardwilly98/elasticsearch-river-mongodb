@@ -31,14 +31,9 @@ import java.util.List;
 import java.util.Map;
 
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
-import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.admin.indices.mapping.delete.DeleteMappingRequest;
-import org.elasticsearch.action.admin.indices.mapping.delete.DeleteMappingResponse;
-import org.elasticsearch.action.admin.indices.mapping.put.PutMappingResponse;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
 import org.elasticsearch.action.get.GetResponse;
-import org.elasticsearch.cluster.metadata.MappingMetaData;
-import org.elasticsearch.common.collect.ImmutableMap;
 import org.elasticsearch.common.collect.Tuple;
 import org.elasticsearch.common.io.FileSystemUtils;
 import org.elasticsearch.common.logging.ESLogger;
@@ -365,9 +360,8 @@ public abstract class RiverMongoDBTestAsbtract {
 		node.client().admin().indices().delete(deleteIndexRequest(name))
 				.actionGet();
 		try {
-			Thread.sleep(2000);
+			Thread.sleep(1000);
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		logger.debug("Running Cluster Health");
@@ -392,9 +386,8 @@ public abstract class RiverMongoDBTestAsbtract {
 		node.client().admin().indices().deleteMapping(deleteMapping)
 				.actionGet();
 		try {
-			Thread.sleep(2000);
+			Thread.sleep(1000);
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		logger.debug("Running Cluster Health");
@@ -404,58 +397,6 @@ public abstract class RiverMongoDBTestAsbtract {
 		logger.info("Done Cluster Health, status " + clusterHealth.getStatus());
 	}
 
-	private void deleteMappingsFromIndex(String name) {
-		logger.info("Delete mapping from index [{}]", name);
-		refreshIndex(name);
-		ImmutableMap<String, MappingMetaData> mappings = node.client()
-				.admin().cluster().prepareState().execute()
-				.actionGet().getState().getMetaData()
-				.index(name).mappings();
-		for(MappingMetaData mapping : mappings.values()) {
-			logger.info("Delete mapping {} / {}", name, mapping.type());
-			node.client().admin().indices().prepareDeleteMapping(name).setType(mapping.type()).execute().actionGet();
-			ClusterHealthResponse clusterHealth = node.client().admin().cluster()
-					.health(clusterHealthRequest().waitForGreenStatus())
-					.actionGet();
-			logger.info("Done Cluster Health, status " + clusterHealth.getStatus());
-		}
-	}
-	
-	private void ensureIndexDeleted(String name) {
-		refreshIndex(name);
-		IndicesExistsResponse indicesExistsResponse = node.client().admin().indices().prepareExists(name).execute().actionGet();
-		while (indicesExistsResponse.isExists()) {
-			logger.warn("Wait for index to be deleted: {}", name);
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			refreshIndex(name);
-			indicesExistsResponse = node.client().admin().indices().prepareExists(name).execute().actionGet();
-		}
-		
-		ImmutableMap<String, MappingMetaData> mappings = node.client()
-				.admin().cluster().prepareState().execute()
-				.actionGet().getState().getMetaData()
-				.index(name).mappings();
-		while (mappings != null || mappings.size() != 0) {
-			logger.warn("Wait for index mapping to be deleted: {}", name);
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			refreshIndex(name);
-			mappings = node.client()
-					.admin().cluster().prepareState().execute()
-					.actionGet().getState().getMetaData()
-					.index(name).mappings();
-		}
-	}
-	
 	@AfterSuite
 	public void afterSuite() {
 		logger.debug("*** afterSuite ***");
