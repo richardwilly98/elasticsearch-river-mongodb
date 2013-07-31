@@ -64,10 +64,9 @@ import com.mongodb.util.JSON;
 import de.flapdoodle.embed.mongo.MongodExecutable;
 import de.flapdoodle.embed.mongo.MongodProcess;
 import de.flapdoodle.embed.mongo.MongodStarter;
-import de.flapdoodle.embed.mongo.config.AbstractMongoConfig.Net;
-import de.flapdoodle.embed.mongo.config.AbstractMongoConfig.Storage;
-import de.flapdoodle.embed.mongo.config.AbstractMongoConfig.Timeout;
-import de.flapdoodle.embed.mongo.config.MongodConfig;
+import de.flapdoodle.embed.mongo.config.IMongodConfig;
+import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
+import de.flapdoodle.embed.mongo.config.Storage;
 import de.flapdoodle.embed.process.distribution.GenericVersion;
 import de.flapdoodle.embed.process.runtime.Network;
 
@@ -89,9 +88,9 @@ public abstract class RiverMongoDBTestAsbtract {
 	public static final String REPLICA_SET_NAME = "rep1";
 	public static final String OPLOG_COLLECTION = "oplog.rs";
 
-	private MongodConfig mongodConfig1;
-	private MongodConfig mongodConfig2;
-	private MongodConfig mongodConfig3;
+	private IMongodConfig mongodConfig1;
+	private IMongodConfig mongodConfig2;
+	private IMongodConfig mongodConfig3;
 	private MongodExecutable mongodExe1;
 	private static int mongoPort1;
 	private static MongodProcess mongod1;
@@ -141,12 +140,8 @@ public abstract class RiverMongoDBTestAsbtract {
 	}
 
 	private void loadSettings() {
-		settings = settingsBuilder()
-				.loadFromStream(
-						"settings.yml",
-						ClassLoader
-								.getSystemResourceAsStream("settings.yml"))
-				.build();
+		settings = settingsBuilder().loadFromStream("settings.yml",
+				ClassLoader.getSystemResourceAsStream("settings.yml")).build();
 
 		this.useDynamicPorts = settings.getAsBoolean(
 				"mongodb.use_dynamic_ports", Boolean.FALSE);
@@ -158,20 +153,32 @@ public abstract class RiverMongoDBTestAsbtract {
 		CommandResult cr;
 
 		// Create 3 mongod processes
-		mongodConfig1 = new MongodConfig(new GenericVersion(mongoVersion),
-				new Net(mongoPort1, Network.localhostIsIPv6()), new Storage(
-						null, REPLICA_SET_NAME, 20), new Timeout());
 		MongodStarter starter = MongodStarter.getDefaultInstance();
+		Storage storage = new Storage(null,
+				REPLICA_SET_NAME, 20);
+
+		mongodConfig1 = new MongodConfigBuilder()
+		.version(new GenericVersion(mongoVersion))
+		.net(new de.flapdoodle.embed.mongo.config.Net(mongoPort1,
+				Network.localhostIsIPv6()))
+		.replication(
+				storage).build();
 		mongodExe1 = starter.prepare(mongodConfig1);
 		mongod1 = mongodExe1.start();
-		mongodConfig2 = new MongodConfig(new GenericVersion(mongoVersion),
-				new Net(mongoPort2, Network.localhostIsIPv6()), new Storage(
-						null, REPLICA_SET_NAME, 20), new Timeout());
+
+		mongodConfig2 = new MongodConfigBuilder()
+				.version(new GenericVersion(mongoVersion))
+				.net(new de.flapdoodle.embed.mongo.config.Net(mongoPort2,
+						Network.localhostIsIPv6()))
+				.replication(storage).build();
 		mongodExe2 = starter.prepare(mongodConfig2);
 		mongod2 = mongodExe2.start();
-		mongodConfig3 = new MongodConfig(new GenericVersion(mongoVersion),
-				new Net(mongoPort3, Network.localhostIsIPv6()), new Storage(
-						null, REPLICA_SET_NAME, 20), new Timeout());
+
+		mongodConfig3 = new MongodConfigBuilder()
+				.version(new GenericVersion(mongoVersion))
+				.net(new de.flapdoodle.embed.mongo.config.Net(mongoPort3,
+						Network.localhostIsIPv6()))
+				.replication(storage).build();
 		mongodExe3 = starter.prepare(mongodConfig3);
 		mongod3 = mongodExe3.start();
 		String server1 = Network.getLocalHost().getHostName() + ":"
@@ -185,10 +192,8 @@ public abstract class RiverMongoDBTestAsbtract {
 		logger.debug("Server #3: {}", server3);
 		Thread.sleep(2000);
 		MongoClientOptions mco = MongoClientOptions.builder()
-				.autoConnectRetry(true)
-				.connectTimeout(15000)
-				.socketTimeout(60000)
-				.build();
+				.autoConnectRetry(true).connectTimeout(15000)
+				.socketTimeout(60000).build();
 		mongo = new MongoClient(new ServerAddress(Network.getLocalHost()
 				.getHostName(), mongodConfig1.net().getPort()), mco);
 		mongoAdminDB = mongo.getDB(ADMIN_DATABASE_NAME);
@@ -275,10 +280,11 @@ public abstract class RiverMongoDBTestAsbtract {
 					PluginManager pluginManager = new PluginManager(
 							initialSettings.v2(), null);
 
-					Map<String, String> plugins = settings.getByPrefix("plugins").getAsMap();
-					for(String key : plugins.keySet()) {
-						pluginManager.downloadAndExtract(
-								plugins.get(key), false);
+					Map<String, String> plugins = settings.getByPrefix(
+							"plugins").getAsMap();
+					for (String key : plugins.keySet()) {
+						pluginManager.downloadAndExtract(plugins.get(key),
+								false);
 					}
 				}
 			} else {
@@ -329,7 +335,9 @@ public abstract class RiverMongoDBTestAsbtract {
 		logger.info("Done Cluster Health, status " + clusterHealth.getStatus());
 		GetResponse response = getNode().client()
 				.prepareGet("_river", river, "_meta").execute().actionGet();
-		assertThat(response.isExists(), equalTo(true));	}
+		assertThat(response.isExists(), equalTo(true));
+		refreshIndex("_river");
+	}
 
 	protected void createRiver(String jsonDefinition, Object... args)
 			throws Exception {
