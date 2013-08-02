@@ -46,6 +46,7 @@ import com.mongodb.util.JSON;
 @Test
 public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 
+	private static final String JAVASCRIPT_SCRIPT_TYPE = "js";
 	private DB mongoDB;
 	private DBCollection mongoCollection;
 
@@ -88,12 +89,12 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 		try {
 			logger.debug("Create river {}", getRiver());
 			String script = "ctx.ignore = true;";
-			super.createRiver(
-					TEST_MONGODB_RIVER_WITH_SCRIPT_JSON,
-					getRiver(), String.valueOf(getMongoPort1()),
+			super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, getRiver(),
+					String.valueOf(getMongoPort1()),
 					String.valueOf(getMongoPort2()),
 					String.valueOf(getMongoPort3()), getDatabase(),
-					getCollection(), "js", script, getIndex(), getDatabase());
+					getCollection(), JAVASCRIPT_SCRIPT_TYPE, script,
+					getIndex(), getDatabase());
 
 			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
@@ -129,12 +130,12 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 		try {
 			logger.debug("Create river {}", getRiver());
 			String script = "ctx.document.score = 200;";
-			super.createRiver(
-					TEST_MONGODB_RIVER_WITH_SCRIPT_JSON,
-					getRiver(), String.valueOf(getMongoPort1()),
+			super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, getRiver(),
+					String.valueOf(getMongoPort1()),
 					String.valueOf(getMongoPort2()),
 					String.valueOf(getMongoPort3()), getDatabase(),
-					getCollection(), "js",script, getIndex(), getDatabase());
+					getCollection(), JAVASCRIPT_SCRIPT_TYPE, script,
+					getIndex(), getDatabase());
 
 			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
@@ -183,12 +184,12 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 		try {
 			logger.debug("Create river {}", getRiver());
 			String script = "delete ctx.document.score;";
-			super.createRiver(
-					TEST_MONGODB_RIVER_WITH_SCRIPT_JSON,
-					getRiver(), String.valueOf(getMongoPort1()),
+			super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, getRiver(),
+					String.valueOf(getMongoPort1()),
 					String.valueOf(getMongoPort2()),
 					String.valueOf(getMongoPort3()), getDatabase(),
-					getCollection(), "js",script, getIndex(), getDatabase());
+					getCollection(), JAVASCRIPT_SCRIPT_TYPE, script,
+					getIndex(), getDatabase());
 
 			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
@@ -230,12 +231,12 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 		try {
 			logger.debug("Create river {}", getRiver());
 			String script = "ctx.document.score2 = ctx.document.score; delete ctx.document.score;";
-			super.createRiver(
-					TEST_MONGODB_RIVER_WITH_SCRIPT_JSON,
-					getRiver(), String.valueOf(getMongoPort1()),
+			super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, getRiver(),
+					String.valueOf(getMongoPort1()),
 					String.valueOf(getMongoPort2()),
 					String.valueOf(getMongoPort3()), getDatabase(),
-					getCollection(), "js",script, getIndex(), getDatabase());
+					getCollection(), JAVASCRIPT_SCRIPT_TYPE, script,
+					getIndex(), getDatabase());
 
 			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
@@ -277,12 +278,12 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAsbtract {
 		try {
 			logger.debug("Create river {}", getRiver());
 			String script = "if (ctx.document.to_be_deleted == true) { ctx.operation = 'd' };";
-			super.createRiver(
-					TEST_MONGODB_RIVER_WITH_SCRIPT_JSON,
-					getRiver(), String.valueOf(getMongoPort1()),
+			super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, getRiver(),
+					String.valueOf(getMongoPort1()),
 					String.valueOf(getMongoPort2()),
 					String.valueOf(getMongoPort3()), getDatabase(),
-					getCollection(), "js",script, getIndex(), getDatabase());
+					getCollection(), JAVASCRIPT_SCRIPT_TYPE, script,
+					getIndex(), getDatabase());
 
 			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
