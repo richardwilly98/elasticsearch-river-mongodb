@@ -27,6 +27,7 @@ import java.net.UnknownHostException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -57,6 +58,7 @@ import org.elasticsearch.cluster.block.ClusterBlockException;
 import org.elasticsearch.cluster.metadata.MappingMetaData;
 import org.elasticsearch.common.StopWatch;
 import org.elasticsearch.common.collect.ImmutableMap;
+import org.elasticsearch.common.collect.Maps;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.ESLoggerFactory;
@@ -120,6 +122,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	public final static String DROP_COLLECTION_FIELD = "drop_collection";
 	public final static String EXCLUDE_FIELDS_FIELD = "exclude_fields";
 	public final static String INCLUDE_COLLECTION_FIELD = "include_collection";
+	public final static String INITIAL_TIMESTAMP_FIELD = "initial_timestamp";
+	public final static String INITIAL_TIMESTAMP_SCRIPT_TYPE_FIELD = "script_type";
+	public final static String INITIAL_TIMESTAMP_SCRIPT_FIELD = "script";
 	public final static String FILTER_FIELD = "filter";
 	public final static String CREDENTIALS_FIELD = "credentials";
 	public final static String USER_FIELD = "user";
@@ -189,6 +194,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	protected final boolean dropCollection;
 	protected final Set<String> excludeFields;
 	protected final String includeCollection;
+	protected final BSONTimestamp initialTimestamp;
 
 	private final BasicDBObject findKeys = new BasicDBObject();
 	private final ExecutableScript script;
@@ -264,6 +270,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			if (mongoSettings.containsKey(OPTIONS_FIELD)) {
 				Map<String, Object> mongoOptionsSettings = (Map<String, Object>) mongoSettings
 						.get(OPTIONS_FIELD);
+				logger.trace("mongoOptionsSettings: " + mongoOptionsSettings);
 				mongoSecondaryReadPreference = XContentMapValues
 						.nodeBooleanValue(mongoOptionsSettings
 								.get(SECONDARY_READ_PREFERENCE_FIELD), false);
@@ -301,6 +308,44 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				} else {
 					excludeFields = null;
 				}
+				if (mongoOptionsSettings.containsKey(INITIAL_TIMESTAMP_FIELD)) {
+					BSONTimestamp timeStamp = null;
+					try {
+						Map<String, Object> initalTimestampSettings = (Map<String, Object>) mongoOptionsSettings
+								.get(INITIAL_TIMESTAMP_FIELD);
+						String scriptType = "js";
+						if (initalTimestampSettings
+								.containsKey(INITIAL_TIMESTAMP_SCRIPT_TYPE_FIELD)) {
+							scriptType = initalTimestampSettings.get(
+									INITIAL_TIMESTAMP_SCRIPT_TYPE_FIELD)
+									.toString();
+						}
+						if (initalTimestampSettings
+								.containsKey(INITIAL_TIMESTAMP_SCRIPT_FIELD)) {
+
+							ExecutableScript script = scriptService.executable(
+									scriptType,
+									initalTimestampSettings.get(
+											INITIAL_TIMESTAMP_SCRIPT_FIELD)
+											.toString(), Maps.newHashMap());
+							Object ctx = script.run();
+							logger.trace(
+									"initialTimestamp script returned: {}", ctx);
+							if (ctx != null) {
+								long timestamp = Long.parseLong(ctx.toString());
+								timeStamp = new BSONTimestamp((int) (new Date(
+										timestamp).getTime() / 1000), 1);
+							}
+						}
+					} catch (Throwable t) {
+						logger.warn("Could set initial timestamp", t,
+								new Object());
+					} finally {
+						initialTimestamp = timeStamp;
+					}
+				} else {
+					initialTimestamp = null;
+				}
 			} else {
 				mongoSecondaryReadPreference = false;
 				dropCollection = false;
@@ -308,6 +353,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				excludeFields = null;
 				mongoUseSSL = false;
 				mongoSSLVerifyCertificate = false;
+				initialTimestamp = null;
 			}
 
 			// Credentials
@@ -414,6 +460,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			excludeFields = null;
 			mongoUseSSL = false;
 			mongoSSLVerifyCertificate = false;
+			initialTimestamp = null;
 		}
 		mongoOplogNamespace = mongoDb + "." + mongoCollection;
 
@@ -1406,6 +1453,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					return (BSONTimestamp) JSON.parse(lastTimestamp);
 
 				}
+			}
+		} else {
+			if (initialTimestamp != null) {
+				return initialTimestamp;
 			}
 		}
 		return null;
