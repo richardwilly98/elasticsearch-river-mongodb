@@ -75,7 +75,7 @@ public class RiverMongoInitialTimestampTest extends RiverMongoDBTestAsbtract {
 
 	@AfterClass
 	public void cleanUp() {
-		// super.deleteRiver();
+		// super.deleteRiver(river);
 		logger.info("Drop database " + mongoDB.getName());
 		mongoDB.dropDatabase();
 	}
@@ -84,15 +84,17 @@ public class RiverMongoInitialTimestampTest extends RiverMongoDBTestAsbtract {
 	@Test
 	public void testInitialTimestampInGroovy() throws Throwable {
 		logger.debug("Start testInitialTimestampInGroovy");
+		String river = "testinitialtimestampgroovyriver-" + System.currentTimeMillis();
+		String index = "testinitialtimestampgroovyindex-" + System.currentTimeMillis();
 		try {
 			String script = "import groovy.time.TimeCategory; use(TimeCategory){def date = new Date() + 5.second; date.time;}";
 			super.createRiver(TEST_SIMPLE_MONGODB_RIVER_INITIAL_TIMESTAMP_JSON,
-					getRiver(), (Object) String.valueOf(getMongoPort1()),
+					river, (Object) String.valueOf(getMongoPort1()),
 					(Object) String.valueOf(getMongoPort2()),
 					(Object) String.valueOf(getMongoPort3()),
 					(Object) GROOVY_SCRIPT_TYPE, (Object) script,
 					(Object) getDatabase(), (Object) getCollection(),
-					(Object) getIndex(), (Object) getDatabase());
+					(Object) index, (Object) getDatabase());
 
 			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
@@ -101,13 +103,13 @@ public class RiverMongoInitialTimestampTest extends RiverMongoDBTestAsbtract {
 
 			assertThat(
 					getNode().client().admin().indices()
-							.exists(new IndicesExistsRequest(getIndex()))
+							.exists(new IndicesExistsRequest(index))
 							.actionGet().isExists(), equalTo(true));
 
-			refreshIndex();
+			refreshIndex(index);
 
 			CountResponse countResponse = getNode().client()
-					.count(countRequest(getIndex())).actionGet();
+					.count(countRequest(index)).actionGet();
 			assertThat(countResponse.getCount(), equalTo(0L));
 
 			mongoCollection.remove(dbObject);
@@ -121,17 +123,17 @@ public class RiverMongoInitialTimestampTest extends RiverMongoDBTestAsbtract {
 
 			assertThat(
 					getNode().client().admin().indices()
-							.exists(new IndicesExistsRequest(getIndex()))
+							.exists(new IndicesExistsRequest(index))
 							.actionGet().isExists(), equalTo(true));
 			assertThat(
 					getNode().client().admin().indices()
-							.prepareTypesExists(getIndex())
+							.prepareTypesExists(index)
 							.setTypes(getDatabase()).execute().actionGet()
 							.isExists(), equalTo(true));
 
-			refreshIndex();
+			refreshIndex(index);
 
-			countResponse = getNode().client().count(countRequest(getIndex()))
+			countResponse = getNode().client().count(countRequest(index))
 					.actionGet();
 			assertThat(countResponse.getCount(), equalTo(1L));
 			
@@ -141,8 +143,8 @@ public class RiverMongoInitialTimestampTest extends RiverMongoDBTestAsbtract {
 			t.printStackTrace();
 			throw t;
 		} finally {
-			super.deleteRiver();
-			super.deleteIndex();
+			super.deleteRiver(river);
+			super.deleteIndex(index);
 		}
 	}
 
@@ -150,15 +152,17 @@ public class RiverMongoInitialTimestampTest extends RiverMongoDBTestAsbtract {
 	@Test
 	public void testInitialTimestampInJavascript() throws Throwable {
 		logger.debug("Start testInitialTimestampInJavascript");
+		String river = "testinitialtimestampjavascriptriver-" + System.currentTimeMillis();
+		String index = "testinitialtimestampjavascriptindex-" + System.currentTimeMillis();
 		try {
 			String script = "var date = new Date(); date.setSeconds(date.getSeconds() + 5); new java.lang.Long(date.getTime());";
 			super.createRiver(TEST_SIMPLE_MONGODB_RIVER_INITIAL_TIMESTAMP_JSON,
-					getRiver(), (Object) String.valueOf(getMongoPort1()),
+					river, (Object) String.valueOf(getMongoPort1()),
 					(Object) String.valueOf(getMongoPort2()),
 					(Object) String.valueOf(getMongoPort3()),
 					(Object) JAVASCRIPT_SCRIPT_TYPE, (Object) script,
 					(Object) getDatabase(), (Object) getCollection(),
-					(Object) getIndex(), (Object) getDatabase());
+					(Object) index, (Object) getDatabase());
 
 			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
@@ -167,13 +171,13 @@ public class RiverMongoInitialTimestampTest extends RiverMongoDBTestAsbtract {
 
 			assertThat(
 					getNode().client().admin().indices()
-							.exists(new IndicesExistsRequest(getIndex()))
+							.exists(new IndicesExistsRequest(index))
 							.actionGet().isExists(), equalTo(true));
 
-			refreshIndex();
+			refreshIndex(index);
 
 			CountResponse countResponse = getNode().client()
-					.count(countRequest(getIndex())).actionGet();
+					.count(countRequest(index)).actionGet();
 			assertThat(countResponse.getCount(), equalTo(0L));
 
 			mongoCollection.remove(dbObject);
@@ -187,17 +191,17 @@ public class RiverMongoInitialTimestampTest extends RiverMongoDBTestAsbtract {
 
 			assertThat(
 					getNode().client().admin().indices()
-							.exists(new IndicesExistsRequest(getIndex()))
+							.exists(new IndicesExistsRequest(index))
 							.actionGet().isExists(), equalTo(true));
 			assertThat(
 					getNode().client().admin().indices()
-							.prepareTypesExists(getIndex())
+							.prepareTypesExists(index)
 							.setTypes(getDatabase()).execute().actionGet()
 							.isExists(), equalTo(true));
 
-			refreshIndex();
+			refreshIndex(index);
 
-			countResponse = getNode().client().count(countRequest(getIndex()))
+			countResponse = getNode().client().count(countRequest(index))
 					.actionGet();
 			assertThat(countResponse.getCount(), equalTo(1L));
 			
@@ -207,8 +211,8 @@ public class RiverMongoInitialTimestampTest extends RiverMongoDBTestAsbtract {
 			t.printStackTrace();
 			throw t;
 		} finally {
-			super.deleteRiver();
-			super.deleteIndex();
+			super.deleteRiver(river);
+			super.deleteIndex(index);
 		}
 	}
 }

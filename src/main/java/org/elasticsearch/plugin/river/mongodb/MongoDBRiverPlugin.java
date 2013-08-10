@@ -21,7 +21,10 @@ package org.elasticsearch.plugin.river.mongodb;
 
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.plugins.AbstractPlugin;
+import org.elasticsearch.rest.RestModule;
+import org.elasticsearch.rest.action.RestMongoDBRiverAction;
 import org.elasticsearch.river.RiversModule;
+import org.elasticsearch.river.mongodb.MongoDBRiver;
 import org.elasticsearch.river.mongodb.MongodbRiverModule;
 
 /**
@@ -36,14 +39,28 @@ public class MongoDBRiverPlugin extends AbstractPlugin {
   }
 
   @Override public String name() {
-    return "river-mongodb";
+    return MongoDBRiver.NAME;
   }
 
   @Override public String description() {
-    return "River MongoDB Plugin";
+	  return MongoDBRiver.DESCRIPTION;
   }
 
+  /**
+   * Register the MongoDB river to Elasticsearch node
+   *
+   * @param module
+   */
   public void onModule(RiversModule module) {
-      module.registerRiver("mongodb", MongodbRiverModule.class);
+      module.registerRiver(MongoDBRiver.TYPE, MongodbRiverModule.class);
+  }
+  
+  /**
+   * Register the REST move to Elasticsearch node
+   *
+   * @param module
+   */
+  public void onModule(RestModule module) {
+      module.addRestAction(RestMongoDBRiverAction.class);
   }
 }

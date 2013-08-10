@@ -76,6 +76,7 @@ import org.elasticsearch.river.RiverIndexName;
 import org.elasticsearch.river.RiverName;
 import org.elasticsearch.river.RiverSettings;
 import org.elasticsearch.river.mongodb.util.MongoDBHelper;
+import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 import org.elasticsearch.script.ExecutableScript;
 import org.elasticsearch.script.ScriptService;
 
@@ -109,8 +110,11 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 	public final static String IS_MONGODB_ATTACHMENT = "is_mongodb_attachment";
 	public final static String MONGODB_ATTACHMENT = "mongodb_attachment";
-	public final static String RIVER_TYPE = "mongodb";
-	public final static String ROOT_NAME = RIVER_TYPE;
+	public final static String TYPE = "mongodb";
+	public final static String NAME = "mongodb-river";
+	public final static String STATUS = "_mongodbstatus";
+	public final static String ENABLED = "enabled";
+	public final static String DESCRIPTION = "MongoDB River Plugin";
 	public final static String DB_FIELD = "db";
 	public final static String SERVERS_FIELD = "servers";
 	public final static String HOST_FIELD = "host";
@@ -186,6 +190,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	protected final boolean mongoUseSSL;
 	protected final boolean mongoSSLVerifyCertificate;
 
+	protected final String script;
+	protected final String scriptType;
 	protected final String indexName;
 	protected final String typeName;
 	protected final int bulkSize;
@@ -196,12 +202,14 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	protected final String includeCollection;
 	protected final BSONTimestamp initialTimestamp;
 
-	private final BasicDBObject findKeys = new BasicDBObject();
-	private final ExecutableScript script;
+	protected final BasicDBObject findKeys = new BasicDBObject();
+	protected final ScriptService scriptService;
 
 	protected volatile List<Thread> tailerThreads = new ArrayList<Thread>();
 	protected volatile Thread indexerThread;
-	protected volatile boolean active = true;
+	protected volatile Thread statusThread;
+	protected volatile boolean active = false;
+	protected volatile boolean startInvoked = false;
 
 	// private final TransferQueue<Map<String, Object>> stream = new
 	// LinkedTransferQueue<Map<String, Object>>();
@@ -221,16 +229,16 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		if (logger.isDebugEnabled()) {
 			logger.debug("Prefix: [{}] - name: [{}]", logger.getPrefix(),
 					logger.getName());
-			logger.debug("River settings: ", settings.settings());
 		}
+		this.scriptService = scriptService;
 		this.riverIndexName = riverIndexName;
 		this.client = client;
 		String mongoHost;
 		int mongoPort;
 
-		if (settings.settings().containsKey(RIVER_TYPE)) {
+		if (settings.settings().containsKey(TYPE)) {
 			Map<String, Object> mongoSettings = (Map<String, Object>) settings
-					.settings().get(RIVER_TYPE);
+					.settings().get(TYPE);
 			if (mongoSettings.containsKey(SERVERS_FIELD)) {
 				Object mongoServersSettings = mongoSettings.get(SERVERS_FIELD);
 				logger.info("mongoServersSettings: " + mongoServersSettings);
@@ -323,12 +331,14 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						if (initalTimestampSettings
 								.containsKey(INITIAL_TIMESTAMP_SCRIPT_FIELD)) {
 
-							ExecutableScript script = scriptService.executable(
-									scriptType,
-									initalTimestampSettings.get(
-											INITIAL_TIMESTAMP_SCRIPT_FIELD)
-											.toString(), Maps.newHashMap());
-							Object ctx = script.run();
+							ExecutableScript scriptExecutable = scriptService
+									.executable(
+											scriptType,
+											initalTimestampSettings
+													.get(INITIAL_TIMESTAMP_SCRIPT_FIELD)
+													.toString(), Maps
+													.newHashMap());
+							Object ctx = scriptExecutable.run();
 							logger.trace(
 									"initialTimestamp script returned: {}", ctx);
 							if (ctx != null) {
@@ -423,17 +433,23 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			}
 
 			if (mongoSettings.containsKey(SCRIPT_FIELD)) {
-				String scriptType = "js";
+				// String scriptType = "js";
+				script = mongoSettings.get(SCRIPT_FIELD).toString();
 				if (mongoSettings.containsKey(SCRIPT_TYPE_FIELD)) {
+					// scriptType = mongoSettings.get(SCRIPT_TYPE_FIELD)
+					// .toString();
 					scriptType = mongoSettings.get(SCRIPT_TYPE_FIELD)
 							.toString();
+				} else {
+					scriptType = "js";
 				}
 
-				script = scriptService.executable(scriptType, mongoSettings
-						.get(SCRIPT_FIELD).toString(), ImmutableMap.of(
-						"logger", logger));
+				// script = scriptService.executable(scriptType, myScript,
+				// ImmutableMap.of(
+				// "logger", logger));
 			} else {
 				script = null;
+				scriptType = null;
 			}
 		} else {
 			mongoHost = DEFAULT_DB_HOST;
@@ -454,7 +470,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			mongoLocalPassword = "";
 			// mongoDbUser = "";
 			// mongoDbPassword = "";
+			// script = null;
 			script = null;
+			scriptType = null;
 			dropCollection = false;
 			includeCollection = "";
 			excludeFields = null;
@@ -495,10 +513,21 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		} else {
 			stream = new ArrayBlockingQueue<Map<String, Object>>(throttleSize);
 		}
+
+		statusThread = EsExecutors.daemonThreadFactory(
+				settings.globalSettings(), "mongodb_river_status").newThread(
+				new Status());
+		statusThread.start();
 	}
 
-	@Override
 	public void start() {
+		if (!MongoDBRiverHelper.isRiverEnabled(client, riverName.getName())) {
+			logger.debug("Cannot start river {}. It is currently disabled",
+					riverName.getName());
+			startInvoked = true;
+			return;
+		}
+		active = true;
 		for (ServerAddress server : mongoServers) {
 			logger.info("Using mongodb server(s): host [{}], port [{}]",
 					server.getHost(), server.getPort());
@@ -506,10 +535,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		// TODO: include plugin version from pom.properties file.
 		// http://stackoverflow.com/questions/5270611/read-maven-properties-file-inside-jar-war-file
 		logger.info(
-				"starting mongodb stream. options: secondaryreadpreference [{}], drop_collection [{}], throttlesize [{}], gridfs [{}], filter [{}], db [{}], collection [{}], script [{}], indexing to [{}]/[{}]",
-				mongoSecondaryReadPreference, dropCollection, throttleSize,
-				mongoGridFS, mongoFilter, mongoDb, mongoCollection, script,
-				indexName, typeName);
+				"starting mongodb stream. options: secondaryreadpreference [{}], drop_collection [{}], include_collection [{}], throttlesize [{}], gridfs [{}], filter [{}], db [{}], collection [{}], script [{}], indexing to [{}]/[{}]",
+				mongoSecondaryReadPreference, dropCollection,
+				includeCollection, throttleSize, mongoGridFS, mongoFilter,
+				mongoDb, mongoCollection, script, indexName, typeName);
 		try {
 			client.admin().indices().prepareCreate(indexName).execute()
 					.actionGet();
@@ -573,6 +602,12 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				settings.globalSettings(), "mongodb_river_indexer").newThread(
 				new Indexer());
 		indexerThread.start();
+
+		startInvoked = true;
+		// statusThread = EsExecutors.daemonThreadFactory(
+		// settings.globalSettings(), "mongodb_river_status").newThread(
+		// new Status());
+		// statusThread.start();
 	}
 
 	private boolean isMongos() {
@@ -637,9 +672,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		return configDb;
 	}
 
+	// TODO: MongoClientOptions should be configurable
 	private Mongo getMongoClient() {
 		if (mongo == null) {
-
 			Builder builder = MongoClientOptions.builder()
 					.autoConnectRetry(true).connectTimeout(15000)
 					.socketKeepAlive(true).socketTimeout(60000);
@@ -647,7 +682,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				builder.socketFactory(getSSLSocketFactory());
 			}
 
-			// TODO: MongoClientOptions should be configurable
 			MongoClientOptions mco = builder.build();
 			mongo = new MongoClient(mongoServers, mco);
 		}
@@ -655,6 +689,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	}
 
 	private void closeMongoClient() {
+		if (adminDb != null) {
+			adminDb = null;
+		}
 		if (mongo != null) {
 			mongo.close();
 			mongo = null;
@@ -683,17 +720,27 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 	@Override
 	public void close() {
-		if (active) {
-			logger.info("closing mongodb stream river");
-			active = false;
+		// if (active) {
+		logger.info("closing mongodb stream river");
+		try {
+			// active = false;
 			for (Thread thread : tailerThreads) {
 				thread.interrupt();
 			}
+			tailerThreads.clear();
 			if (indexerThread != null) {
 				indexerThread.interrupt();
 			}
+			// if (statusThread != null) {
+			// statusThread.interrupt();
+			// }
+			// }
+			closeMongoClient();
+		} catch (Throwable t) {
+			logger.error("Fail to close river {}", t, riverName.getName());
+		} finally {
+			active = false;
 		}
-		closeMongoClient();
 	}
 
 	private SocketFactory getSSLSocketFactory() {
@@ -743,6 +790,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		private int insertedDocuments = 0;
 		private int updatedDocuments = 0;
 		private StopWatch sw;
+		private ExecutableScript scriptExecutable;
 
 		@Override
 		public void run() {
@@ -751,6 +799,12 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				deletedDocuments = 0;
 				insertedDocuments = 0;
 				updatedDocuments = 0;
+
+				if (script != null && scriptType != null) {
+					scriptExecutable = scriptService.executable(scriptType,
+							script, ImmutableMap.of("logger", logger));
+				}
+
 				try {
 					BSONTimestamp lastTimestamp = null;
 					BulkRequestBuilder bulk = client.prepareBulk();
@@ -795,6 +849,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						logger.debug("river-mongodb indexer interrupted");
 					}
 					Thread.currentThread().interrupt();
+					break;
 				}
 				logStatistics();
 			}
@@ -827,6 +882,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			}
 
 			if (!includeCollection.isEmpty()) {
+				logger.trace(
+						"About to include collection. set attribute {} / {} ",
+						includeCollection, mongoCollection);
 				data.put(includeCollection, mongoCollection);
 			}
 
@@ -837,7 +895,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			} catch (IOException e) {
 				logger.warn("failed to parse {}", e);
 			}
-			if (script != null) {
+			if (scriptExecutable != null) {
 				if (ctx != null) {
 					ctx.put("document", data);
 					ctx.put("operation", operation);
@@ -845,13 +903,16 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						ctx.put("id", objectId);
 					}
 					if (logger.isDebugEnabled()) {
+						logger.debug("Script to be executed: {}",
+								scriptExecutable);
 						logger.debug("Context before script executed: {}", ctx);
 					}
-					script.setNextVar("ctx", ctx);
+					scriptExecutable.setNextVar("ctx", ctx);
 					try {
-						script.run();
+						scriptExecutable.run();
 						// we need to unwrap the context object...
-						ctx = (Map<String, Object>) script.unwrap(ctx);
+						ctx = (Map<String, Object>) scriptExecutable
+								.unwrap(ctx);
 					} catch (Exception e) {
 						logger.warn("failed to script process {}, ignoring", e,
 								ctx);
@@ -1166,10 +1227,12 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						DBObject item = oplogCursor.next();
 						processOplogEntry(item);
 					}
+					logger.trace("*** Try again in few seconds...");
 					Thread.sleep(500);
 				} catch (MongoInterruptedException mIEx) {
 					logger.error("Mongo driver has been interrupted", mIEx);
-					active = false;
+					// active = false;
+					break;
 				} catch (MongoException mEx) {
 					logger.error("Mongo gave an exception", mEx);
 				} catch (NoSuchElementException nEx) {
@@ -1179,6 +1242,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						logger.debug("river-mongodb slurper interrupted");
 					}
 					Thread.currentThread().interrupt();
+					break;
 				}
 			}
 		}
@@ -1413,6 +1477,43 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 	}
 
+	private class Status implements Runnable {
+
+		@Override
+		public void run() {
+			while (true) {
+				try {
+					if (startInvoked) {
+						// logger.trace("*** river status thread waiting: {} ***",
+						// riverName.getName());
+
+						boolean enabled = MongoDBRiverHelper.isRiverEnabled(
+								client, riverName.getName());
+
+						if (active && !enabled) {
+							logger.info("About to stop river: {}",
+									riverName.getName());
+							close();
+						}
+
+						if (!active && enabled) {
+							logger.trace("About to start river: {}",
+									riverName.getName());
+							// active = true;
+							start();
+						}
+					}
+					Thread.sleep(1000L);
+				} catch (InterruptedException e) {
+					logger.info("Status thread interrupted", e, (Object) null);
+					Thread.currentThread().interrupt();
+					break;
+				}
+
+			}
+		}
+	}
+
 	private XContentBuilder getGridFSMapping() throws IOException {
 		XContentBuilder mapping = jsonBuilder().startObject()
 				.startObject(typeName).startObject("properties")
@@ -1441,7 +1542,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			// API changes since 0.90.0 lastTimestampResponse.sourceAsMap()
 			// replaced by lastTimestampResponse.getSourceAsMap()
 			Map<String, Object> mongodbState = (Map<String, Object>) lastTimestampResponse
-					.getSourceAsMap().get(ROOT_NAME);
+					.getSourceAsMap().get(TYPE);
 			if (mongodbState != null) {
 				String lastTimestamp = mongodbState.get(LAST_TIMESTAMP_FIELD)
 						.toString();
@@ -1474,7 +1575,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			bulk.add(indexRequest(riverIndexName)
 					.type(riverName.getName())
 					.id(namespace)
-					.source(jsonBuilder().startObject().startObject(ROOT_NAME)
+					.source(jsonBuilder().startObject().startObject(TYPE)
 							.field(LAST_TIMESTAMP_FIELD, JSON.serialize(time))
 							.endObject().endObject()));
 		} catch (IOException e) {

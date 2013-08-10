@@ -1,24 +1,30 @@
 <?xml version="1.0"?>
 <assembly>
-    <id>plugin</id>
-    <formats>
-        <format>zip</format>
-    </formats>
-    <includeBaseDirectory>false</includeBaseDirectory>
-    <dependencySets>
-        <dependencySet>
-            <outputDirectory>/</outputDirectory>
-            <useProjectArtifact>true</useProjectArtifact>
-            <useTransitiveFiltering>true</useTransitiveFiltering>
-            <excludes>
-                <exclude>org.elasticsearch:elasticsearch</exclude>
-            </excludes>
-        </dependencySet>
-        <!-- Include MongoDB driver as dependency -->
-        <dependencySet>
+	<id>plugin</id>
+	<formats>
+		<format>zip</format>
+	</formats>
+	<includeBaseDirectory>false</includeBaseDirectory>
+	<dependencySets>
+		<dependencySet>
+			<outputDirectory>/</outputDirectory>
+			<useProjectArtifact>true</useProjectArtifact>
+			<useTransitiveFiltering>true</useTransitiveFiltering>
+			<excludes>
+				<exclude>org.elasticsearch:elasticsearch</exclude>
+			</excludes>
+		</dependencySet>
+		<!-- Include MongoDB driver as dependency -->
+		<dependencySet>
 			<includes>
 				<include>org.mongodb:mongo-java-driver</include>
 			</includes>
-        </dependencySet>
-    </dependencySets>
+		</dependencySet>
+	</dependencySets>
+	<fileSets>
+		<fileSet>
+			<outputDirectory>_site</outputDirectory>
+			<directory>src/site</directory>
+		</fileSet>
+	</fileSets>
 </assembly>
