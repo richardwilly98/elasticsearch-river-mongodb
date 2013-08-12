@@ -997,7 +997,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 							bulk.request().requests().clear();
 							client.admin().indices().prepareRefresh(index)
 									.execute().actionGet();
-							ImmutableMap<String, MappingMetaData> mappings = client
+							Map<String, MappingMetaData> mappings = client
 									.admin().cluster().prepareState().execute()
 									.actionGet().getState().getMetaData()
 									.index(index).mappings();
