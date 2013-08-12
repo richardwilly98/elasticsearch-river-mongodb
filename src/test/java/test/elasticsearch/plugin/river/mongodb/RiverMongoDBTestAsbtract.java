@@ -44,7 +44,6 @@ import org.elasticsearch.plugins.PluginManager;
 import org.testng.Assert;
 import org.testng.annotations.AfterSuite;
 import org.testng.annotations.BeforeSuite;
-import org.testng.annotations.Test;
 
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
@@ -68,7 +67,6 @@ import de.flapdoodle.embed.mongo.config.Storage;
 import de.flapdoodle.embed.process.distribution.GenericVersion;
 import de.flapdoodle.embed.process.runtime.Network;
 
-@Test
 public abstract class RiverMongoDBTestAsbtract {
 
 	public static final String TEST_MONGODB_RIVER_SIMPLE_JSON = "/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river.json";
