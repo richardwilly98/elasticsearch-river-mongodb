@@ -27,9 +27,7 @@ import java.net.UnknownHostException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -58,17 +56,14 @@ import org.elasticsearch.cluster.block.ClusterBlockException;
 import org.elasticsearch.cluster.metadata.MappingMetaData;
 import org.elasticsearch.common.StopWatch;
 import org.elasticsearch.common.collect.ImmutableMap;
-import org.elasticsearch.common.collect.Maps;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.ESLoggerFactory;
-import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.util.concurrent.EsExecutors;
 import org.elasticsearch.common.util.concurrent.jsr166y.LinkedTransferQueue;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.common.xcontent.XContentType;
-import org.elasticsearch.common.xcontent.support.XContentMapValues;
 import org.elasticsearch.indices.IndexAlreadyExistsException;
 import org.elasticsearch.river.AbstractRiverComponent;
 import org.elasticsearch.river.River;
@@ -115,44 +110,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	public final static String STATUS = "_mongodbstatus";
 	public final static String ENABLED = "enabled";
 	public final static String DESCRIPTION = "MongoDB River Plugin";
-	public final static String DB_FIELD = "db";
-	public final static String SERVERS_FIELD = "servers";
-	public final static String HOST_FIELD = "host";
-	public final static String PORT_FIELD = "port";
-	public final static String OPTIONS_FIELD = "options";
-	public final static String SECONDARY_READ_PREFERENCE_FIELD = "secondary_read_preference";
-	public final static String SSL_CONNECTION_FIELD = "ssl";
-	public final static String SSL_VERIFY_CERT_FIELD = "ssl_verify_certificate";
-	public final static String DROP_COLLECTION_FIELD = "drop_collection";
-	public final static String EXCLUDE_FIELDS_FIELD = "exclude_fields";
-	public final static String INCLUDE_COLLECTION_FIELD = "include_collection";
-	public final static String INITIAL_TIMESTAMP_FIELD = "initial_timestamp";
-	public final static String INITIAL_TIMESTAMP_SCRIPT_TYPE_FIELD = "script_type";
-	public final static String INITIAL_TIMESTAMP_SCRIPT_FIELD = "script";
-	public final static String FILTER_FIELD = "filter";
-	public final static String CREDENTIALS_FIELD = "credentials";
-	public final static String USER_FIELD = "user";
-	public final static String PASSWORD_FIELD = "password";
-	public final static String SCRIPT_FIELD = "script";
-	public final static String SCRIPT_TYPE_FIELD = "scriptType";
-	public final static String COLLECTION_FIELD = "collection";
-	public final static String GRIDFS_FIELD = "gridfs";
-	public final static String INDEX_OBJECT = "index";
-	public final static String NAME_FIELD = "name";
-	public final static String TYPE_FIELD = "type";
-	public final static String LOCAL_DB_FIELD = "local";
-	public final static String ADMIN_DB_FIELD = "admin";
-	public final static String DB_LOCAL = "local";
-	public final static String DB_ADMIN = "admin";
-	public final static String DB_CONFIG = "config";
-	public final static String DEFAULT_DB_HOST = "localhost";
-	public final static String THROTTLE_SIZE_FIELD = "throttle_size";
-	public final static int DEFAULT_DB_PORT = 27017;
-	public final static String BULK_SIZE_FIELD = "bulk_size";
-	public final static String BULK_TIMEOUT_FIELD = "bulk_timeout";
 	public final static String LAST_TIMESTAMP_FIELD = "_last_ts";
-	public final static String MONGODB_LOCAL = "local";
-	public final static String MONGODB_ADMIN = "admin";
+	public final static String MONGODB_LOCAL_DATABASE = "local";
+	public final static String MONGODB_ADMIN_DATABASE = "admin";
+	public final static String MONGODB_CONFIG_DATABASE = "config";
 	public final static String MONGODB_ID_FIELD = "_id";
 	public final static String MONGODB_OR_OPERATOR = "$or";
 	public final static String MONGODB_AND_OPERATOR = "$and";
@@ -173,37 +134,13 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	public final static String GRIDFS_CHUNKS_SUFFIX = ".chunks";
 
 	protected final Client client;
-
 	protected final String riverIndexName;
+	protected final ScriptService scriptService;
 
-	protected final List<ServerAddress> mongoServers = new ArrayList<ServerAddress>();
-	protected final String mongoDb;
-	protected final String mongoCollection;
-	protected final boolean mongoGridFS;
-	protected final String mongoFilter;
-	protected final String mongoAdminUser;
-	protected final String mongoAdminPassword;
-	protected final String mongoLocalUser;
-	protected final String mongoLocalPassword;
+	protected final MongoDBRiverDefinition definition;
 	protected final String mongoOplogNamespace;
-	protected final boolean mongoSecondaryReadPreference;
-	protected final boolean mongoUseSSL;
-	protected final boolean mongoSSLVerifyCertificate;
-
-	protected final String script;
-	protected final String scriptType;
-	protected final String indexName;
-	protected final String typeName;
-	protected final int bulkSize;
-	protected final TimeValue bulkTimeout;
-	protected final int throttleSize;
-	protected final boolean dropCollection;
-	protected final Set<String> excludeFields;
-	protected final String includeCollection;
-	protected final BSONTimestamp initialTimestamp;
 
 	protected final BasicDBObject findKeys = new BasicDBObject();
-	protected final ScriptService scriptService;
 
 	protected volatile List<Thread> tailerThreads = new ArrayList<Thread>();
 	protected volatile Thread indexerThread;
@@ -211,15 +148,12 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	protected volatile boolean active = false;
 	protected volatile boolean startInvoked = false;
 
-	// private final TransferQueue<Map<String, Object>> stream = new
-	// LinkedTransferQueue<Map<String, Object>>();
 	private final BlockingQueue<Map<String, Object>> stream;
 	private SocketFactory sslSocketFactory;
 
 	private Mongo mongo;
 	private DB adminDb;
-
-	@SuppressWarnings("unchecked")
+	
 	@Inject
 	public MongoDBRiver(final RiverName riverName,
 			final RiverSettings settings,
@@ -233,285 +167,20 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		this.scriptService = scriptService;
 		this.riverIndexName = riverIndexName;
 		this.client = client;
-		String mongoHost;
-		int mongoPort;
+		
+		this.definition = MongoDBRiverDefinition.parseSettings(riverName, settings, scriptService);
 
-		if (settings.settings().containsKey(TYPE)) {
-			Map<String, Object> mongoSettings = (Map<String, Object>) settings
-					.settings().get(TYPE);
-			if (mongoSettings.containsKey(SERVERS_FIELD)) {
-				Object mongoServersSettings = mongoSettings.get(SERVERS_FIELD);
-				logger.info("mongoServersSettings: " + mongoServersSettings);
-				boolean array = XContentMapValues.isArray(mongoServersSettings);
-
-				if (array) {
-					ArrayList<Map<String, Object>> feeds = (ArrayList<Map<String, Object>>) mongoServersSettings;
-					for (Map<String, Object> feed : feeds) {
-						mongoHost = XContentMapValues.nodeStringValue(
-								feed.get(HOST_FIELD), null);
-						mongoPort = XContentMapValues.nodeIntegerValue(
-								feed.get(PORT_FIELD), 0);
-						logger.info("Server: " + mongoHost + " - " + mongoPort);
-						try {
-							mongoServers.add(new ServerAddress(mongoHost,
-									mongoPort));
-						} catch (UnknownHostException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-					}
-				}
-			} else {
-				mongoHost = XContentMapValues.nodeStringValue(
-						mongoSettings.get(HOST_FIELD), DEFAULT_DB_HOST);
-				mongoPort = XContentMapValues.nodeIntegerValue(
-						mongoSettings.get(PORT_FIELD), DEFAULT_DB_PORT);
-				try {
-					mongoServers.add(new ServerAddress(mongoHost, mongoPort));
-				} catch (UnknownHostException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
+		if (definition.getExcludeFields() != null) {
+			for (String key : definition.getExcludeFields()) {
+				findKeys.put(key, 0);
 			}
-
-			// MongoDB options
-			if (mongoSettings.containsKey(OPTIONS_FIELD)) {
-				Map<String, Object> mongoOptionsSettings = (Map<String, Object>) mongoSettings
-						.get(OPTIONS_FIELD);
-				logger.trace("mongoOptionsSettings: " + mongoOptionsSettings);
-				mongoSecondaryReadPreference = XContentMapValues
-						.nodeBooleanValue(mongoOptionsSettings
-								.get(SECONDARY_READ_PREFERENCE_FIELD), false);
-				dropCollection = XContentMapValues.nodeBooleanValue(
-						mongoOptionsSettings.get(DROP_COLLECTION_FIELD), false);
-				mongoUseSSL = XContentMapValues.nodeBooleanValue(
-						mongoOptionsSettings.get(SSL_CONNECTION_FIELD), false);
-				mongoSSLVerifyCertificate = XContentMapValues.nodeBooleanValue(
-						mongoOptionsSettings.get(SSL_VERIFY_CERT_FIELD), true);
-
-				includeCollection = XContentMapValues.nodeStringValue(
-						mongoOptionsSettings.get(INCLUDE_COLLECTION_FIELD), "");
-				if (mongoOptionsSettings.containsKey(EXCLUDE_FIELDS_FIELD)) {
-					excludeFields = new HashSet<String>();
-					Object excludeFieldsSettings = mongoOptionsSettings
-							.get(EXCLUDE_FIELDS_FIELD);
-					logger.info("excludeFieldsSettings: "
-							+ excludeFieldsSettings);
-					boolean array = XContentMapValues
-							.isArray(excludeFieldsSettings);
-
-					if (array) {
-						ArrayList<String> fields = (ArrayList<String>) excludeFieldsSettings;
-						for (String field : fields) {
-							logger.info("Field: " + field);
-							excludeFields.add(field);
-						}
-					}
-
-					if (excludeFields != null) {
-						for (String key : excludeFields) {
-							findKeys.put(key, 0);
-						}
-					}
-				} else {
-					excludeFields = null;
-				}
-				if (mongoOptionsSettings.containsKey(INITIAL_TIMESTAMP_FIELD)) {
-					BSONTimestamp timeStamp = null;
-					try {
-						Map<String, Object> initalTimestampSettings = (Map<String, Object>) mongoOptionsSettings
-								.get(INITIAL_TIMESTAMP_FIELD);
-						String scriptType = "js";
-						if (initalTimestampSettings
-								.containsKey(INITIAL_TIMESTAMP_SCRIPT_TYPE_FIELD)) {
-							scriptType = initalTimestampSettings.get(
-									INITIAL_TIMESTAMP_SCRIPT_TYPE_FIELD)
-									.toString();
-						}
-						if (initalTimestampSettings
-								.containsKey(INITIAL_TIMESTAMP_SCRIPT_FIELD)) {
-
-							ExecutableScript scriptExecutable = scriptService
-									.executable(
-											scriptType,
-											initalTimestampSettings
-													.get(INITIAL_TIMESTAMP_SCRIPT_FIELD)
-													.toString(), Maps
-													.newHashMap());
-							Object ctx = scriptExecutable.run();
-							logger.trace(
-									"initialTimestamp script returned: {}", ctx);
-							if (ctx != null) {
-								long timestamp = Long.parseLong(ctx.toString());
-								timeStamp = new BSONTimestamp((int) (new Date(
-										timestamp).getTime() / 1000), 1);
-							}
-						}
-					} catch (Throwable t) {
-						logger.warn("Could set initial timestamp", t,
-								new Object());
-					} finally {
-						initialTimestamp = timeStamp;
-					}
-				} else {
-					initialTimestamp = null;
-				}
-			} else {
-				mongoSecondaryReadPreference = false;
-				dropCollection = false;
-				includeCollection = "";
-				excludeFields = null;
-				mongoUseSSL = false;
-				mongoSSLVerifyCertificate = false;
-				initialTimestamp = null;
-			}
-
-			// Credentials
-			if (mongoSettings.containsKey(CREDENTIALS_FIELD)) {
-				String dbCredential;
-				String mau = "";
-				String map = "";
-				String mlu = "";
-				String mlp = "";
-				// String mdu = "";
-				// String mdp = "";
-				Object mongoCredentialsSettings = mongoSettings
-						.get(CREDENTIALS_FIELD);
-				boolean array = XContentMapValues
-						.isArray(mongoCredentialsSettings);
-
-				if (array) {
-					ArrayList<Map<String, Object>> credentials = (ArrayList<Map<String, Object>>) mongoCredentialsSettings;
-					for (Map<String, Object> credential : credentials) {
-						dbCredential = XContentMapValues.nodeStringValue(
-								credential.get(DB_FIELD), null);
-						if (ADMIN_DB_FIELD.equals(dbCredential)) {
-							mau = XContentMapValues.nodeStringValue(
-									credential.get(USER_FIELD), null);
-							map = XContentMapValues.nodeStringValue(
-									credential.get(PASSWORD_FIELD), null);
-						} else if (LOCAL_DB_FIELD.equals(dbCredential)) {
-							mlu = XContentMapValues.nodeStringValue(
-									credential.get(USER_FIELD), null);
-							mlp = XContentMapValues.nodeStringValue(
-									credential.get(PASSWORD_FIELD), null);
-							// } else {
-							// mdu = XContentMapValues.nodeStringValue(
-							// credential.get(USER_FIELD), null);
-							// mdp = XContentMapValues.nodeStringValue(
-							// credential.get(PASSWORD_FIELD), null);
-						}
-					}
-				}
-				mongoAdminUser = mau;
-				mongoAdminPassword = map;
-				mongoLocalUser = mlu;
-				mongoLocalPassword = mlp;
-				// mongoDbUser = mdu;
-				// mongoDbPassword = mdp;
-
-			} else {
-				mongoAdminUser = "";
-				mongoAdminPassword = "";
-				mongoLocalUser = "";
-				mongoLocalPassword = "";
-				// mongoDbUser = "";
-				// mongoDbPassword = "";
-			}
-
-			mongoDb = XContentMapValues.nodeStringValue(
-					mongoSettings.get(DB_FIELD), riverName.name());
-			mongoCollection = XContentMapValues.nodeStringValue(
-					mongoSettings.get(COLLECTION_FIELD), riverName.name());
-			mongoGridFS = XContentMapValues.nodeBooleanValue(
-					mongoSettings.get(GRIDFS_FIELD), false);
-			if (mongoSettings.containsKey(FILTER_FIELD)) {
-				mongoFilter = XContentMapValues.nodeStringValue(
-						mongoSettings.get(FILTER_FIELD), "");
-			} else {
-				mongoFilter = "";
-			}
-
-			if (mongoSettings.containsKey(SCRIPT_FIELD)) {
-				// String scriptType = "js";
-				script = mongoSettings.get(SCRIPT_FIELD).toString();
-				if (mongoSettings.containsKey(SCRIPT_TYPE_FIELD)) {
-					// scriptType = mongoSettings.get(SCRIPT_TYPE_FIELD)
-					// .toString();
-					scriptType = mongoSettings.get(SCRIPT_TYPE_FIELD)
-							.toString();
-				} else {
-					scriptType = "js";
-				}
-
-				// script = scriptService.executable(scriptType, myScript,
-				// ImmutableMap.of(
-				// "logger", logger));
-			} else {
-				script = null;
-				scriptType = null;
-			}
-		} else {
-			mongoHost = DEFAULT_DB_HOST;
-			mongoPort = DEFAULT_DB_PORT;
-			try {
-				mongoServers.add(new ServerAddress(mongoHost, mongoPort));
-			} catch (UnknownHostException e) {
-				e.printStackTrace();
-			}
-			mongoSecondaryReadPreference = false;
-			mongoDb = riverName.name();
-			mongoCollection = riverName.name();
-			mongoFilter = "";
-			mongoGridFS = false;
-			mongoAdminUser = "";
-			mongoAdminPassword = "";
-			mongoLocalUser = "";
-			mongoLocalPassword = "";
-			// mongoDbUser = "";
-			// mongoDbPassword = "";
-			// script = null;
-			script = null;
-			scriptType = null;
-			dropCollection = false;
-			includeCollection = "";
-			excludeFields = null;
-			mongoUseSSL = false;
-			mongoSSLVerifyCertificate = false;
-			initialTimestamp = null;
 		}
-		mongoOplogNamespace = mongoDb + "." + mongoCollection;
-
-		if (settings.settings().containsKey(INDEX_OBJECT)) {
-			Map<String, Object> indexSettings = (Map<String, Object>) settings
-					.settings().get(INDEX_OBJECT);
-			indexName = XContentMapValues.nodeStringValue(
-					indexSettings.get(NAME_FIELD), mongoDb);
-			typeName = XContentMapValues.nodeStringValue(
-					indexSettings.get(TYPE_FIELD), mongoDb);
-			bulkSize = XContentMapValues.nodeIntegerValue(
-					indexSettings.get(BULK_SIZE_FIELD), 100);
-			if (indexSettings.containsKey(BULK_TIMEOUT_FIELD)) {
-				bulkTimeout = TimeValue.parseTimeValue(
-						XContentMapValues.nodeStringValue(
-								indexSettings.get(BULK_TIMEOUT_FIELD), "10ms"),
-						TimeValue.timeValueMillis(10));
-			} else {
-				bulkTimeout = TimeValue.timeValueMillis(10);
-			}
-			throttleSize = XContentMapValues.nodeIntegerValue(
-					indexSettings.get(THROTTLE_SIZE_FIELD), bulkSize * 5);
-		} else {
-			indexName = mongoDb;
-			typeName = mongoDb;
-			bulkSize = 100;
-			bulkTimeout = TimeValue.timeValueMillis(10);
-			throttleSize = bulkSize * 5;
-		}
-		if (throttleSize == -1) {
+		mongoOplogNamespace = definition.getMongoDb() + "." + definition.getMongoCollection();
+		
+		if (definition.getThrottleSize() == -1) {
 			stream = new LinkedTransferQueue<Map<String, Object>>();
 		} else {
-			stream = new ArrayBlockingQueue<Map<String, Object>>(throttleSize);
+			stream = new ArrayBlockingQueue<Map<String, Object>>(definition.getThrottleSize());
 		}
 
 		statusThread = EsExecutors.daemonThreadFactory(
@@ -528,19 +197,19 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			return;
 		}
 		active = true;
-		for (ServerAddress server : mongoServers) {
+		for (ServerAddress server : definition.getMongoServers()) {
 			logger.info("Using mongodb server(s): host [{}], port [{}]",
 					server.getHost(), server.getPort());
 		}
-		// TODO: include plugin version from pom.properties file.
 		// http://stackoverflow.com/questions/5270611/read-maven-properties-file-inside-jar-war-file
+		logger.info("{} version: [{}]", DESCRIPTION, MongoDBHelper.getRiverVersion());
 		logger.info(
 				"starting mongodb stream. options: secondaryreadpreference [{}], drop_collection [{}], include_collection [{}], throttlesize [{}], gridfs [{}], filter [{}], db [{}], collection [{}], script [{}], indexing to [{}]/[{}]",
-				mongoSecondaryReadPreference, dropCollection,
-				includeCollection, throttleSize, mongoGridFS, mongoFilter,
-				mongoDb, mongoCollection, script, indexName, typeName);
+				definition.isMongoSecondaryReadPreference(), definition.isDropCollection(),
+				definition.getIncludeCollection(), definition.getThrottleSize(), definition.isMongoGridFS(), definition.getMongoFilter(),
+				definition.getMongoDb(), definition.getMongoCollection(), definition.getScript(), definition.getIndexName(), definition.getTypeName());
 		try {
-			client.admin().indices().prepareCreate(indexName).execute()
+			client.admin().indices().prepareCreate(definition.getIndexName()).execute()
 					.actionGet();
 		} catch (Exception e) {
 			if (ExceptionsHelper.unwrapCause(e) instanceof IndexAlreadyExistsException) {
@@ -553,18 +222,18 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				// block is removed...
 			} else {
 				logger.warn("failed to create index [{}], disabling river...",
-						e, indexName);
+						e, definition.getIndexName());
 				return;
 			}
 		}
 
-		if (mongoGridFS) {
+		if (definition.isMongoGridFS()) {
 			try {
 				if (logger.isDebugEnabled()) {
 					logger.debug("Set explicit attachment mapping.");
 				}
-				client.admin().indices().preparePutMapping(indexName)
-						.setType(typeName).setSource(getGridFSMapping())
+				client.admin().indices().preparePutMapping(definition.getIndexName())
+						.setType(definition.getTypeName()).setSource(getGridFSMapping())
 						.execute().actionGet();
 			} catch (Exception e) {
 				logger.warn("Failed to set explicit mapping (attachment): {}",
@@ -590,7 +259,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		} else {
 			Thread tailerThread = EsExecutors.daemonThreadFactory(
 					settings.globalSettings(), "mongodb_river_slurper")
-					.newThread(new Slurper(mongoServers));
+					.newThread(new Slurper(definition.getMongoServers()));
 			tailerThreads.add(tailerThread);
 		}
 
@@ -604,10 +273,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		indexerThread.start();
 
 		startInvoked = true;
-		// statusThread = EsExecutors.daemonThreadFactory(
-		// settings.globalSettings(), "mongodb_river_status").newThread(
-		// new Status());
-		// statusThread.start();
 	}
 
 	private boolean isMongos() {
@@ -633,18 +298,18 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 	private DB getAdminDb() {
 		if (adminDb == null) {
-			adminDb = getMongoClient().getDB(DB_ADMIN);
-			if (!mongoAdminUser.isEmpty() && !mongoAdminPassword.isEmpty()
+			adminDb = getMongoClient().getDB(MONGODB_ADMIN_DATABASE);
+			if (!definition.getMongoAdminUser().isEmpty() && !definition.getMongoAdminPassword().isEmpty()
 					&& !adminDb.isAuthenticated()) {
-				logger.info("Authenticate {} with {}", MONGODB_ADMIN,
-						mongoAdminUser);
+				logger.info("Authenticate {} with {}", MONGODB_ADMIN_DATABASE,
+						definition.getMongoAdminUser());
 
 				try {
 					CommandResult cmd = adminDb.authenticateCommand(
-							mongoAdminUser, mongoAdminPassword.toCharArray());
+							definition.getMongoAdminUser(), definition.getMongoAdminPassword().toCharArray());
 					if (!cmd.ok()) {
 						logger.error("Autenticatication failed for {}: {}",
-								MONGODB_ADMIN, cmd.getErrorMessage());
+								MONGODB_ADMIN_DATABASE, cmd.getErrorMessage());
 					}
 				} catch (MongoException mEx) {
 					logger.warn("getAdminDb() failed", mEx);
@@ -655,17 +320,17 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	}
 
 	private DB getConfigDb() {
-		DB configDb = getMongoClient().getDB(DB_CONFIG);
-		if (!mongoAdminUser.isEmpty() && !mongoAdminUser.isEmpty()
+		DB configDb = getMongoClient().getDB(MONGODB_CONFIG_DATABASE);
+		if (!definition.getMongoAdminUser().isEmpty() && !definition.getMongoAdminPassword().isEmpty()
 				&& getAdminDb().isAuthenticated()) {
-			configDb = getAdminDb().getMongo().getDB(DB_CONFIG);
+			configDb = getAdminDb().getMongo().getDB(MONGODB_CONFIG_DATABASE);
 			// } else if (!mongoDbUser.isEmpty() && !mongoDbPassword.isEmpty()
 			// && !configDb.isAuthenticated()) {
 			// logger.info("Authenticate {} with {}", mongoDb, mongoDbUser);
 			// CommandResult cmd = configDb.authenticateCommand(mongoDbUser,
 			// mongoDbPassword.toCharArray());
 			// if (!cmd.ok()) {
-			// logger.error("Autenticatication failed for {}: {}",
+			// logger.error("Authentication failed for {}: {}",
 			// DB_CONFIG, cmd.getErrorMessage());
 			// }
 		}
@@ -678,12 +343,12 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			Builder builder = MongoClientOptions.builder()
 					.autoConnectRetry(true).connectTimeout(15000)
 					.socketKeepAlive(true).socketTimeout(60000);
-			if (mongoUseSSL) {
+			if (definition.isMongoUseSSL()) {
 				builder.socketFactory(getSSLSocketFactory());
 			}
 
 			MongoClientOptions mco = builder.build();
-			mongo = new MongoClient(mongoServers, mco);
+			mongo = new MongoClient(definition.getMongoServers(), mco);
 		}
 		return mongo;
 	}
@@ -720,21 +385,16 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 	@Override
 	public void close() {
-		// if (active) {
 		logger.info("closing mongodb stream river");
 		try {
-			// active = false;
 			for (Thread thread : tailerThreads) {
 				thread.interrupt();
 			}
 			tailerThreads.clear();
 			if (indexerThread != null) {
 				indexerThread.interrupt();
+				indexerThread = null;
 			}
-			// if (statusThread != null) {
-			// statusThread.interrupt();
-			// }
-			// }
 			closeMongoClient();
 		} catch (Throwable t) {
 			logger.error("Fail to close river {}", t, riverName.getName());
@@ -747,7 +407,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		if (sslSocketFactory != null)
 			return sslSocketFactory;
 
-		if (!mongoSSLVerifyCertificate) {
+		if (!definition.isMongoSSLVerifyCertificate()) {
 			try {
 				final TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
 
@@ -800,9 +460,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				insertedDocuments = 0;
 				updatedDocuments = 0;
 
-				if (script != null && scriptType != null) {
-					scriptExecutable = scriptService.executable(scriptType,
-							script, ImmutableMap.of("logger", logger));
+				if (definition.getScript() != null && definition.getScriptType() != null) {
+					scriptExecutable = scriptService.executable(definition.getScriptType(),
+							definition.getScript(), ImmutableMap.of("logger", logger));
 				}
 
 				try {
@@ -813,10 +473,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					// possible
 					Map<String, Object> data = stream.take();
 					lastTimestamp = updateBulkRequest(bulk, data);
-					while ((data = stream.poll(bulkTimeout.millis(),
+					while ((data = stream.poll(definition.getBulkTimeout().millis(),
 							MILLISECONDS)) != null) {
 						lastTimestamp = updateBulkRequest(bulk, data);
-						if (bulk.numberOfActions() >= bulkSize) {
+						if (bulk.numberOfActions() >= definition.getBulkSize()) {
 							break;
 						}
 					}
@@ -881,11 +541,11 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						objectId, operation);
 			}
 
-			if (!includeCollection.isEmpty()) {
+			if (!definition.getIncludeCollection().isEmpty()) {
 				logger.trace(
 						"About to include collection. set attribute {} / {} ",
-						includeCollection, mongoCollection);
-				data.put(includeCollection, mongoCollection);
+						definition.getIncludeCollection(), definition.getMongoCollection());
+				data.put(definition.getIncludeCollection(), definition.getMongoCollection());
 			}
 
 			Map<String, Object> ctx = null;
@@ -978,7 +638,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 							.source(build(data, objectId)).routing(routing)
 							.parent(parent));
 					updatedDocuments++;
-					// new UpdateRequest(indexName, typeName, objectId)
+					// new UpdateRequest(definition.getIndexName(), definition.getTypeName(), objectId)
 				}
 				if (OPLOG_DELETE_OPERATION.equals(operation)) {
 					logger.info("Delete request [{}], [{}], [{}]", index, type,
@@ -988,10 +648,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					deletedDocuments++;
 				}
 				if (OPLOG_COMMAND_OPERATION.equals(operation)) {
-					if (dropCollection) {
+					if (definition.isDropCollection()) {
 						if (data.containsKey(OPLOG_DROP_COMMAND_OPERATION)
 								&& data.get(OPLOG_DROP_COMMAND_OPERATION)
-										.equals(mongoCollection)) {
+										.equals(definition.getMongoCollection())) {
 							logger.info("Drop collection request [{}], [{}]",
 									index, type);
 							bulk.request().requests().clear();
@@ -1052,7 +712,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				final String objectId) throws IOException {
 			if (data.containsKey(IS_MONGODB_ATTACHMENT)) {
 				logger.info("Add Attachment: {} to index {} / type {}",
-						objectId, indexName, typeName);
+						objectId, definition.getIndexName(), definition.getTypeName());
 				return MongoDBHelper.serialize((GridFSDBFile) data
 						.get(MONGODB_ATTACHMENT));
 			} else {
@@ -1090,7 +750,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		private String extractType(Map<String, Object> ctx) {
 			Object type = ctx.get("_type");
 			if (type == null) {
-				return typeName;
+				return definition.getTypeName();
 			} else {
 				return type.toString();
 			}
@@ -1099,7 +759,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		private String extractIndex(Map<String, Object> ctx) {
 			String index = (String) ctx.get("_index");
 			if (index == null) {
-				index = indexName;
+				index = definition.getIndexName();
 			}
 			return index;
 		}
@@ -1130,33 +790,33 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		}
 
 		private boolean assignCollections() {
-			DB adminDb = mongo.getDB(MONGODB_ADMIN);
-			oplogDb = mongo.getDB(MONGODB_LOCAL);
+			DB adminDb = mongo.getDB(MONGODB_ADMIN_DATABASE);
+			oplogDb = mongo.getDB(MONGODB_LOCAL_DATABASE);
 
-			if (!mongoAdminUser.isEmpty() && !mongoAdminPassword.isEmpty()) {
-				logger.info("Authenticate {} with {}", MONGODB_ADMIN,
-						mongoAdminUser);
+			if (!definition.getMongoAdminUser().isEmpty() && !definition.getMongoAdminPassword().isEmpty()) {
+				logger.info("Authenticate {} with {}", MONGODB_ADMIN_DATABASE,
+						definition.getMongoAdminUser());
 
-				CommandResult cmd = adminDb.authenticateCommand(mongoAdminUser,
-						mongoAdminPassword.toCharArray());
+				CommandResult cmd = adminDb.authenticateCommand(definition.getMongoAdminUser(),
+						definition.getMongoAdminPassword().toCharArray());
 				if (!cmd.ok()) {
 					logger.error("Autenticatication failed for {}: {}",
-							MONGODB_ADMIN, cmd.getErrorMessage());
+							MONGODB_ADMIN_DATABASE, cmd.getErrorMessage());
 					// Can still try with mongoLocal credential if provided.
 					// return false;
 				}
-				oplogDb = adminDb.getMongo().getDB(MONGODB_LOCAL);
+				oplogDb = adminDb.getMongo().getDB(MONGODB_LOCAL_DATABASE);
 			}
 
-			if (!mongoLocalUser.isEmpty() && !mongoLocalPassword.isEmpty()
+			if (!definition.getMongoLocalUser().isEmpty() && !definition.getMongoLocalPassword().isEmpty()
 					&& !oplogDb.isAuthenticated()) {
-				logger.info("Authenticate {} with {}", MONGODB_LOCAL,
-						mongoLocalUser);
-				CommandResult cmd = oplogDb.authenticateCommand(mongoLocalUser,
-						mongoLocalPassword.toCharArray());
+				logger.info("Authenticate {} with {}", MONGODB_LOCAL_DATABASE,
+						definition.getMongoLocalUser());
+				CommandResult cmd = oplogDb.authenticateCommand(definition.getMongoLocalUser(),
+						definition.getMongoLocalPassword().toCharArray());
 				if (!cmd.ok()) {
 					logger.error("Autenticatication failed for {}: {}",
-							MONGODB_LOCAL, cmd.getErrorMessage());
+							MONGODB_LOCAL_DATABASE, cmd.getErrorMessage());
 					return false;
 				}
 			}
@@ -1170,10 +830,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			}
 			oplogCollection = oplogDb.getCollection(OPLOG_COLLECTION);
 
-			slurpedDb = mongo.getDB(mongoDb);
-			if (!mongoAdminUser.isEmpty() && !mongoAdminUser.isEmpty()
+			slurpedDb = mongo.getDB(definition.getMongoDb());
+			if (!definition.getMongoAdminUser().isEmpty() && !definition.getMongoAdminPassword().isEmpty()
 					&& adminDb.isAuthenticated()) {
-				slurpedDb = adminDb.getMongo().getDB(mongoDb);
+				slurpedDb = adminDb.getMongo().getDB(definition.getMongoDb());
 			}
 
 			// Not necessary as local user has access to all databases.
@@ -1189,7 +849,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			// return false;
 			// }
 			// }
-			slurpedCollection = slurpedDb.getCollection(mongoCollection);
+			slurpedCollection = slurpedDb.getCollection(definition.getMongoCollection());
 
 			return true;
 		}
@@ -1199,7 +859,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			Builder builder = MongoClientOptions.builder()
 					.autoConnectRetry(true).connectTimeout(15000)
 					.socketKeepAlive(true).socketTimeout(60000);
-			if (mongoUseSSL) {
+			if (definition.isMongoUseSSL()) {
 				builder.socketFactory(getSSLSocketFactory());
 			}
 
@@ -1207,7 +867,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			MongoClientOptions mco = builder.build();
 			mongo = new MongoClient(mongoServers, mco);
 
-			if (mongoSecondaryReadPreference) {
+			if (definition.isMongoSecondaryReadPreference()) {
 				mongo.setReadPreference(ReadPreference.secondaryPreferred());
 			}
 
@@ -1306,14 +966,14 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			}
 
 			String objectId = getObjectIdFromOplogEntry(entry);
-			if (mongoGridFS
+			if (definition.isMongoGridFS()
 					&& namespace.endsWith(GRIDFS_FILES_SUFFIX)
 					&& (OPLOG_INSERT_OPERATION.equals(operation) || OPLOG_UPDATE_OPERATION
 							.equals(operation))) {
 				if (objectId == null) {
 					throw new NullPointerException(MONGODB_ID_FIELD);
 				}
-				GridFS grid = new GridFS(mongo.getDB(mongoDb), mongoCollection);
+				GridFS grid = new GridFS(mongo.getDB(definition.getMongoDb()), definition.getMongoCollection());
 				GridFSDBFile file = grid.findOne(new ObjectId(objectId));
 				if (file != null) {
 					logger.info("Caught file: {} - {}", file.getId(),
@@ -1330,7 +990,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				}
 				logger.info("Add attachment: {}", objectId);
 				object = MongoDBHelper
-						.applyExcludeFields(object, excludeFields);
+						.applyExcludeFields(object, definition.getExcludeFields());
 				HashMap<String, Object> data = new HashMap<String, Object>();
 				data.put(IS_MONGODB_ATTACHMENT, true);
 				data.put(MONGODB_ATTACHMENT, object);
@@ -1343,7 +1003,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					addQueryToStream(operation, oplogTimestamp, update);
 				} else {
 					object = MongoDBHelper.applyExcludeFields(object,
-							excludeFields);
+							definition.getExcludeFields());
 					addToStream(operation, oplogTimestamp, object.toMap());
 				}
 			}
@@ -1376,7 +1036,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			List<DBObject> values = new ArrayList<DBObject>();
 			List<DBObject> values2 = new ArrayList<DBObject>();
 
-			if (mongoGridFS) {
+			if (definition.isMongoGridFS()) {
 				values.add(new BasicDBObject(OPLOG_NAMESPACE,
 						mongoOplogNamespace + GRIDFS_FILES_SUFFIX));
 			} else {
@@ -1384,11 +1044,11 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				// mongoOplogNamespace));
 				values2.add(new BasicDBObject(OPLOG_NAMESPACE,
 						mongoOplogNamespace));
-				values2.add(new BasicDBObject(OPLOG_NAMESPACE, mongoDb + "."
+				values2.add(new BasicDBObject(OPLOG_NAMESPACE, definition.getMongoDb() + "."
 						+ OPLOG_NAMESPACE_COMMAND));
 				values.add(new BasicDBObject(MONGODB_OR_OPERATOR, values2));
 			}
-			if (!mongoFilter.isEmpty()) {
+			if (!definition.getMongoFilter().isEmpty()) {
 				values.add(getMongoFilter());
 			}
 			if (time == null) {
@@ -1422,7 +1082,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			filters2.add(new BasicDBObject(MONGODB_OR_OPERATOR, filters3));
 
 			// include custom filter in filters2
-			filters2.add((DBObject) JSON.parse(mongoFilter));
+			filters2.add((DBObject) JSON.parse(definition.getMongoFilter()));
 
 			filters.add(new BasicDBObject(MONGODB_AND_OPERATOR, filters2));
 
@@ -1516,7 +1176,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 	private XContentBuilder getGridFSMapping() throws IOException {
 		XContentBuilder mapping = jsonBuilder().startObject()
-				.startObject(typeName).startObject("properties")
+				.startObject(definition.getTypeName()).startObject("properties")
 				.startObject("content").field("type", "attachment").endObject()
 				.startObject("filename").field("type", "string").endObject()
 				.startObject("contentType").field("type", "string").endObject()
@@ -1556,8 +1216,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				}
 			}
 		} else {
-			if (initialTimestamp != null) {
-				return initialTimestamp;
+			if (definition.getInitialTimestamp() != null) {
+				return definition.getInitialTimestamp();
 			}
 		}
 		return null;

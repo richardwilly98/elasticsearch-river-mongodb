@@ -114,4 +114,13 @@ public abstract class MongoDBHelper {
 		return filteredObject;
 	}
 
+	public static String getRiverVersion() {
+		String version = "Undefined";
+		if (MongoDBHelper.class.getPackage() != null
+				&& MongoDBHelper.class.getPackage().getImplementationVersion() != null) {
+			version = MongoDBHelper.class.getPackage()
+					.getImplementationVersion();
+		}
+		return version;
+	}
 }

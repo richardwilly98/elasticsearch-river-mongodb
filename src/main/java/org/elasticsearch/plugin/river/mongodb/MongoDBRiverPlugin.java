@@ -25,7 +25,7 @@ import org.elasticsearch.rest.RestModule;
 import org.elasticsearch.rest.action.RestMongoDBRiverAction;
 import org.elasticsearch.river.RiversModule;
 import org.elasticsearch.river.mongodb.MongoDBRiver;
-import org.elasticsearch.river.mongodb.MongodbRiverModule;
+import org.elasticsearch.river.mongodb.MongoDBRiverModule;
 
 /**
  * @author flaper87 (Flavio Percoco Premoli)
@@ -52,7 +52,7 @@ public class MongoDBRiverPlugin extends AbstractPlugin {
    * @param module
    */
   public void onModule(RiversModule module) {
-      module.registerRiver(MongoDBRiver.TYPE, MongodbRiverModule.class);
+      module.registerRiver(MongoDBRiver.TYPE, MongoDBRiverModule.class);
   }
   
   /**

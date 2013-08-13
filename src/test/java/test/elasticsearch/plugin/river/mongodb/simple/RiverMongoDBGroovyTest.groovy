@@ -41,7 +41,7 @@ class RiverMongoDBGroovyTest extends RiverMongoDBTestAsbtract {
 	}
 
 	@Test
-	public void "my test"() {
+	public void "simple mongodb river test"() {
 		try {
 			// Create river
 			createRiver(
