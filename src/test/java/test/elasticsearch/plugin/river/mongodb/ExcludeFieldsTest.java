@@ -20,7 +20,6 @@ public class ExcludeFieldsTest {
 
 	private final ESLogger logger = Loggers.getLogger(getClass());
 
-	@Test
 	public void testExcludeFields() {
 		try {
 			Set<String> excludeFields = new HashSet<String>(Arrays.asList(
@@ -43,4 +42,14 @@ public class ExcludeFieldsTest {
 		}
 	}
 
+	public void testLoadGsFile() {
+		try {
+		String script = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/advanced/advanced-transformation-groovy-script.gs");
+		Assert.assertNotNull(script);
+		logger.debug("script: {}", script);
+		} catch (Throwable t) {
+			logger.error("testLoadGsFile failed", t);
+			Assert.fail();
+		}
+	}
 }

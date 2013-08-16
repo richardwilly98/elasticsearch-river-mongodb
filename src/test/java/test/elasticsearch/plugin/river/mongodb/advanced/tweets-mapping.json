@@ -1,0 +1,7 @@
+{
+	"tweet": {
+		"_parent": {
+			"type": "author"
+		}
+	}
+}

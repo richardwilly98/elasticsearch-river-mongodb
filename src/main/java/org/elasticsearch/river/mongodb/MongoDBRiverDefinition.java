@@ -45,6 +45,8 @@ public class MongoDBRiverDefinition {
 	public final static String INITIAL_TIMESTAMP_FIELD = "initial_timestamp";
 	public final static String INITIAL_TIMESTAMP_SCRIPT_TYPE_FIELD = "script_type";
 	public final static String INITIAL_TIMESTAMP_SCRIPT_FIELD = "script";
+	public final static String ADVANCED_TRANSFORMATION_FIELD = "advanced_transformation";
+	public final static String PARENT_TYPES_FIELD = "parent_types";
 	public final static String FILTER_FIELD = "filter";
 	public final static String CREDENTIALS_FIELD = "credentials";
 	public final static String USER_FIELD = "user";
@@ -84,6 +86,8 @@ public class MongoDBRiverDefinition {
 	private final BSONTimestamp initialTimestamp;
 	private final String script;
 	private final String scriptType;
+	private final boolean advancedTransformation;
+	private final Set<String> parentTypes;
 	// index
 	private final String indexName;
 	private final String typeName;
@@ -114,6 +118,9 @@ public class MongoDBRiverDefinition {
 		private BSONTimestamp initialTimestamp = null;
 		private String script = null;
 		private String scriptType = null;
+		private boolean advancedTransformation = false;
+		private Set<String> parentTypes = null;
+
 		// index
 		private String indexName;
 		private String typeName;
@@ -203,6 +210,16 @@ public class MongoDBRiverDefinition {
 			return this;
 		}
 
+		public Builder advancedTransformation(boolean advancedTransformation) {
+			this.advancedTransformation = advancedTransformation;
+			return this;
+		}
+
+		public Builder parentTypes(Set<String> parentTypes) {
+			this.parentTypes = parentTypes;
+			return this;
+		}
+
 		public Builder script(String script) {
 			this.script = script;
 			return this;
@@ -275,9 +292,9 @@ public class MongoDBRiverDefinition {
 						try {
 							mongoServers.add(new ServerAddress(mongoHost,
 									mongoPort));
-						} catch (UnknownHostException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
+						} catch (UnknownHostException uhEx) {
+							logger.warn("Cannot add mongo server {}:{}", uhEx,
+									mongoHost, mongoPort);
 						}
 					}
 				}
@@ -288,9 +305,9 @@ public class MongoDBRiverDefinition {
 						mongoSettings.get(PORT_FIELD), DEFAULT_DB_PORT);
 				try {
 					mongoServers.add(new ServerAddress(mongoHost, mongoPort));
-				} catch (UnknownHostException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+				} catch (UnknownHostException uhEx) {
+					logger.warn("Cannot add mongo server {}:{}", uhEx,
+							mongoHost, mongoPort);
 				}
 			}
 			builder.mongoServers(mongoServers);
@@ -309,6 +326,28 @@ public class MongoDBRiverDefinition {
 						mongoOptionsSettings.get(SSL_CONNECTION_FIELD), false));
 				builder.mongoSSLVerifyCertificate(XContentMapValues.nodeBooleanValue(
 						mongoOptionsSettings.get(SSL_VERIFY_CERT_FIELD), true));
+				builder.advancedTransformation(XContentMapValues
+						.nodeBooleanValue(mongoOptionsSettings
+								.get(ADVANCED_TRANSFORMATION_FIELD), false));
+
+				if (mongoOptionsSettings.containsKey(PARENT_TYPES_FIELD)) {
+					Set<String> parentTypes = new HashSet<String>();
+					Object parentTypesSettings = mongoOptionsSettings
+							.get(PARENT_TYPES_FIELD);
+					logger.info("parentTypesSettings: " + parentTypesSettings);
+					boolean array = XContentMapValues
+							.isArray(parentTypesSettings);
+
+					if (array) {
+						ArrayList<String> fields = (ArrayList<String>) parentTypesSettings;
+						for (String field : fields) {
+							logger.info("Field: " + field);
+							parentTypes.add(field);
+						}
+					}
+
+					builder.parentTypes(parentTypes);
+				}
 
 				builder.includeCollection(XContentMapValues.nodeStringValue(
 						mongoOptionsSettings.get(INCLUDE_COLLECTION_FIELD), ""));
@@ -433,8 +472,7 @@ public class MongoDBRiverDefinition {
 				String scriptType = "js";
 				builder.script(mongoSettings.get(SCRIPT_FIELD).toString());
 				if (mongoSettings.containsKey("scriptType")) {
-					scriptType = mongoSettings.get("scriptType")
-							.toString();
+					scriptType = mongoSettings.get("scriptType").toString();
 				} else if (mongoSettings.containsKey(SCRIPT_TYPE_FIELD)) {
 					scriptType = mongoSettings.get(SCRIPT_TYPE_FIELD)
 							.toString();
@@ -507,6 +545,9 @@ public class MongoDBRiverDefinition {
 		this.initialTimestamp = builder.initialTimestamp;
 		this.script = builder.script;
 		this.scriptType = builder.scriptType;
+		this.advancedTransformation = builder.advancedTransformation;
+		this.parentTypes = builder.parentTypes;
+
 		// index
 		this.indexName = builder.indexName;
 		this.typeName = builder.typeName;
@@ -586,6 +627,14 @@ public class MongoDBRiverDefinition {
 
 	public String getScriptType() {
 		return scriptType;
+	}
+
+	public boolean isAdvancedTransformation() {
+		return advancedTransformation;
+	}
+
+	public Set<String> getParentTypes() {
+		return parentTypes;
 	}
 
 	public String getIndexName() {
