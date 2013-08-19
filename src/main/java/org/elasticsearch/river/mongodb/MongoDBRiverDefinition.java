@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.bson.types.BSONTimestamp;
+import org.elasticsearch.common.Preconditions;
 import org.elasticsearch.common.collect.Maps;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
@@ -265,9 +266,9 @@ public class MongoDBRiverDefinition {
 			final RiverName riverName, final RiverSettings settings,
 			final ScriptService scriptService) {
 
-		if (settings == null) {
-			throw new NullPointerException("settings");
-		}
+		Preconditions.checkNotNull(riverName, "No riverName specified");
+		Preconditions.checkNotNull(settings, "No settings specified");
+
 		Builder builder = new Builder();
 		List<ServerAddress> mongoServers = new ArrayList<ServerAddress>();
 		String mongoHost;
