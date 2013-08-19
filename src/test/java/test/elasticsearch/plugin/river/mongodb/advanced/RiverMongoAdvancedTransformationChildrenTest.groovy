@@ -20,6 +20,9 @@ import com.mongodb.DBCollection
 import com.mongodb.WriteConcern
 
 class RiverMongoAdvancedTransformationChildrenTest extends RiverMongoDBTestAsbtract {
+	// This Groovy script is available in src/test/scripts. 
+	// It will be copied by Maven plugin build-helper-maven-plugin in target/config/scripts
+	static final String GROOVY_SCRIPT = "advanced-transformation-groovy-script"
 	static final int WAIT = 1000
 
 	private def db
@@ -52,8 +55,6 @@ class RiverMongoAdvancedTransformationChildrenTest extends RiverMongoDBTestAsbtr
 		def index = "testchildrentransformationscriptgroovyindex-" + System.currentTimeMillis()
 		try {
 
-			addGroovyScriptFile("/test/elasticsearch/plugin/river/mongodb/advanced/advanced-transformation-groovy-script.gs");
-
 			logger.debug("Create river {}", river)
 
 			// Create river
@@ -72,7 +73,7 @@ class RiverMongoAdvancedTransformationChildrenTest extends RiverMongoDBTestAsbtr
 					RiverMongoAdvancedTransformationGroovyScriptTest.TEST_MONGODB_RIVER_WITH_ADVANCED_TRANSFORMATION_JSON, river,
 					mongoPort1.toString(), mongoPort2.toString(), mongoPort3.toString(),
 					"[\"author\"]",
-					database, collection, RiverMongoAdvancedTransformationGroovyScriptTest.GROOVY_SCRIPT_TYPE, "advanced-transformation-groovy-script", index, database
+					database, collection, RiverMongoAdvancedTransformationGroovyScriptTest.GROOVY_SCRIPT_TYPE, GROOVY_SCRIPT, index, database
 					)
 
 			// -- INSERT --
@@ -146,7 +147,7 @@ class RiverMongoAdvancedTransformationChildrenTest extends RiverMongoDBTestAsbtr
 			assert "fool" == hits[1].sourceAsMap().text
 			assert "zoo"  == hits[2].sourceAsMap().text
 
-			//			 // -- DELETE --
+			// -- DELETE --
 			dbCollection.remove([_id: new ObjectId(parentId)])
 			Thread.sleep(WAIT)
 			refreshIndex(index)

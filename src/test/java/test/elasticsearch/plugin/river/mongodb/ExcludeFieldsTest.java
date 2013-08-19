@@ -42,14 +42,4 @@ public class ExcludeFieldsTest {
 		}
 	}
 
-	public void testLoadGsFile() {
-		try {
-		String script = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/advanced/advanced-transformation-groovy-script.gs");
-		Assert.assertNotNull(script);
-		logger.debug("script: {}", script);
-		} catch (Throwable t) {
-			logger.error("testLoadGsFile failed", t);
-			Assert.fail();
-		}
-	}
 }

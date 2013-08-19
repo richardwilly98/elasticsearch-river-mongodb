@@ -312,18 +312,6 @@ public abstract class RiverMongoDBTestAsbtract {
 		return setting;
 	}
 	
-	protected void addGroovyScriptFile(String file) throws Exception {
-		byte[] in = copyToBytesFromClasspath(file);
-		logger.debug("addGroovyScriptFile - {}", file);
-		String path = settings.get("path.conf") + File.separator + "scripts";
-		File scriptPath = new File(path);
-		if (!scriptPath.exists()) {
-			scriptPath.mkdirs();
-		}
-		logger.debug("addGroovyScriptFile: {}", path + File.separator + Files.getNameWithoutExtension(file) + ".groovy");
-		copy(in, new File (path + File.separator + Files.getNameWithoutExtension(file) + ".groovy"));
-	}
-
 	protected void refreshIndex() {
 		refreshIndex(index);
 	}

@@ -128,18 +128,18 @@
 			<version>${gmongo.version}</version>
 			<scope>test</scope>
 		</dependency>
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>${guava.version}</version>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.google.code.findbugs</groupId>
-                    <artifactId>jsr305</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
+		<dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+			<version>${guava.version}</version>
+			<scope>test</scope>
+			<exclusions>
+				<exclusion>
+					<groupId>com.google.code.findbugs</groupId>
+					<artifactId>jsr305</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -151,7 +151,6 @@
 					<include>**/*.yml</include>
 					<include>**/*.html</include>
 					<include>**/*.pdf</include>
-					<include>**/*.gs</include>
 				</includes>
 			</testResource>
 			<testResource>
@@ -233,6 +232,24 @@
 							<sources>
 								<source>src/test/groovy</source>
 							</sources>
+						</configuration>
+					</execution>
+					<execution>
+						<id>add-resource</id>
+						<phase>generate-resources</phase>
+						<goals>
+							<goal>add-resource</goal>
+						</goals>
+						<configuration>
+							<resources>
+								<resource>
+									<directory>src/test/scripts</directory>
+									<targetPath>${basedir}/target/config/scripts</targetPath>
+									<includes>
+										<include>**/*.groovy</include>
+									</includes>
+								</resource>
+							</resources>
 						</configuration>
 					</execution>
 				</executions>
@@ -325,9 +342,4 @@
 		</pluginManagement>
 	</build>
 
-	<!-- <pluginRepositories> <pluginRepository> <id>central</id> <name>Maven 
-		Plugin Repository</name> <url>http://repo1.maven.org/maven2</url> </pluginRepository> 
-		<pluginRepository> <id>sonatype</id> <name>Sonatype Groups</name> <url>https://oss.sonatype.org/content/groups/public/</url> 
-		</pluginRepository> <pluginRepository> <id>oss-sonatype-snapshots</id> <url>https://oss.sonatype.org/content/repositories/snapshots/</url> 
-		</pluginRepository> </pluginRepositories> -->
 </project>
