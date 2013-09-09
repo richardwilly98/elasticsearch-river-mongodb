@@ -53,6 +53,7 @@
 		<testng.version>6.8</testng.version>
 		<groovy.version>2.1.0</groovy.version>
 		<gmongo.version>1.2</gmongo.version>
+		<guava.version>14.0.1</guava.version>
 	</properties>
 
 	<repositories>
@@ -126,6 +127,18 @@
 			<artifactId>gmongo</artifactId>
 			<version>${gmongo.version}</version>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+			<version>${guava.version}</version>
+			<scope>test</scope>
+			<exclusions>
+				<exclusion>
+					<groupId>com.google.code.findbugs</groupId>
+					<artifactId>jsr305</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 	</dependencies>
 
@@ -221,6 +234,24 @@
 							</sources>
 						</configuration>
 					</execution>
+					<execution>
+						<id>add-resource</id>
+						<phase>generate-resources</phase>
+						<goals>
+							<goal>add-resource</goal>
+						</goals>
+						<configuration>
+							<resources>
+								<resource>
+									<directory>src/test/scripts</directory>
+									<targetPath>${basedir}/target/config/scripts</targetPath>
+									<includes>
+										<include>**/*.groovy</include>
+									</includes>
+								</resource>
+							</resources>
+						</configuration>
+					</execution>
 				</executions>
 			</plugin>
 			<plugin>
@@ -311,9 +342,4 @@
 		</pluginManagement>
 	</build>
 
-	<!-- <pluginRepositories> <pluginRepository> <id>central</id> <name>Maven 
-		Plugin Repository</name> <url>http://repo1.maven.org/maven2</url> </pluginRepository> 
-		<pluginRepository> <id>sonatype</id> <name>Sonatype Groups</name> <url>https://oss.sonatype.org/content/groups/public/</url> 
-		</pluginRepository> <pluginRepository> <id>oss-sonatype-snapshots</id> <url>https://oss.sonatype.org/content/repositories/snapshots/</url> 
-		</pluginRepository> </pluginRepositories> -->
 </project>

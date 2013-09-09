@@ -21,20 +21,19 @@ import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.rest.XContentRestResponse;
 import org.elasticsearch.rest.XContentThrowableRestResponse;
 import org.elasticsearch.rest.action.support.RestXContentBuilder;
-import org.elasticsearch.river.RiversService;
 import org.elasticsearch.river.mongodb.MongoDBRiver;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 import org.elasticsearch.search.SearchHit;
 
 public class RestMongoDBRiverAction extends BaseRestHandler {
 
-	private final RiversService riversService;
+//	private final RiversService riversService;
 
 	@Inject
 	public RestMongoDBRiverAction(Settings settings, Client client,
 			RestController controller, Injector injector) {
 		super(settings, client);
-		this.riversService = injector.getInstance(RiversService.class);
+//		this.riversService = injector.getInstance(RiversService.class);
 		controller.registerHandler(RestRequest.Method.GET, "/_river/"
 				+ MongoDBRiver.TYPE + "/{action}", this);
 		controller.registerHandler(RestRequest.Method.POST, "/_river/"

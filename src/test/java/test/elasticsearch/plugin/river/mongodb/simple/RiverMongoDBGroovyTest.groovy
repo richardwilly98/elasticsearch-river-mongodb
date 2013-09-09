@@ -12,7 +12,6 @@ import org.elasticsearch.search.SearchHit
 
 import static org.elasticsearch.index.query.QueryBuilders.fieldQuery
 
-//@Test
 class RiverMongoDBGroovyTest extends RiverMongoDBTestAsbtract {
 
 	static final int WAIT = 1000

@@ -23,7 +23,7 @@ MongoDB River Plugin for ElasticSearch
 Build status
 -------
 
-[![Build Status](https://buildhive.cloudbees.com/job/richardwilly98/job/elasticsearch-river-mongodb/badge/icon)](https://buildhive.cloudbees.com/job/richardwilly98/job/elasticsearch-river-mongodb/)
+[![Build Status](https://drone.io/github.com/richardwilly98/elasticsearch-river-mongodb/status.png)](https://drone.io/github.com/richardwilly98/elasticsearch-river-mongodb/latest)
 
 Initial implementation by [aparo](https://github.com/aparo)
 

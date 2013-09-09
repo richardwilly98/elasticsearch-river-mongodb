@@ -8,7 +8,7 @@ path:
 	data: target/data
 	plugins: target/plugins
 	logs: target/log
-	conf: target/conf
+	conf: target/config
 	
 index:
 	number_of_shards: 1

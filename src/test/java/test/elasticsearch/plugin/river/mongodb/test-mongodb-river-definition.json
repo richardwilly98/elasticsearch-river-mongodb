@@ -1,0 +1,27 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"servers": [{ 
+			host: "localhost",
+			port: "27017"
+		}],
+		"options": {
+			"secondary_read_preference": true,
+			"include_collection": "mycollection",
+			"advanced_transformation": true,
+			"parent_types": ["parent1", "parent2"]
+		},
+		"credentials": [{
+			db: "admin",
+			user: "admin",
+			password: "secret"
+		}],
+		db: "mydatabase",
+		collection: "mycollection",
+		gridfs: "false"
+	},
+	index: {
+		name: "myindex",
+		throttle_size: 2000
+	}
+}

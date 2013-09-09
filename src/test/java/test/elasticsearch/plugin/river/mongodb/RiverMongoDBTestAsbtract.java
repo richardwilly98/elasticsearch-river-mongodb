@@ -307,7 +307,7 @@ public abstract class RiverMongoDBTestAsbtract {
 		logger.debug("River setting: {}", setting);
 		return setting;
 	}
-
+	
 	protected void refreshIndex() {
 		refreshIndex(index);
 	}
