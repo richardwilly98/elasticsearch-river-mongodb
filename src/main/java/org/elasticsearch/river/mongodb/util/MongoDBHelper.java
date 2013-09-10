@@ -30,6 +30,7 @@ import org.elasticsearch.common.Base64;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
 import com.mongodb.gridfs.GridFSDBFile;
 
@@ -108,6 +109,36 @@ public abstract class MongoDBHelper {
 			} else {
 				if (filteredObject.containsField(field)) {
 					filteredObject.removeField(field);
+				}
+			}
+		}
+		return filteredObject;
+	}
+
+	public static DBObject applyIncludeFields(DBObject bsonObject,
+			final Set<String> includeFields) {
+		if (includeFields == null) {
+			return bsonObject;
+		}
+
+		DBObject filteredObject = new BasicDBObject();
+
+		for (String field : bsonObject.keySet()) {
+			if (includeFields.contains(field)) {
+				filteredObject.put(field, bsonObject.get(field));
+			}
+		}
+
+		for (String field : includeFields) {
+			if (field.contains(".")) {
+				String rootObject = field.substring(0, field.indexOf("."));
+				String childObject = field.substring(field.indexOf(".") + 1);
+				Object object = bsonObject.get(rootObject);
+				if (object instanceof DBObject) {
+					DBObject object2 = (DBObject) object;
+					object2 = applyIncludeFields(object2, new HashSet<String>(
+							Arrays.asList(childObject)));
+					filteredObject.put(rootObject, object2);
 				}
 			}
 		}

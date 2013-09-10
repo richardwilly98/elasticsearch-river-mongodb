@@ -179,6 +179,13 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			for (String key : definition.getExcludeFields()) {
 				findKeys.put(key, 0);
 			}
+		} else if (definition.getIncludeFields() != null) {
+//			if (! definition.getIncludeCollection().contains(MONGODB_ID_FIELD)) {
+//				findKeys.put(MONGODB_ID_FIELD, 1);
+//			}
+			for (String key : definition.getIncludeFields()) {
+				findKeys.put(key, 1);
+			}
 		}
 		mongoOplogNamespace = definition.getMongoDb() + "."
 				+ definition.getMongoCollection();
@@ -1306,8 +1313,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					throw new NullPointerException(MONGODB_ID_FIELD);
 				}
 				logger.info("Add attachment: {}", objectId);
-				object = MongoDBHelper.applyExcludeFields(object,
-						definition.getExcludeFields());
+				object = applyFieldFilter(object);
 				HashMap<String, Object> data = new HashMap<String, Object>();
 				data.put(IS_MONGODB_ATTACHMENT, true);
 				data.put(MONGODB_ATTACHMENT, object);
@@ -1319,13 +1325,20 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					logger.debug("Updated item: {}", update);
 					addQueryToStream(operation, oplogTimestamp, update);
 				} else {
-					object = MongoDBHelper.applyExcludeFields(object,
-							definition.getExcludeFields());
+					object = applyFieldFilter(object);
 					addToStream(operation, oplogTimestamp, object.toMap());
 				}
 			}
 		}
 
+		private DBObject applyFieldFilter(DBObject object) {
+			object = MongoDBHelper.applyExcludeFields(object,
+					definition.getExcludeFields());
+			object = MongoDBHelper.applyIncludeFields(object,
+					definition.getIncludeFields());
+			return object;
+		}
+		
 		/*
 		 * Extract "_id" from "o" if it fails try to extract from "o2"
 		 */

@@ -42,6 +42,7 @@ public class MongoDBRiverDefinition {
 	public final static String SSL_VERIFY_CERT_FIELD = "ssl_verify_certificate";
 	public final static String DROP_COLLECTION_FIELD = "drop_collection";
 	public final static String EXCLUDE_FIELDS_FIELD = "exclude_fields";
+	public final static String INCLUDE_FIELDS_FIELD = "include_fields";
 	public final static String INCLUDE_COLLECTION_FIELD = "include_collection";
 	public final static String INITIAL_TIMESTAMP_FIELD = "initial_timestamp";
 	public final static String INITIAL_TIMESTAMP_SCRIPT_TYPE_FIELD = "script_type";
@@ -83,6 +84,7 @@ public class MongoDBRiverDefinition {
 	private final boolean mongoSSLVerifyCertificate;
 	private final boolean dropCollection;
 	private final Set<String> excludeFields;
+	private final Set<String> includeFields;
 	private final String includeCollection;
 	private final BSONTimestamp initialTimestamp;
 	private final String script;
@@ -115,6 +117,7 @@ public class MongoDBRiverDefinition {
 		private boolean mongoSSLVerifyCertificate = false;
 		private boolean dropCollection = false;
 		private Set<String> excludeFields = null;
+		private Set<String> includeFields = null;
 		private String includeCollection = "";
 		private BSONTimestamp initialTimestamp = null;
 		private String script = null;
@@ -198,6 +201,11 @@ public class MongoDBRiverDefinition {
 
 		public Builder excludeFields(Set<String> excludeFields) {
 			this.excludeFields = excludeFields;
+			return this;
+		}
+
+		public Builder includeFields(Set<String> includeFields) {
+			this.includeFields = includeFields;
 			return this;
 		}
 
@@ -352,7 +360,29 @@ public class MongoDBRiverDefinition {
 
 				builder.includeCollection(XContentMapValues.nodeStringValue(
 						mongoOptionsSettings.get(INCLUDE_COLLECTION_FIELD), ""));
-				if (mongoOptionsSettings.containsKey(EXCLUDE_FIELDS_FIELD)) {
+				
+				if (mongoOptionsSettings.containsKey(INCLUDE_FIELDS_FIELD)) {
+					Set<String> includeFields = new HashSet<String>();
+					Object includeFieldsSettings = mongoOptionsSettings
+							.get(INCLUDE_FIELDS_FIELD);
+					logger.info("includeFieldsSettings: "
+							+ includeFieldsSettings);
+					boolean array = XContentMapValues
+							.isArray(includeFieldsSettings);
+
+					if (array) {
+						ArrayList<String> fields = (ArrayList<String>) includeFieldsSettings;
+						for (String field : fields) {
+							logger.info("Field: " + field);
+							includeFields.add(field);
+						}
+					}
+					
+					if (! includeFields.contains(MongoDBRiver.MONGODB_ID_FIELD)) {
+						includeFields.add(MongoDBRiver.MONGODB_ID_FIELD);
+					}
+					builder.includeFields(includeFields);
+				} else if (mongoOptionsSettings.containsKey(EXCLUDE_FIELDS_FIELD)) {
 					Set<String> excludeFields = new HashSet<String>();
 					Object excludeFieldsSettings = mongoOptionsSettings
 							.get(EXCLUDE_FIELDS_FIELD);
@@ -371,6 +401,7 @@ public class MongoDBRiverDefinition {
 
 					builder.excludeFields(excludeFields);
 				}
+				
 				if (mongoOptionsSettings.containsKey(INITIAL_TIMESTAMP_FIELD)) {
 					BSONTimestamp timeStamp = null;
 					try {
@@ -542,6 +573,7 @@ public class MongoDBRiverDefinition {
 		this.mongoSSLVerifyCertificate = builder.mongoSSLVerifyCertificate;
 		this.dropCollection = builder.dropCollection;
 		this.excludeFields = builder.excludeFields;
+		this.includeFields = builder.includeFields;
 		this.includeCollection = builder.includeCollection;
 		this.initialTimestamp = builder.initialTimestamp;
 		this.script = builder.script;
@@ -612,6 +644,10 @@ public class MongoDBRiverDefinition {
 
 	public Set<String> getExcludeFields() {
 		return excludeFields;
+	}
+
+	public Set<String> getIncludeFields() {
+		return includeFields;
 	}
 
 	public String getIncludeCollection() {

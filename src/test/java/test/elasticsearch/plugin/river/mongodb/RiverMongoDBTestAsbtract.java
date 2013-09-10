@@ -74,6 +74,7 @@ public abstract class RiverMongoDBTestAsbtract {
 	public static final String TEST_MONGODB_RIVER_GRIDFS_JSON = "/test/elasticsearch/plugin/river/mongodb/gridfs/test-gridfs-mongodb-river.json";
 	public static final String TEST_MONGODB_RIVER_WITH_SCRIPT_JSON = "/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-river-with-script.json";
 	public static final String TEST_MONGODB_RIVER_EXCLUDE_FIELDS_JSON = "/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river-exclude-fields.json";
+	public static final String TEST_MONGODB_RIVER_INCLUDE_FIELDS_JSON = "/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river-include-fields.json";
 	public static final String TEST_SIMPLE_MONGODB_DOCUMENT_JSON = "/test/elasticsearch/plugin/river/mongodb/script/test-simple-mongodb-document.json";
 
 	protected final ESLogger logger = Loggers.getLogger(getClass());
