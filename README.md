@@ -3,7 +3,8 @@ MongoDB River Plugin for ElasticSearch
 
 | MongoDB River Plugin     | ElasticSearch    | MongoDB |
 |--------------------------|------------------|---------|
-| master                   | 0.90.2 -> master | 2.4.5   |
+| master                   | 0.90.3           | 2.4.6   |
+| 1.7.0                    | 0.90.3           | 2.4.5   |
 | 1.6.11                   | 0.90.2           | 2.4.5   |
 | 1.6.9                    | 0.90.1           | 2.4.4   |
 | 1.6.8                    | 0.90.0           | 2.4.3   |
@@ -118,6 +119,15 @@ License
 
 Changelog
 -------
+
+#### 1.7.0
+- Ability to index documents from a given datetime (see issue [#102](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/102))
+- Fix for ```options/exclude_fields``` by @ozanozen (see issue [#103](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/103))
+- Fix for ```options/drop_collection``` (see issue [#105](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/105))
+- New advanced transformation feature.  (see issue [#106](https://github.com/richardwilly98/elasticsearch-river-mongodb/pull/106))
+- Add site to the river. Initial implementation (only start / stop river or display river settings).  (see issue [#109](https://github.com/richardwilly98/elasticsearch-river-mongodb/pull/109))
+- Implement include fields (see issue [#119](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/119))
+- Refactoring of the river definition (new class MongoDBRiverDefinition).
 
 #### 1.6.11
 - Add SSL support by @alistair (see [#94](https://github.com/richardwilly98/elasticsearch-river-mongodb/pull/94))
