@@ -1,12 +1,20 @@
 package org.elasticsearch.river.mongodb;
 
 import java.net.UnknownHostException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import javax.net.SocketFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 import org.bson.types.BSONTimestamp;
 import org.elasticsearch.common.Preconditions;
@@ -21,6 +29,7 @@ import org.elasticsearch.script.ExecutableScript;
 import org.elasticsearch.script.ScriptService;
 
 import com.mongodb.MongoClientOptions;
+import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 
 public class MongoDBRiverDefinition {
@@ -84,7 +93,7 @@ public class MongoDBRiverDefinition {
 
 	// mongodb.options
 	// TODO create MongoClientOptions from this class
-	// private final MongoClientOptions mongoClientOptions;
+	private final MongoClientOptions mongoClientOptions;
 	private final int connectTimeout;
 	private final int socketTimeout;
 	private final boolean mongoSecondaryReadPreference;
@@ -120,7 +129,7 @@ public class MongoDBRiverDefinition {
 		private String mongoLocalUser = "";
 		private String mongoLocalPassword = "";
 		// mongodb.options
-		// private MongoClientOptions mongoClientOptions = null;
+		private MongoClientOptions mongoClientOptions = null;
 		private int connectTimeout = 0;
 		private int socketTimeout = 0;
 		private boolean mongoSecondaryReadPreference = false;
@@ -189,7 +198,7 @@ public class MongoDBRiverDefinition {
 		}
 
 		public Builder mongoClientOptions(MongoClientOptions mongoClientOptions) {
-			// this.mongoClientOptions = mongoClientOptions;
+			this.mongoClientOptions = mongoClientOptions;
 			return this;
 		}
 
@@ -296,7 +305,7 @@ public class MongoDBRiverDefinition {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static MongoDBRiverDefinition parseSettings(
+	public synchronized static MongoDBRiverDefinition parseSettings(
 			final RiverName riverName, final RiverSettings settings,
 			final ScriptService scriptService) {
 
@@ -368,6 +377,23 @@ public class MongoDBRiverDefinition {
 				builder.advancedTransformation(XContentMapValues
 						.nodeBooleanValue(mongoOptionsSettings
 								.get(ADVANCED_TRANSFORMATION_FIELD), false));
+
+				MongoClientOptions.Builder mongoClientOptionsBuilder = MongoClientOptions
+						.builder().autoConnectRetry(true)
+						.connectTimeout(builder.connectTimeout)
+						.socketKeepAlive(true)
+						.socketTimeout(builder.socketTimeout);
+				
+				if (builder.mongoSecondaryReadPreference) {
+					mongoClientOptionsBuilder.readPreference(ReadPreference.secondaryPreferred());
+				}
+				
+				if (builder.mongoUseSSL) {
+					mongoClientOptionsBuilder
+							.socketFactory(getSSLSocketFactory());
+				}
+
+				builder.mongoClientOptions(mongoClientOptionsBuilder.build());
 
 				if (mongoOptionsSettings.containsKey(PARENT_TYPES_FIELD)) {
 					Set<String> parentTypes = new HashSet<String>();
@@ -585,6 +611,44 @@ public class MongoDBRiverDefinition {
 		return builder.build();
 	}
 
+	private static SocketFactory getSSLSocketFactory() {
+		SocketFactory sslSocketFactory;
+		// if (!definition.isMongoSSLVerifyCertificate()) {
+		try {
+			final TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
+
+				@Override
+				public X509Certificate[] getAcceptedIssuers() {
+					return null;
+				}
+
+				@Override
+				public void checkServerTrusted(X509Certificate[] chain,
+						String authType) throws CertificateException {
+				}
+
+				@Override
+				public void checkClientTrusted(X509Certificate[] chain,
+						String authType) throws CertificateException {
+				}
+			} };
+			final SSLContext sslContext = SSLContext.getInstance("SSL");
+			sslContext.init(null, trustAllCerts,
+					new java.security.SecureRandom());
+			// Create an ssl socket factory with our all-trusting manager
+			sslSocketFactory = sslContext.getSocketFactory();
+			return sslSocketFactory;
+		} catch (Exception ex) {
+			logger.error(
+					"Unable to build ssl socket factory without certificate validation, using default instead.",
+					ex);
+		}
+		return SSLSocketFactory.getDefault();
+		// }
+		// sslSocketFactory = SSLSocketFactory.getDefault();
+		// return sslSocketFactory;
+	}
+
 	private MongoDBRiverDefinition(final Builder builder) {
 		this.mongoServers.addAll(builder.mongoServers);
 		// mongodb
@@ -599,7 +663,7 @@ public class MongoDBRiverDefinition {
 		this.mongoLocalPassword = builder.mongoLocalPassword;
 
 		// mongodb.options
-		// this.mongoClientOptions = builder.mongoClientOptions;
+		this.mongoClientOptions = builder.mongoClientOptions;
 		this.connectTimeout = builder.connectTimeout;
 		this.socketTimeout = builder.socketTimeout;
 		this.mongoSecondaryReadPreference = builder.mongoSecondaryReadPreference;
@@ -660,9 +724,9 @@ public class MongoDBRiverDefinition {
 		return mongoLocalPassword;
 	}
 
-	// public MongoClientOptions getMongoClientOptions() {
-	// return mongoClientOptions;
-	// }
+	public MongoClientOptions getMongoClientOptions() {
+		return mongoClientOptions;
+	}
 
 	public int getConnectTimeout() {
 		return connectTimeout;
