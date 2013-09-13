@@ -6,6 +6,7 @@
 			port: "27017"
 		}],
 		"options": {
+			"connect_timeout": 11000,
 			"secondary_read_preference": true,
 			"include_collection": "mycollection",
 			"advanced_transformation": true,

@@ -364,8 +364,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	private Mongo getMongoClient() {
 		if (mongo == null) {
 			Builder builder = MongoClientOptions.builder()
-					.autoConnectRetry(true).connectTimeout(15000)
-					.socketKeepAlive(true).socketTimeout(60000);
+					.autoConnectRetry(true).connectTimeout(definition.getConnectTimeout())
+					.socketKeepAlive(true).socketTimeout(definition.getSocketTimeout());
 			if (definition.isMongoUseSSL()) {
 				builder.socketFactory(getSSLSocketFactory());
 			}
@@ -1182,8 +1182,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		@Override
 		public void run() {
 			Builder builder = MongoClientOptions.builder()
-					.autoConnectRetry(true).connectTimeout(15000)
-					.socketKeepAlive(true).socketTimeout(60000);
+					.autoConnectRetry(true).connectTimeout(definition.getConnectTimeout())
+					.socketKeepAlive(true).socketTimeout(definition.getSocketTimeout());
 			if (definition.isMongoUseSSL()) {
 				builder.socketFactory(getSSLSocketFactory());
 			}

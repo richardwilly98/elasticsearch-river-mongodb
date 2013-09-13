@@ -20,6 +20,7 @@ import org.elasticsearch.river.RiverSettings;
 import org.elasticsearch.script.ExecutableScript;
 import org.elasticsearch.script.ScriptService;
 
+import com.mongodb.MongoClientOptions;
 import com.mongodb.ServerAddress;
 
 public class MongoDBRiverDefinition {
@@ -38,6 +39,8 @@ public class MongoDBRiverDefinition {
 	public final static String PORT_FIELD = "port";
 	public final static String OPTIONS_FIELD = "options";
 	public final static String SECONDARY_READ_PREFERENCE_FIELD = "secondary_read_preference";
+	public final static String CONNECTION_TIMEOUT = "connect_timeout";
+	public final static String SOCKET_TIMEOUT = "socket_timeout";
 	public final static String SSL_CONNECTION_FIELD = "ssl";
 	public final static String SSL_VERIFY_CERT_FIELD = "ssl_verify_certificate";
 	public final static String DROP_COLLECTION_FIELD = "drop_collection";
@@ -78,7 +81,12 @@ public class MongoDBRiverDefinition {
 	private final String mongoAdminPassword;
 	private final String mongoLocalUser;
 	private final String mongoLocalPassword;
+
 	// mongodb.options
+	// TODO create MongoClientOptions from this class
+	// private final MongoClientOptions mongoClientOptions;
+	private final int connectTimeout;
+	private final int socketTimeout;
 	private final boolean mongoSecondaryReadPreference;
 	private final boolean mongoUseSSL;
 	private final boolean mongoSSLVerifyCertificate;
@@ -112,6 +120,9 @@ public class MongoDBRiverDefinition {
 		private String mongoLocalUser = "";
 		private String mongoLocalPassword = "";
 		// mongodb.options
+		// private MongoClientOptions mongoClientOptions = null;
+		private int connectTimeout = 0;
+		private int socketTimeout = 0;
 		private boolean mongoSecondaryReadPreference = false;
 		private boolean mongoUseSSL = false;
 		private boolean mongoSSLVerifyCertificate = false;
@@ -174,6 +185,21 @@ public class MongoDBRiverDefinition {
 
 		public Builder mongoLocalPassword(String mongoLocalPassword) {
 			this.mongoLocalPassword = mongoLocalPassword;
+			return this;
+		}
+
+		public Builder mongoClientOptions(MongoClientOptions mongoClientOptions) {
+			// this.mongoClientOptions = mongoClientOptions;
+			return this;
+		}
+
+		public Builder connectTimeout(int connectTimeout) {
+			this.connectTimeout = connectTimeout;
+			return this;
+		}
+
+		public Builder socketTimeout(int socketTimeout) {
+			this.socketTimeout = socketTimeout;
 			return this;
 		}
 
@@ -329,6 +355,10 @@ public class MongoDBRiverDefinition {
 				builder.mongoSecondaryReadPreference(XContentMapValues
 						.nodeBooleanValue(mongoOptionsSettings
 								.get(SECONDARY_READ_PREFERENCE_FIELD), false));
+				builder.connectTimeout(XContentMapValues.nodeIntegerValue(
+						mongoOptionsSettings.get(CONNECTION_TIMEOUT), 0));
+				builder.socketTimeout(XContentMapValues.nodeIntegerValue(
+						mongoOptionsSettings.get(SOCKET_TIMEOUT), 0));
 				builder.dropCollection(XContentMapValues.nodeBooleanValue(
 						mongoOptionsSettings.get(DROP_COLLECTION_FIELD), false));
 				builder.mongoUseSSL(XContentMapValues.nodeBooleanValue(
@@ -360,7 +390,7 @@ public class MongoDBRiverDefinition {
 
 				builder.includeCollection(XContentMapValues.nodeStringValue(
 						mongoOptionsSettings.get(INCLUDE_COLLECTION_FIELD), ""));
-				
+
 				if (mongoOptionsSettings.containsKey(INCLUDE_FIELDS_FIELD)) {
 					Set<String> includeFields = new HashSet<String>();
 					Object includeFieldsSettings = mongoOptionsSettings
@@ -377,12 +407,13 @@ public class MongoDBRiverDefinition {
 							includeFields.add(field);
 						}
 					}
-					
-					if (! includeFields.contains(MongoDBRiver.MONGODB_ID_FIELD)) {
+
+					if (!includeFields.contains(MongoDBRiver.MONGODB_ID_FIELD)) {
 						includeFields.add(MongoDBRiver.MONGODB_ID_FIELD);
 					}
 					builder.includeFields(includeFields);
-				} else if (mongoOptionsSettings.containsKey(EXCLUDE_FIELDS_FIELD)) {
+				} else if (mongoOptionsSettings
+						.containsKey(EXCLUDE_FIELDS_FIELD)) {
 					Set<String> excludeFields = new HashSet<String>();
 					Object excludeFieldsSettings = mongoOptionsSettings
 							.get(EXCLUDE_FIELDS_FIELD);
@@ -401,7 +432,7 @@ public class MongoDBRiverDefinition {
 
 					builder.excludeFields(excludeFields);
 				}
-				
+
 				if (mongoOptionsSettings.containsKey(INITIAL_TIMESTAMP_FIELD)) {
 					BSONTimestamp timeStamp = null;
 					try {
@@ -568,6 +599,9 @@ public class MongoDBRiverDefinition {
 		this.mongoLocalPassword = builder.mongoLocalPassword;
 
 		// mongodb.options
+		// this.mongoClientOptions = builder.mongoClientOptions;
+		this.connectTimeout = builder.connectTimeout;
+		this.socketTimeout = builder.socketTimeout;
 		this.mongoSecondaryReadPreference = builder.mongoSecondaryReadPreference;
 		this.mongoUseSSL = builder.mongoUseSSL;
 		this.mongoSSLVerifyCertificate = builder.mongoSSLVerifyCertificate;
@@ -624,6 +658,18 @@ public class MongoDBRiverDefinition {
 
 	public String getMongoLocalPassword() {
 		return mongoLocalPassword;
+	}
+
+	// public MongoClientOptions getMongoClientOptions() {
+	// return mongoClientOptions;
+	// }
+
+	public int getConnectTimeout() {
+		return connectTimeout;
+	}
+
+	public int getSocketTimeout() {
+		return socketTimeout;
 	}
 
 	public boolean isMongoSecondaryReadPreference() {
