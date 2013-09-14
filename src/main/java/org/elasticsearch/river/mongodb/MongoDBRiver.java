@@ -123,6 +123,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	public final static String OPLOG_COMMAND_OPERATION = "c";
 	public final static String OPLOG_DROP_COMMAND_OPERATION = "drop";
 	public final static String OPLOG_TIMESTAMP = "ts";
+	public final static String OPLOG_FROM_MIGRATE = "fromMigrate";
 	public final static String GRIDFS_FILES_SUFFIX = ".files";
 	public final static String GRIDFS_CHUNKS_SUFFIX = ".chunks";
 
@@ -142,7 +143,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	protected volatile boolean startInvoked = false;
 
 	private final BlockingQueue<Map<String, Object>> stream;
-	// private SocketFactory sslSocketFactory;
 
 	private Mongo mongo;
 	private DB adminDb;
@@ -169,10 +169,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				findKeys.put(key, 0);
 			}
 		} else if (definition.getIncludeFields() != null) {
-			// if (!
-			// definition.getIncludeCollection().contains(MONGODB_ID_FIELD)) {
-			// findKeys.put(MONGODB_ID_FIELD, 1);
-			// }
 			for (String key : definition.getIncludeFields()) {
 				findKeys.put(key, 1);
 			}
@@ -355,18 +351,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		return configDb;
 	}
 
-	// TODO: MongoClientOptions should be configurable
 	private Mongo getMongoClient() {
 		if (mongo == null) {
-			// Builder builder = MongoClientOptions.builder()
-			// .autoConnectRetry(true).connectTimeout(definition.getConnectTimeout())
-			// .socketKeepAlive(true).socketTimeout(definition.getSocketTimeout());
-			// if (definition.isMongoUseSSL()) {
-			// builder.socketFactory(getSSLSocketFactory());
-			// }
-			//
-			// MongoClientOptions mco = builder.build();
-			// mongo = new MongoClient(definition.getMongoServers(), mco);
 			mongo = new MongoClient(definition.getMongoServers(),
 					definition.getMongoClientOptions());
 		}
@@ -422,46 +408,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			active = false;
 		}
 	}
-
-	// private SocketFactory getSSLSocketFactory() {
-	// if (sslSocketFactory != null)
-	// return sslSocketFactory;
-	//
-	// if (!definition.isMongoSSLVerifyCertificate()) {
-	// try {
-	// final TrustManager[] trustAllCerts = new TrustManager[] { new
-	// X509TrustManager() {
-	//
-	// @Override
-	// public X509Certificate[] getAcceptedIssuers() {
-	// return null;
-	// }
-	//
-	// @Override
-	// public void checkServerTrusted(X509Certificate[] chain,
-	// String authType) throws CertificateException {
-	// }
-	//
-	// @Override
-	// public void checkClientTrusted(X509Certificate[] chain,
-	// String authType) throws CertificateException {
-	// }
-	// } };
-	// final SSLContext sslContext = SSLContext.getInstance("SSL");
-	// sslContext.init(null, trustAllCerts,
-	// new java.security.SecureRandom());
-	// // Create an ssl socket factory with our all-trusting manager
-	// sslSocketFactory = sslContext.getSocketFactory();
-	// return sslSocketFactory;
-	// } catch (Exception ex) {
-	// logger.error(
-	// "Unable to build ssl socket factory without certificate validation, using default instead.",
-	// ex);
-	// }
-	// }
-	// sslSocketFactory = SSLSocketFactory.getDefault();
-	// return sslSocketFactory;
-	// }
 
 	private class Indexer implements Runnable {
 
@@ -558,9 +504,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					updateBulkRequest(bulk, data, null, operation,
 							definition.getIndexName(),
 							definition.getTypeName(), null, null);
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+				} catch (IOException ioEx) {
+					logger.error("Update bulk failed.", ioEx);
 				}
 				return lastTimestamp;
 			}
@@ -995,8 +940,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 											operation, index, type, routing,
 											parent);
 								} catch (IOException ioEx) {
-									logger.error("Update bulk failed.", ioEx,
-											(Object) null);
+									logger.error("Update bulk failed.", ioEx);
 								}
 							}
 						}
@@ -1167,7 +1111,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			// CommandResult cmd = slurpedDb.authenticateCommand(mongoDbUser,
 			// mongoDbPassword.toCharArray());
 			// if (!cmd.ok()) {
-			// logger.error("Autenticatication failed for {}: {}",
+			// logger.error("Authentication failed for {}: {}",
 			// mongoDb, cmd.getErrorMessage());
 			// return false;
 			// }
@@ -1269,8 +1213,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			// Initial support for sharded collection -
 			// https://jira.mongodb.org/browse/SERVER-4333
 			// Not interested in operation from migration or sharding
-			if (entry.containsField("fromMigrate")
-					&& ((BasicBSONObject) entry).getBoolean("fromMigrate")) {
+			if (entry.containsField(OPLOG_FROM_MIGRATE)
+					&& ((BasicBSONObject) entry).getBoolean(OPLOG_FROM_MIGRATE)) {
 				logger.debug(
 						"From migration or sharding operation. Can be ignored. {}",
 						entry);
@@ -1362,8 +1306,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			BSONTimestamp time = timestampOverride == null ? getLastTimestamp(mongoOplogNamespace)
 					: timestampOverride;
 			BasicDBObject filter = new BasicDBObject();
-			// BasicDBList filter = new BasicDBList();
-			List<DBObject> values = new ArrayList<DBObject>();
+			// List<DBObject> values = new ArrayList<DBObject>();
 			List<DBObject> values2 = new ArrayList<DBObject>();
 
 			if (definition.isMongoGridFS()) {
@@ -1394,8 +1337,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						QueryOperators.GT, time));
 			}
 			// filter = new BasicDBObject(MONGODB_AND_OPERATOR, values);
-			// filter.putAll()
-			// filter.addAll(values);
 			if (logger.isDebugEnabled()) {
 				logger.debug("Using filter: {}", filter);
 			}
@@ -1432,34 +1373,36 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			if (indexFilter == null) {
 				return null;
 			}
-			// String json = indexFilter.toString();
-			// int options = Bytes.QUERYOPTION_TAILABLE |
-			// Bytes.QUERYOPTION_AWAITDATA | Bytes.QUERYOPTION_NOTIMEOUT;
-			// if (indexFilter.containsField(OPLOG_TIMESTAMP))
-			// {
-			// options += Bytes.QUERYOPTION_OPLOGREPLAY;
-			// }
-			// return oplogCollection.find(indexFilter)
-			// .sort(new BasicDBObject(MONGODB_NATURAL_OPERATOR, 1))
-			// .setOptions(options);
+
+			int options = Bytes.QUERYOPTION_TAILABLE
+					| Bytes.QUERYOPTION_AWAITDATA | Bytes.QUERYOPTION_NOTIMEOUT;
+
+			// Use OPLOGREPLAY to improve performance:
+			// https://jira.mongodb.org/browse/JAVA-771
+			if (indexFilter.containsField(OPLOG_TIMESTAMP)) {
+				options = options | Bytes.QUERYOPTION_OPLOGREPLAY;
+			}
+			return oplogCollection.find(indexFilter)
+					.sort(new BasicDBObject(MONGODB_NATURAL_OPERATOR, 1))
+					.setOptions(options);
 
 			// logger.debug("{} - json.contains(\"ts\")", json,
 			// json.contains("\"ts\""));
-			if (indexFilter.containsField(OPLOG_TIMESTAMP)) {
-				// if (json.contains("\"ts\"")) {
-				return oplogCollection.find(indexFilter)
-						.sort(new BasicDBObject(MONGODB_NATURAL_OPERATOR, 1))
-						.addOption(Bytes.QUERYOPTION_TAILABLE)
-						.addOption(Bytes.QUERYOPTION_AWAITDATA)
-						.addOption(Bytes.QUERYOPTION_NOTIMEOUT)
-						.addOption(Bytes.QUERYOPTION_OPLOGREPLAY);
-			} else {
-				return oplogCollection.find(indexFilter)
-						.sort(new BasicDBObject(MONGODB_NATURAL_OPERATOR, 1))
-						.addOption(Bytes.QUERYOPTION_TAILABLE)
-						.addOption(Bytes.QUERYOPTION_AWAITDATA)
-						.addOption(Bytes.QUERYOPTION_NOTIMEOUT);
-			}
+			// if (indexFilter.containsField(OPLOG_TIMESTAMP)) {
+			// // if (json.contains("\"ts\"")) {
+			// return oplogCollection.find(indexFilter)
+			// .sort(new BasicDBObject(MONGODB_NATURAL_OPERATOR, 1))
+			// .addOption(Bytes.QUERYOPTION_TAILABLE)
+			// .addOption(Bytes.QUERYOPTION_AWAITDATA)
+			// .addOption(Bytes.QUERYOPTION_NOTIMEOUT)
+			// .addOption(Bytes.QUERYOPTION_OPLOGREPLAY);
+			// } else {
+			// return oplogCollection.find(indexFilter)
+			// .sort(new BasicDBObject(MONGODB_NATURAL_OPERATOR, 1))
+			// .addOption(Bytes.QUERYOPTION_TAILABLE)
+			// .addOption(Bytes.QUERYOPTION_AWAITDATA)
+			// .addOption(Bytes.QUERYOPTION_NOTIMEOUT);
+			// }
 
 			// return oplogCollection.find(indexFilter)
 			// .sort(new BasicDBObject(MONGODB_NATURAL_OPERATOR, 1))

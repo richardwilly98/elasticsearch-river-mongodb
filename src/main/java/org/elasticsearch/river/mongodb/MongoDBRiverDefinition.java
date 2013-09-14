@@ -92,7 +92,6 @@ public class MongoDBRiverDefinition {
 	private final String mongoLocalPassword;
 
 	// mongodb.options
-	// TODO create MongoClientOptions from this class
 	private final MongoClientOptions mongoClientOptions;
 	private final int connectTimeout;
 	private final int socketTimeout;
@@ -613,7 +612,6 @@ public class MongoDBRiverDefinition {
 
 	private static SocketFactory getSSLSocketFactory() {
 		SocketFactory sslSocketFactory;
-		// if (!definition.isMongoSSLVerifyCertificate()) {
 		try {
 			final TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
 
@@ -644,9 +642,6 @@ public class MongoDBRiverDefinition {
 					ex);
 		}
 		return SSLSocketFactory.getDefault();
-		// }
-		// sslSocketFactory = SSLSocketFactory.getDefault();
-		// return sslSocketFactory;
 	}
 
 	private MongoDBRiverDefinition(final Builder builder) {
