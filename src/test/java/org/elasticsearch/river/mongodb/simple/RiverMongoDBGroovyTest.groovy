@@ -1,4 +1,4 @@
-package org.elasticsearch.plugin.river.mongodb.simple
+package org.elasticsearch.river.mongodb.simple
 
 import com.gmongo.GMongo
 import com.mongodb.BasicDBObject
