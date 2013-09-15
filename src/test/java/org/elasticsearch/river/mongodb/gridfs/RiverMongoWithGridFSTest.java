@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package test.elasticsearch.plugin.river.mongodb.gridfs;
+package org.elasticsearch.river.mongodb.gridfs;
 
 import static org.elasticsearch.client.Requests.countRequest;
 import static org.elasticsearch.common.io.Streams.copyToBytesFromClasspath;
@@ -28,12 +28,11 @@ import org.bson.types.ObjectId;
 import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-
-import test.elasticsearch.plugin.river.mongodb.RiverMongoDBTestAsbtract;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
@@ -44,10 +43,10 @@ import com.mongodb.gridfs.GridFSDBFile;
 import com.mongodb.gridfs.GridFSInputFile;
 
 @Test
-public class RiverMongoWithGridFSTest extends RiverMongoDBTestAsbtract {
+public class RiverMongoWithGridFSTest extends RiverMongoDBTestAbstract {
 
-	private static final String TEST_ATTACHMENT_PDF = "/test/elasticsearch/plugin/river/mongodb/gridfs/lorem.pdf";
-	private static final String TEST_ATTACHMENT_HTML = "/test/elasticsearch/plugin/river/mongodb/gridfs/test-attachment.html";
+	private static final String TEST_ATTACHMENT_PDF = "/org/elasticsearch/river/mongodb/gridfs/lorem.pdf";
+	private static final String TEST_ATTACHMENT_HTML = "/org/elasticsearch/river/mongodb/gridfs/test-attachment.html";
 	private DB mongoDB;
 	private DBCollection mongoCollection;
 

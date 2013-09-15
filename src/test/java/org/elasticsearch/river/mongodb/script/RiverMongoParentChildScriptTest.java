@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package test.elasticsearch.plugin.river.mongodb.script;
+package org.elasticsearch.river.mongodb.script;
 
 import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath;
 import static org.elasticsearch.index.query.QueryBuilders.fieldQuery;
@@ -32,7 +32,7 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import test.elasticsearch.plugin.river.mongodb.RiverMongoDBTestAsbtract;
+import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
@@ -42,13 +42,13 @@ import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
 
 @Test
-public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAsbtract {
+public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAbstract {
 
-	private static final String QUERY_BOOKS_JSON = "/test/elasticsearch/plugin/river/mongodb/script/query-books.json";
-	private static final String BOOK1_DOCUMENT_JSON = "/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-book1-document.json";
-	private static final String AUTHOR_DOCUMENT_JSON = "/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-author-document.json";
-	private static final String BOOKS_MAPPING_JSON = "/test/elasticsearch/plugin/river/mongodb/script/books-mapping.json";
-	private static final String AUTHORS_MAPPING_JSON = "/test/elasticsearch/plugin/river/mongodb/script/authors-mapping.json";
+	private static final String QUERY_BOOKS_JSON = "/org/elasticsearch/river/mongodb/script/query-books.json";
+	private static final String BOOK1_DOCUMENT_JSON = "/org/elasticsearch/river/mongodb/script/test-mongodb-book1-document.json";
+	private static final String AUTHOR_DOCUMENT_JSON = "/org/elasticsearch/river/mongodb/script/test-mongodb-author-document.json";
+	private static final String BOOKS_MAPPING_JSON = "/org/elasticsearch/river/mongodb/script/books-mapping.json";
+	private static final String AUTHORS_MAPPING_JSON = "/org/elasticsearch/river/mongodb/script/authors-mapping.json";
 	
 	private static final String DATABASE_NAME = "testparentchild";
 	private static final String AUTHORS_COLLECTION = "authors";

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package test.elasticsearch.plugin.river.mongodb.script;
+package org.elasticsearch.river.mongodb.script;
 
 import static org.elasticsearch.client.Requests.countRequest;
 import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath;
@@ -29,12 +29,11 @@ import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsReques
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-
-import test.elasticsearch.plugin.river.mongodb.RiverMongoDBTestAsbtract;
 
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
@@ -44,7 +43,7 @@ import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
 
 @Test
-public class RiverMongoTwoGroovyScriptTest extends RiverMongoDBTestAsbtract {
+public class RiverMongoTwoGroovyScriptTest extends RiverMongoDBTestAbstract {
 
 	private static final String GROOVY_SCRIPT_TYPE = "groovy";
 	private DB mongoDB;

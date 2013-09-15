@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package test.elasticsearch.plugin.river.mongodb.simple;
+package org.elasticsearch.river.mongodb.simple;
 
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
