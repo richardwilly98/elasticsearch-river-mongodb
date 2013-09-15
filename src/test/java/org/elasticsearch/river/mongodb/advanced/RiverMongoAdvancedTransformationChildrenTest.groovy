@@ -1,4 +1,4 @@
-package test.elasticsearch.plugin.river.mongodb.advanced
+package org.elasticsearch.river.mongodb.advanced
 
 import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath
 import static org.elasticsearch.index.query.QueryBuilders.fieldQuery
@@ -6,20 +6,19 @@ import static org.elasticsearch.search.sort.SortOrder.ASC
 
 import org.bson.types.ObjectId
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest
+import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract
 import org.elasticsearch.search.SearchHit
 import org.testng.Assert
 import org.testng.annotations.AfterClass
 import org.testng.annotations.BeforeClass
 import org.testng.annotations.Test
 
-import test.elasticsearch.plugin.river.mongodb.RiverMongoDBTestAsbtract
-
 import com.gmongo.GMongo
 import com.mongodb.BasicDBObject
 import com.mongodb.DBCollection
 import com.mongodb.WriteConcern
 
-class RiverMongoAdvancedTransformationChildrenTest extends RiverMongoDBTestAsbtract {
+class RiverMongoAdvancedTransformationChildrenTest extends RiverMongoDBTestAbstract {
 	// This Groovy script is available in src/test/scripts. 
 	// It will be copied by Maven plugin build-helper-maven-plugin in target/config/scripts
 	static final String GROOVY_SCRIPT = "advanced-transformation-groovy-script"
@@ -66,7 +65,7 @@ class RiverMongoAdvancedTransformationChildrenTest extends RiverMongoDBTestAsbtr
 					.preparePutMapping(index)
 					.setType("tweet")
 					.setSource(
-					getJsonSettings("/test/elasticsearch/plugin/river/mongodb/advanced/tweets-mapping.json"))
+					getJsonSettings("/org/elasticsearch/river/mongodb/advanced/tweets-mapping.json"))
 					.execute().actionGet()
 
 			createRiver(

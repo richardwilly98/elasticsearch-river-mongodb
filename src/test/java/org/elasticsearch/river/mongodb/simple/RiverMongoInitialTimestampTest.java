@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package test.elasticsearch.plugin.river.mongodb.simple;
+package org.elasticsearch.river.mongodb.simple;
 
 import static org.elasticsearch.client.Requests.countRequest;
 import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath;
@@ -25,12 +25,11 @@ import static org.hamcrest.Matchers.equalTo;
 
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.count.CountResponse;
+import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-
-import test.elasticsearch.plugin.river.mongodb.RiverMongoDBTestAsbtract;
 
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
@@ -39,9 +38,9 @@ import com.mongodb.WriteConcern;
 import com.mongodb.util.JSON;
 
 @Test
-public class RiverMongoInitialTimestampTest extends RiverMongoDBTestAsbtract {
+public class RiverMongoInitialTimestampTest extends RiverMongoDBTestAbstract {
 
-	private static final String TEST_SIMPLE_MONGODB_RIVER_INITIAL_TIMESTAMP_JSON = "/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river-initial-timestamp.json";
+	private static final String TEST_SIMPLE_MONGODB_RIVER_INITIAL_TIMESTAMP_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-initial-timestamp.json";
 	private static final String GROOVY_SCRIPT_TYPE = "groovy";
 	private static final String JAVASCRIPT_SCRIPT_TYPE = "js";
 	private DB mongoDB;

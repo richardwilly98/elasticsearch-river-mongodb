@@ -3,3 +3,5 @@ test-output
 
 /build.gradle
 *.log
+.externalToolBuilders
+maven-eclipse.xml
