@@ -1,10 +1,10 @@
-package test.elasticsearch.plugin.river.mongodb.simple
+package org.elasticsearch.plugin.river.mongodb.simple
 
 import com.gmongo.GMongo
 import com.mongodb.BasicDBObject
 import com.mongodb.DBCollection
 import com.mongodb.WriteConcern
-import test.elasticsearch.plugin.river.mongodb.RiverMongoDBTestAsbtract
+import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest
 import org.testng.annotations.*
 import org.testng.Assert
@@ -12,7 +12,7 @@ import org.elasticsearch.search.SearchHit
 
 import static org.elasticsearch.index.query.QueryBuilders.fieldQuery
 
-class RiverMongoDBGroovyTest extends RiverMongoDBTestAsbtract {
+class RiverMongoDBGroovyTest extends RiverMongoDBTestAbstract {
 
 	static final int WAIT = 1000
 
@@ -44,7 +44,7 @@ class RiverMongoDBGroovyTest extends RiverMongoDBTestAsbtract {
 		try {
 			// Create river
 			createRiver(
-					"/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river.json", river,
+					"/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river.json", river,
 					mongoPort1.toString(), mongoPort2.toString(), mongoPort3.toString(),
 					database, collection, index
 					)

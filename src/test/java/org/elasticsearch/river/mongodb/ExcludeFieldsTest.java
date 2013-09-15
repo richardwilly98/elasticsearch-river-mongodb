@@ -1,4 +1,4 @@
-package test.elasticsearch.plugin.river.mongodb;
+package org.elasticsearch.river.mongodb;
 
 import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath;
 
@@ -25,7 +25,7 @@ public class ExcludeFieldsTest {
 			Set<String> excludeFields = new HashSet<String>(Arrays.asList(
 					"lastName", "hobbies", "address.apartment"));
 			// test-exclude-fields-document.json
-			String mongoDocument = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/test-exclude-fields-document.json");
+			String mongoDocument = copyToStringFromClasspath("/org/elasticsearch/river/mongodb/test-exclude-fields-document.json");
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
 			logger.debug("Initial BSON object: {}", dbObject);
 			DBObject filteredObject = MongoDBHelper.applyExcludeFields(dbObject,
@@ -47,7 +47,7 @@ public class ExcludeFieldsTest {
 			Set<String> includeFields = new HashSet<String>(Arrays.asList(
 					"lastName", "hobbies", "address.street"));
 			// test-exclude-fields-document.json
-			String mongoDocument = copyToStringFromClasspath("/test/elasticsearch/plugin/river/mongodb/test-exclude-fields-document.json");
+			String mongoDocument = copyToStringFromClasspath("/org/elasticsearch/river/mongodb/test-exclude-fields-document.json");
 			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
 			logger.debug("Initial BSON object: {}", dbObject);
 			DBObject filteredObject = MongoDBHelper.applyIncludeFields(dbObject,

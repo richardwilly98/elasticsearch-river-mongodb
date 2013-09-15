@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package test.elasticsearch.plugin.river.mongodb;
+package org.elasticsearch.river.mongodb;
 
 import static org.elasticsearch.client.Requests.clusterHealthRequest;
 import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath;
@@ -64,18 +64,19 @@ import de.flapdoodle.embed.mongo.MongodStarter;
 import de.flapdoodle.embed.mongo.config.IMongodConfig;
 import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
 import de.flapdoodle.embed.mongo.config.Storage;
+import de.flapdoodle.embed.mongo.distribution.Versions;
 import de.flapdoodle.embed.process.distribution.GenericVersion;
 import de.flapdoodle.embed.process.runtime.Network;
 
-public abstract class RiverMongoDBTestAsbtract {
+public abstract class RiverMongoDBTestAbstract {
 
-	public static final String TEST_MONGODB_RIVER_SIMPLE_JSON = "/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river.json";
-	public static final String TEST_MONGODB_RIVER_SIMPLE_WITH_TYPE_JSON = "/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river-with-type.json";
-	public static final String TEST_MONGODB_RIVER_GRIDFS_JSON = "/test/elasticsearch/plugin/river/mongodb/gridfs/test-gridfs-mongodb-river.json";
-	public static final String TEST_MONGODB_RIVER_WITH_SCRIPT_JSON = "/test/elasticsearch/plugin/river/mongodb/script/test-mongodb-river-with-script.json";
-	public static final String TEST_MONGODB_RIVER_EXCLUDE_FIELDS_JSON = "/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river-exclude-fields.json";
-	public static final String TEST_MONGODB_RIVER_INCLUDE_FIELDS_JSON = "/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river-include-fields.json";
-	public static final String TEST_SIMPLE_MONGODB_DOCUMENT_JSON = "/test/elasticsearch/plugin/river/mongodb/script/test-simple-mongodb-document.json";
+	public static final String TEST_MONGODB_RIVER_SIMPLE_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river.json";
+	public static final String TEST_MONGODB_RIVER_SIMPLE_WITH_TYPE_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-with-type.json";
+	public static final String TEST_MONGODB_RIVER_GRIDFS_JSON = "/org/elasticsearch/river/mongodb/gridfs/test-gridfs-mongodb-river.json";
+	public static final String TEST_MONGODB_RIVER_WITH_SCRIPT_JSON = "/org/elasticsearch/river/mongodb/script/test-mongodb-river-with-script.json";
+	public static final String TEST_MONGODB_RIVER_EXCLUDE_FIELDS_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-exclude-fields.json";
+	public static final String TEST_MONGODB_RIVER_INCLUDE_FIELDS_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-include-fields.json";
+	public static final String TEST_SIMPLE_MONGODB_DOCUMENT_JSON = "/org/elasticsearch/river/mongodb/script/test-simple-mongodb-document.json";
 
 	protected final ESLogger logger = Loggers.getLogger(getClass());
 	protected final static long wait = 6000;
@@ -111,7 +112,7 @@ public abstract class RiverMongoDBTestAsbtract {
 	private final String collection;
 	private final String index;
 
-	protected RiverMongoDBTestAsbtract(String river, String database,
+	protected RiverMongoDBTestAbstract(String river, String database,
 			String collection, String index) {
 		this.river = river;
 		this.database = database;
@@ -156,7 +157,7 @@ public abstract class RiverMongoDBTestAsbtract {
 		Storage storage3 = new Storage("target/mongodb/3", REPLICA_SET_NAME, 20);
 
 		mongodConfig1 = new MongodConfigBuilder()
-				.version(new GenericVersion(mongoVersion))
+				.version(Versions.withFeatures(new GenericVersion(mongoVersion)))
 				.net(new de.flapdoodle.embed.mongo.config.Net(mongoPort1,
 						Network.localhostIsIPv6())).replication(storage1)
 				.build();
@@ -164,7 +165,7 @@ public abstract class RiverMongoDBTestAsbtract {
 		mongod1 = mongodExe1.start();
 
 		mongodConfig2 = new MongodConfigBuilder()
-				.version(new GenericVersion(mongoVersion))
+				.version(Versions.withFeatures(new GenericVersion(mongoVersion)))
 				.net(new de.flapdoodle.embed.mongo.config.Net(mongoPort2,
 						Network.localhostIsIPv6())).replication(storage2)
 				.build();
@@ -172,7 +173,7 @@ public abstract class RiverMongoDBTestAsbtract {
 		mongod2 = mongodExe2.start();
 
 		mongodConfig3 = new MongodConfigBuilder()
-				.version(new GenericVersion(mongoVersion))
+				.version(Versions.withFeatures(new GenericVersion(mongoVersion)))
 				.net(new de.flapdoodle.embed.mongo.config.Net(mongoPort3,
 						Network.localhostIsIPv6())).replication(storage3)
 				.build();

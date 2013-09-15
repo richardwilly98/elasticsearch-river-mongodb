@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package test.elasticsearch.plugin.river.mongodb.simple;
+package org.elasticsearch.river.mongodb.simple;
 
 import static org.elasticsearch.index.query.QueryBuilders.fieldQuery;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -27,12 +27,11 @@ import java.util.Map;
 import org.bson.types.ObjectId;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-
-import test.elasticsearch.plugin.river.mongodb.RiverMongoDBTestAsbtract;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
@@ -41,7 +40,7 @@ import com.mongodb.DBObject;
 import com.mongodb.WriteConcern;
 
 @Test
-public class RiverMongoIncludeFieldsTest extends RiverMongoDBTestAsbtract {
+public class RiverMongoIncludeFieldsTest extends RiverMongoDBTestAbstract {
 
 	private DB mongoDB;
 	private DBCollection mongoCollection;

@@ -1,4 +1,4 @@
-package test.elasticsearch.plugin.river.mongodb;
+package org.elasticsearch.river.mongodb;
 
 import java.io.InputStream;
 
@@ -7,7 +7,6 @@ import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.river.RiverName;
 import org.elasticsearch.river.RiverSettings;
-import org.elasticsearch.river.mongodb.MongoDBRiverDefinition;
 import org.elasticsearch.script.ScriptService;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -20,7 +19,7 @@ public class MongoDBRiverDefinitionTest {
 					+ System.currentTimeMillis());
 			InputStream in = getClass()
 					.getResourceAsStream(
-							"/test/elasticsearch/plugin/river/mongodb/test-mongodb-river-definition.json");
+							"/org/elasticsearch/river/mongodb/test-mongodb-river-definition.json");
 			RiverSettings riverSettings = new RiverSettings(ImmutableSettings
 					.settingsBuilder().build(), XContentHelper.convertToMap(
 					Streams.copyToByteArray(in), false).v2());

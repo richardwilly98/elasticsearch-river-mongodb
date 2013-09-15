@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package test.elasticsearch.plugin.river.mongodb.advanced;
+package org.elasticsearch.river.mongodb.advanced;
 
 import static org.elasticsearch.client.Requests.countRequest;
 import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath;
@@ -27,12 +27,11 @@ import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.count.CountResponse;
+import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-
-import test.elasticsearch.plugin.river.mongodb.RiverMongoDBTestAsbtract;
 
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
@@ -42,10 +41,10 @@ import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
 
 @Test
-public class RiverMongoAdvancedTransformationGroovyScriptTest extends RiverMongoDBTestAsbtract {
+public class RiverMongoAdvancedTransformationGroovyScriptTest extends RiverMongoDBTestAbstract {
 
 	private static final String GROOVY_SCRIPT_TYPE = "groovy";
-	public static final String TEST_MONGODB_RIVER_WITH_ADVANCED_TRANSFORMATION_JSON = "/test/elasticsearch/plugin/river/mongodb/advanced/test-mongodb-river-with-advanced-transformation.json";
+	public static final String TEST_MONGODB_RIVER_WITH_ADVANCED_TRANSFORMATION_JSON = "/org/elasticsearch/river/mongodb/advanced/test-mongodb-river-with-advanced-transformation.json";
 	private DB mongoDB;
 	private DBCollection mongoCollection;
 

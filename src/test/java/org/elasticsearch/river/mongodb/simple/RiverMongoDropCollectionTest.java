@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package test.elasticsearch.plugin.river.mongodb.simple;
+package org.elasticsearch.river.mongodb.simple;
 
 import static org.elasticsearch.client.Requests.countRequest;
 import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath;
@@ -27,12 +27,11 @@ import static org.hamcrest.Matchers.greaterThan;
 
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.count.CountResponse;
+import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-
-import test.elasticsearch.plugin.river.mongodb.RiverMongoDBTestAsbtract;
 
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
@@ -41,9 +40,9 @@ import com.mongodb.WriteConcern;
 import com.mongodb.util.JSON;
 
 @Test
-public class RiverMongoDropCollectionTest extends RiverMongoDBTestAsbtract {
+public class RiverMongoDropCollectionTest extends RiverMongoDBTestAbstract {
 
-	private static final String TEST_SIMPLE_MONGODB_RIVER_DROP_COLLECTION_JSON = "/test/elasticsearch/plugin/river/mongodb/simple/test-simple-mongodb-river-drop-collection.json";
+	private static final String TEST_SIMPLE_MONGODB_RIVER_DROP_COLLECTION_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-drop-collection.json";
 	private DB mongoDB;
 	private DBCollection mongoCollection;
 	protected boolean dropCollectionOption = true;
