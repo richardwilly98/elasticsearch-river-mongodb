@@ -1309,6 +1309,15 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			// List<DBObject> values = new ArrayList<DBObject>();
 			List<DBObject> values2 = new ArrayList<DBObject>();
 
+			if (time == null) {
+				logger.info("No known previous slurping time for this collection");
+			} else {
+				// values.add(new BasicDBObject(OPLOG_TIMESTAMP,
+				// new BasicDBObject(QueryOperators.GT, time)));
+				filter.put(OPLOG_TIMESTAMP, new BasicDBObject(
+						QueryOperators.GT, time));
+			}
+
 			if (definition.isMongoGridFS()) {
 				// values.add(new BasicDBObject(OPLOG_NAMESPACE,
 				// mongoOplogNamespace + GRIDFS_FILES_SUFFIX));
@@ -1327,14 +1336,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			if (!definition.getMongoFilter().isEmpty()) {
 				// values.add(getMongoFilter());
 				filter.putAll(getMongoFilter());
-			}
-			if (time == null) {
-				logger.info("No known previous slurping time for this collection");
-			} else {
-				// values.add(new BasicDBObject(OPLOG_TIMESTAMP,
-				// new BasicDBObject(QueryOperators.GT, time)));
-				filter.put(OPLOG_TIMESTAMP, new BasicDBObject(
-						QueryOperators.GT, time));
 			}
 			// filter = new BasicDBObject(MONGODB_AND_OPERATOR, values);
 			if (logger.isDebugEnabled()) {
