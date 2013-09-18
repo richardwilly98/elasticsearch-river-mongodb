@@ -355,6 +355,10 @@ public class MongoDBRiverDefinition {
 			}
 			builder.mongoServers(mongoServers);
 
+			MongoClientOptions.Builder mongoClientOptionsBuilder = MongoClientOptions
+					.builder().autoConnectRetry(true)
+					.socketKeepAlive(true);
+			
 			// MongoDB options
 			if (mongoSettings.containsKey(OPTIONS_FIELD)) {
 				Map<String, Object> mongoOptionsSettings = (Map<String, Object>) mongoSettings
@@ -377,10 +381,8 @@ public class MongoDBRiverDefinition {
 						.nodeBooleanValue(mongoOptionsSettings
 								.get(ADVANCED_TRANSFORMATION_FIELD), false));
 
-				MongoClientOptions.Builder mongoClientOptionsBuilder = MongoClientOptions
-						.builder().autoConnectRetry(true)
+				mongoClientOptionsBuilder
 						.connectTimeout(builder.connectTimeout)
-						.socketKeepAlive(true)
 						.socketTimeout(builder.socketTimeout);
 				
 				if (builder.mongoSecondaryReadPreference) {
@@ -391,8 +393,6 @@ public class MongoDBRiverDefinition {
 					mongoClientOptionsBuilder
 							.socketFactory(getSSLSocketFactory());
 				}
-
-				builder.mongoClientOptions(mongoClientOptionsBuilder.build());
 
 				if (mongoOptionsSettings.containsKey(PARENT_TYPES_FIELD)) {
 					Set<String> parentTypes = new HashSet<String>();
@@ -497,6 +497,7 @@ public class MongoDBRiverDefinition {
 					}
 				}
 			}
+			builder.mongoClientOptions(mongoClientOptionsBuilder.build());
 
 			// Credentials
 			if (mongoSettings.containsKey(CREDENTIALS_FIELD)) {

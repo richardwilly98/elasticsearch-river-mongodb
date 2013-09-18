@@ -13,9 +13,6 @@
 			"host": "localhost",
 			"port": %s
 		}],
-		"options": {
-			"secondary_read_preference": true
-		},
 		"db": "%s",
 		"collection": "%s",
 		"gridfs": false
