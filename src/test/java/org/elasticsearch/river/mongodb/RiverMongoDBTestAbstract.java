@@ -39,8 +39,9 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.node.Node;
-import org.elasticsearch.node.internal.InternalSettingsPerparer;
+import org.elasticsearch.node.internal.InternalSettingsPreparer;
 import org.elasticsearch.plugins.PluginManager;
+import org.elasticsearch.plugins.PluginManager.OutputMode;
 import org.testng.Assert;
 import org.testng.annotations.AfterSuite;
 import org.testng.annotations.BeforeSuite;
@@ -262,7 +263,7 @@ public abstract class RiverMongoDBTestAbstract {
 	private void setupElasticsearchServer() throws Exception {
 		logger.debug("*** setupElasticsearchServer ***");
 		try {
-			Tuple<Settings, Environment> initialSettings = InternalSettingsPerparer
+			Tuple<Settings, Environment> initialSettings = InternalSettingsPreparer
 					.prepareSettings(settings, true);
 			if (!initialSettings.v2().configFile().exists()) {
 				FileSystemUtils.mkdirs(initialSettings.v2().configFile());
@@ -276,13 +277,12 @@ public abstract class RiverMongoDBTestAbstract {
 				FileSystemUtils.mkdirs(initialSettings.v2().pluginsFile());
 				if (settings.getByPrefix("plugins") != null) {
 					PluginManager pluginManager = new PluginManager(
-							initialSettings.v2(), null);
+							initialSettings.v2(), null, OutputMode.DEFAULT);
 
 					Map<String, String> plugins = settings.getByPrefix(
 							"plugins").getAsMap();
 					for (String key : plugins.keySet()) {
-						pluginManager.downloadAndExtract(plugins.get(key),
-								false);
+						pluginManager.downloadAndExtract(plugins.get(key));
 					}
 				}
 			} else {
