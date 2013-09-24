@@ -26,14 +26,13 @@ Build status
 
 [![Build Status](https://drone.io/github.com/richardwilly98/elasticsearch-river-mongodb/status.png)](https://drone.io/github.com/richardwilly98/elasticsearch-river-mongodb/latest)
 
-Initial implementation by [aparo](https://github.com/aparo)
+Initial implementation by [aparo](https://github.com/aparo). For the initial implementation see [tutorial](http://www.matt-reid.co.uk/blog_post.php?id=68#&slider1=4).
 
-Modified to get the same structure as the others Elasticsearch river (like [CouchDB](http://www.elasticsearch.org/blog/2010/09/28/the_river_searchable_couchdb.html))
+Modified to get the same structure as the other Elasticsearch rivers (like [CouchDB](http://www.elasticsearch.org/blog/2010/09/28/the_river_searchable_couchdb.html))
 
-The latest version monitor oplog capped collection and support attachment (GridFS).
+The latest version monitors the oplog capped collection and supports attachment (GridFS).
 
-For the initial implementation see [tutorial](http://www.matt-reid.co.uk/blog_post.php?id=68#&slider1=4)
-
+Configure the river using the definition described in the [wiki](https://github.com/richardwilly98/elasticsearch-river-mongodb/wiki):
 
 	curl -XPUT 'http://localhost:9200/_river/mongodb/_meta' -d '{
 		"type": "mongodb", 
@@ -95,6 +94,8 @@ Import binary content in mongo:
 Query index:
 
 	curl -XGET 'http://localhost:9200/files/4f230588a7da6e94984d88a1?pretty=true'
+
+Admin URL: http://localhost:9200/_plugin/river-mongodb/
 
 See more details check the [wiki](https://github.com/richardwilly98/elasticsearch-river-mongodb/wiki)
 
