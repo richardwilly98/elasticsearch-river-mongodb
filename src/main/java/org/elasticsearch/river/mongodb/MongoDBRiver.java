@@ -1091,7 +1091,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			if (!collections.contains(OPLOG_COLLECTION)) {
 				logger.error("Cannot find "
 						+ OPLOG_COLLECTION
-						+ " collection. Please use check this link: http://goo.gl/2x5IW");
+						+ " collection. Please check this link: http://goo.gl/2x5IW");
 				return false;
 			}
 			oplogCollection = oplogDb.getCollection(OPLOG_COLLECTION);
