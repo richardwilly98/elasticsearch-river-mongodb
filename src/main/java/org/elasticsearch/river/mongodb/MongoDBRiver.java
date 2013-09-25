@@ -306,7 +306,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			logger.trace("serverStatus: {}", cr);
 			logger.trace("process: {}", process);
 		}
-		// return (cr.get("process").equals("mongos"));
 		// Fix for https://jira.mongodb.org/browse/SERVER-9160
 		return (process.contains("mongos"));
 	}
@@ -518,7 +517,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				return applyAdvancedTransformation(bulk, entry);
 			}
 
-			// String objectId = data.get(MONGODB_ID_FIELD).toString();
 			String objectId = "";
 			if (entry.getData().get(MONGODB_ID_FIELD) != null) {
 				objectId = entry.getData().get(MONGODB_ID_FIELD).toString();
@@ -601,101 +599,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				objectId = extractObjectId(ctx, objectId);
 				updateBulkRequest(bulk, data, objectId, operation, index, type,
 						routing, parent);
-				// if (logger.isDebugEnabled()) {
-				// logger.debug(
-				// "Operation: {} - index: {} - type: {} - routing: {} - parent: {}",
-				// operation, index, type, routing, parent);
-				// }
-				// if (OPLOG_INSERT_OPERATION.equals(operation)) {
-				// if (logger.isDebugEnabled()) {
-				// logger.debug(
-				// "Insert operation - id: {} - contains attachment: {}",
-				// operation, objectId,
-				// data.containsKey(IS_MONGODB_ATTACHMENT));
-				// }
-				// bulk.add(indexRequest(index).type(type).id(objectId)
-				// .source(build(data, objectId)).routing(routing)
-				// .parent(parent));
-				// insertedDocuments++;
-				// }
-				// if (OPLOG_UPDATE_OPERATION.equals(operation)) {
-				// if (logger.isDebugEnabled()) {
-				// logger.debug(
-				// "Update operation - id: {} - contains attachment: {}",
-				// objectId,
-				// data.containsKey(IS_MONGODB_ATTACHMENT));
-				// }
-				// bulk.add(new DeleteRequest(index, type, objectId).routing(
-				// routing).parent(parent));
-				// bulk.add(indexRequest(index).type(type).id(objectId)
-				// .source(build(data, objectId)).routing(routing)
-				// .parent(parent));
-				// updatedDocuments++;
-				// // new UpdateRequest(definition.getIndexName(),
-				// // definition.getTypeName(), objectId)
-				// }
-				// if (OPLOG_DELETE_OPERATION.equals(operation)) {
-				// logger.info("Delete request [{}], [{}], [{}]", index, type,
-				// objectId);
-				// bulk.add(new DeleteRequest(index, type, objectId).routing(
-				// routing).parent(parent));
-				// deletedDocuments++;
-				// }
-				// if (OPLOG_COMMAND_OPERATION.equals(operation)) {
-				// if (definition.isDropCollection()) {
-				// if (data.containsKey(OPLOG_DROP_COMMAND_OPERATION)
-				// && data.get(OPLOG_DROP_COMMAND_OPERATION)
-				// .equals(definition.getMongoCollection())) {
-				// logger.info("Drop collection request [{}], [{}]",
-				// index, type);
-				// bulk.request().requests().clear();
-				// client.admin().indices().prepareRefresh(index)
-				// .execute().actionGet();
-				// Map<String, MappingMetaData> mappings = client
-				// .admin().cluster().prepareState().execute()
-				// .actionGet().getState().getMetaData()
-				// .index(index).mappings();
-				// logger.trace("mappings contains type {}: {}", type,
-				// mappings.containsKey(type));
-				// if (mappings.containsKey(type)) {
-				// /*
-				// * Issue #105 - Mapping changing from custom
-				// * mapping to dynamic when drop_collection =
-				// * true Should capture the existing mapping
-				// * metadata (in case it is has been customized
-				// * before to delete.
-				// */
-				// MappingMetaData mapping = mappings.get(type);
-				// client.admin().indices()
-				// .prepareDeleteMapping(index)
-				// .setType(type).execute().actionGet();
-				// PutMappingResponse pmr = client.admin()
-				// .indices().preparePutMapping(index)
-				// .setType(type)
-				// .setSource(mapping.source().string())
-				// .execute().actionGet();
-				// if (!pmr.isAcknowledged()) {
-				// logger.error(
-				// "Failed to put mapping {} / {} / {}.",
-				// index, type, mapping.source());
-				// }
-				// }
-				//
-				// deletedDocuments = 0;
-				// updatedDocuments = 0;
-				// insertedDocuments = 0;
-				// logger.info(
-				// "Delete request for index / type [{}] [{}] successfully executed.",
-				// index, type);
-				// } else {
-				// logger.debug("Database command {}", data);
-				// }
-				// } else {
-				// logger.info(
-				// "Ignore drop collection request [{}], [{}]. The option has been disabled.",
-				// index, type);
-				// }
-				// }
 			} catch (IOException e) {
 				logger.warn("failed to parse {}", e, entry.getData());
 			}
@@ -734,14 +637,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 						.source(build(data, objectId)).routing(routing)
 						.parent(parent));
 				updatedDocuments++;
-				// new UpdateRequest(definition.getIndexName(),
-				// definition.getTypeName(), objectId)
 			}
 			if (OPLOG_DELETE_OPERATION.equals(operation)) {
 				logger.info("Delete request [{}], [{}], [{}]", index, type,
 						objectId);
-				// bulk.add(new DeleteRequest(index, type, objectId).routing(
-				// routing).parent(parent));
 				deleteBulkRequest(bulk, objectId, index, type, routing, parent);
 				deletedDocuments++;
 			}
@@ -815,15 +714,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					&& definition.getParentTypes().contains(type)) {
 				QueryBuilder builder = QueryBuilders.hasParentQuery(type,
 						QueryBuilders.termQuery(MONGODB_ID_FIELD, objectId));
-				// logger.trace("Execute query : {}", builder);
 				SearchResponse response = client.prepareSearch(index)
 						.setQuery(builder).setRouting(routing)
 						.addField(MONGODB_ID_FIELD).execute().actionGet();
-				// logger.trace("Search has_parent: {}", response);
-				// logger.trace("TotalHits: {}",
-				// response.getHits().getTotalHits());
 				for (SearchHit hit : response.getHits().getHits()) {
-					// logger.trace("Hit: {}", hit.getId());
 					bulk.add(deleteRequest(index).type(hit.getType())
 							.id(hit.getId()).routing(routing).parent(objectId));
 				}
@@ -880,11 +774,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					documents.add(document);
 
 					ctx.put("documents", documents);
-					// ctx.put("document", data);
-					// ctx.put("operation", operation);
-					// if (!objectId.isEmpty()) {
-					// ctx.put("id", objectId);
-					// }
 					if (logger.isDebugEnabled()) {
 						logger.debug("Script to be executed: {}",
 								scriptExecutable);
@@ -1296,38 +1185,28 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			BSONTimestamp time = timestampOverride == null ? getLastTimestamp(mongoOplogNamespace)
 					: timestampOverride;
 			BasicDBObject filter = new BasicDBObject();
-			// List<DBObject> values = new ArrayList<DBObject>();
 			List<DBObject> values2 = new ArrayList<DBObject>();
 
 			if (time == null) {
 				logger.info("No known previous slurping time for this collection");
 			} else {
-				// values.add(new BasicDBObject(OPLOG_TIMESTAMP,
-				// new BasicDBObject(QueryOperators.GT, time)));
 				filter.put(OPLOG_TIMESTAMP, new BasicDBObject(
 						QueryOperators.GT, time));
 			}
 
 			if (definition.isMongoGridFS()) {
-				// values.add(new BasicDBObject(OPLOG_NAMESPACE,
-				// mongoOplogNamespace + GRIDFS_FILES_SUFFIX));
 				filter.put(OPLOG_NAMESPACE, mongoOplogNamespace
 						+ GRIDFS_FILES_SUFFIX);
 			} else {
-				// values.add(new BasicDBObject(OPLOG_NAMESPACE,
-				// mongoOplogNamespace));
 				values2.add(new BasicDBObject(OPLOG_NAMESPACE,
 						mongoOplogNamespace));
 				values2.add(new BasicDBObject(OPLOG_NAMESPACE, definition
 						.getMongoDb() + "." + OPLOG_NAMESPACE_COMMAND));
-				// values.add(new BasicDBObject(MONGODB_OR_OPERATOR, values2));
 				filter.put(MONGODB_OR_OPERATOR, values2);
 			}
 			if (!definition.getMongoFilter().isEmpty()) {
-				// values.add(getMongoFilter());
 				filter.putAll(getMongoFilter());
 			}
-			// filter = new BasicDBObject(MONGODB_AND_OPERATOR, values);
 			if (logger.isDebugEnabled()) {
 				logger.debug("Using filter: {}", filter);
 			}
@@ -1376,31 +1255,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			return oplogCollection.find(indexFilter)
 					.sort(new BasicDBObject(MONGODB_NATURAL_OPERATOR, 1))
 					.setOptions(options);
-
-			// logger.debug("{} - json.contains(\"ts\")", json,
-			// json.contains("\"ts\""));
-			// if (indexFilter.containsField(OPLOG_TIMESTAMP)) {
-			// // if (json.contains("\"ts\"")) {
-			// return oplogCollection.find(indexFilter)
-			// .sort(new BasicDBObject(MONGODB_NATURAL_OPERATOR, 1))
-			// .addOption(Bytes.QUERYOPTION_TAILABLE)
-			// .addOption(Bytes.QUERYOPTION_AWAITDATA)
-			// .addOption(Bytes.QUERYOPTION_NOTIMEOUT)
-			// .addOption(Bytes.QUERYOPTION_OPLOGREPLAY);
-			// } else {
-			// return oplogCollection.find(indexFilter)
-			// .sort(new BasicDBObject(MONGODB_NATURAL_OPERATOR, 1))
-			// .addOption(Bytes.QUERYOPTION_TAILABLE)
-			// .addOption(Bytes.QUERYOPTION_AWAITDATA)
-			// .addOption(Bytes.QUERYOPTION_NOTIMEOUT);
-			// }
-
-			// return oplogCollection.find(indexFilter)
-			// .sort(new BasicDBObject(MONGODB_NATURAL_OPERATOR, 1))
-			// .addOption(Bytes.QUERYOPTION_TAILABLE)
-			// .addOption(Bytes.QUERYOPTION_AWAITDATA)
-			// .addOption(Bytes.QUERYOPTION_NOTIMEOUT)
-			// .addOption(Bytes.QUERYOPTION_OPLOGREPLAY);
 		}
 
 		@SuppressWarnings("unchecked")
