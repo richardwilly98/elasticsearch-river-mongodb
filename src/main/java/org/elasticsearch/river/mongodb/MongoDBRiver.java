@@ -1247,7 +1247,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			int options = Bytes.QUERYOPTION_TAILABLE
 					| Bytes.QUERYOPTION_AWAITDATA | Bytes.QUERYOPTION_NOTIMEOUT;
 
-			// Use OPLOGREPLAY to improve performance:
+			// Using OPLOGREPLAY to improve performance:
 			// https://jira.mongodb.org/browse/JAVA-771
 			if (indexFilter.containsField(OPLOG_TIMESTAMP)) {
 				options = options | Bytes.QUERYOPTION_OPLOGREPLAY;
