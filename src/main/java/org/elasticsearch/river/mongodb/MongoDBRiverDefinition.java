@@ -78,6 +78,10 @@ public class MongoDBRiverDefinition {
 	public final static String BULK_SIZE_FIELD = "bulk_size";
 	public final static String BULK_TIMEOUT_FIELD = "bulk_timeout";
 
+	// river
+	private final String riverName;
+	private final String riverIndexName;
+	
 	// mongodb.servers
 	private final List<ServerAddress> mongoServers = new ArrayList<ServerAddress>();
 	// mongodb
@@ -115,6 +119,10 @@ public class MongoDBRiverDefinition {
 	private final int throttleSize;
 
 	public static class Builder {
+		// river
+		private String riverName;
+		private String riverIndexName;
+
 		// mongodb.servers
 		private List<ServerAddress> mongoServers = new ArrayList<ServerAddress>();
 		// mongodb
@@ -153,6 +161,16 @@ public class MongoDBRiverDefinition {
 
 		public Builder mongoServers(List<ServerAddress> mongoServers) {
 			this.mongoServers = mongoServers;
+			return this;
+		}
+
+		public Builder riverName(String riverName) {
+			this.riverName = riverName;
+			return this;
+		}
+
+		public Builder riverIndexName(String riverIndexName) {
+			this.riverIndexName = riverIndexName;
 			return this;
 		}
 
@@ -305,13 +323,19 @@ public class MongoDBRiverDefinition {
 
 	@SuppressWarnings("unchecked")
 	public synchronized static MongoDBRiverDefinition parseSettings(
-			final RiverName riverName, final RiverSettings settings,
-			final ScriptService scriptService) {
+			RiverName riverName,
+			String riverIndexName,
+			RiverSettings settings,
+			ScriptService scriptService) {
 
 		Preconditions.checkNotNull(riverName, "No riverName specified");
+		Preconditions.checkNotNull(riverIndexName, "Not riverIndexName specified");
 		Preconditions.checkNotNull(settings, "No settings specified");
 
 		Builder builder = new Builder();
+		builder.riverName(riverName.name());
+		builder.riverIndexName(riverIndexName);
+
 		List<ServerAddress> mongoServers = new ArrayList<ServerAddress>();
 		String mongoHost;
 		int mongoPort;
@@ -646,6 +670,11 @@ public class MongoDBRiverDefinition {
 	}
 
 	private MongoDBRiverDefinition(final Builder builder) {
+		// river
+		this.riverName = builder.riverName;
+		this.riverIndexName = builder.riverIndexName;
+
+		// mongodb.servers
 		this.mongoServers.addAll(builder.mongoServers);
 		// mongodb
 		this.mongoDb = builder.mongoDb;
@@ -686,6 +715,14 @@ public class MongoDBRiverDefinition {
 
 	public List<ServerAddress> getMongoServers() {
 		return mongoServers;
+	}
+
+	public String getRiverName() {
+		return riverName;
+	}
+
+	public String getRiverIndexName() {
+		return riverIndexName;
 	}
 
 	public String getMongoDb() {
@@ -798,6 +835,10 @@ public class MongoDBRiverDefinition {
 
 	public int getThrottleSize() {
 		return throttleSize;
+	}
+
+	public String getMongoOplogNamespace() {
+		return getMongoDb() + "." + getMongoCollection();
 	}
 
 }
