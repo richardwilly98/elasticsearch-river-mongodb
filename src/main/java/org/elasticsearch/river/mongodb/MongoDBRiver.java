@@ -441,8 +441,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					BSONTimestamp lastTimestamp = null;
 					BulkRequestBuilder bulk = client.prepareBulk();
 
-					// 1. Attempt to fill as much of the bulk request as
-					// possible
+					// 1. Attempt to fill as much of the bulk request as possible
 					QueueEntry entry = stream.take();
 					lastTimestamp = processBlockingQueue(bulk, entry);
 					while ((entry = stream.poll(definition.getBulkTimeout()
@@ -455,8 +454,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 					// 2. Update the timestamp
 					if (lastTimestamp != null) {
-						updateLastTimestamp(mongoOplogNamespace, lastTimestamp,
-								bulk);
+						updateLastTimestamp(mongoOplogNamespace, lastTimestamp, bulk);
 					}
 
 					// 3. Execute the bulk requests
@@ -491,7 +489,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		private BSONTimestamp processBlockingQueue(
 				final BulkRequestBuilder bulk, QueueEntry entry) {
 			if (entry.getData().get(MONGODB_ID_FIELD) == null
-					&& !entry.getOplogOperation().equals(
+					&& !entry.getOperation().equals(
 							OPLOG_COMMAND_OPERATION)) {
 				logger.warn(
 						"Cannot get object id. Skip the current item: [{}]",
@@ -500,7 +498,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			}
 
 			BSONTimestamp lastTimestamp = entry.getOplogTimestamp();
-			String operation = entry.getOplogOperation();
+			String operation = entry.getOperation();
 			if (OPLOG_COMMAND_OPERATION.equals(operation)) {
 				try {
 					updateBulkRequest(bulk, entry.getData(), null, operation,
@@ -731,7 +729,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				final BulkRequestBuilder bulk, QueueEntry entry) {
 
 			BSONTimestamp lastTimestamp = entry.getOplogTimestamp();
-			String operation = entry.getOplogOperation();
+			String operation = entry.getOperation();
 			String objectId = "";
 			if (entry.getData().get(MONGODB_ID_FIELD) != null) {
 				objectId = entry.getData().get(MONGODB_ID_FIELD).toString();
@@ -949,22 +947,51 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 								// slurpedCollection
 					}
 
-					DBCursor oplogCursor = null;
-					try {
-						oplogCursor = oplogCursor(null);
-						if (oplogCursor == null) {
-							oplogCursor = processFullCollection();
-						}
+					DBCursor cursor = null;
 
-						while (oplogCursor.hasNext()) {
-							DBObject item = oplogCursor.next();
+					BSONTimestamp startTimestamp = null;
+
+					// Do an initial sync the same way MongoDB does
+					// https://groups.google.com/forum/?fromgroups=#!topic/mongodb-user/sOKlhD_E2ns
+					// TODO: support gridfs
+					if (!definition.isMongoGridFS()) {
+						BSONTimestamp lastIndexedTimestamp = getLastTimestamp(mongoOplogNamespace);
+						if (lastIndexedTimestamp == null) {
+							// TODO: ensure the index type is empty
+							logger.info("MongoDBRiver is beginning initial import of "
+								+ slurpedCollection.getFullName());
+							startTimestamp = getCurrentOplogTimestamp();
+							try {
+								cursor = slurpedCollection.find();
+								while (cursor.hasNext()) {
+									DBObject object = cursor.next();
+									Map<String, Object> map = applyFieldFilter(object).toMap();
+									addToStream(OPLOG_INSERT_OPERATION, null, map);
+								}	
+							} finally {
+								if (cursor != null) {
+									logger.trace("Closing initial import cursor");
+									cursor.close();
+								}
+							}
+						}
+					}
+
+					// Slurp from oplog
+					try {
+						cursor = oplogCursor(startTimestamp);
+						if (cursor == null) {
+							cursor = processFullOplog();
+						}
+						while (cursor.hasNext()) {
+							DBObject item = cursor.next();
 							processOplogEntry(item);
 						}
 						Thread.sleep(500);
 					} finally {
-						if (oplogCursor != null) {
-							logger.trace("Closing oplogCursor cursor");
-							oplogCursor.close();
+						if (cursor != null) {
+							logger.trace("Closing oplog cursor");
+							cursor.close();
 						}
 					}
 				} catch (MongoInterruptedException mIEx) {
@@ -1058,19 +1085,18 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 			return true;
 		}
-		
-		/*
-		 * Remove fscynlock and unlock -
-		 * https://github.com/richardwilly98/elasticsearch
-		 * -river-mongodb/issues/17
-		 */
-		private DBCursor processFullCollection() throws InterruptedException {
-			BSONTimestamp currentTimestamp = (BSONTimestamp) oplogCollection
-				.find()
-				.sort(new BasicDBObject(OPLOG_TIMESTAMP, -1))
-				.limit(1)
-				.next()
-				.get(OPLOG_TIMESTAMP);
+
+		private BSONTimestamp getCurrentOplogTimestamp() {
+			return (BSONTimestamp) oplogCollection
+					.find()
+					.sort(new BasicDBObject(OPLOG_TIMESTAMP, -1))
+					.limit(1)
+					.next()
+					.get(OPLOG_TIMESTAMP);
+		}
+
+		private DBCursor processFullOplog() throws InterruptedException {
+			BSONTimestamp currentTimestamp = getCurrentOplogTimestamp();
 			addQueryToStream(OPLOG_INSERT_OPERATION, currentTimestamp, null);
 			return oplogCursor(currentTimestamp);
 		}
@@ -1181,9 +1207,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			return null;
 		}
 
-		private DBObject getIndexFilter(final BSONTimestamp timestampOverride) {
-			BSONTimestamp time = timestampOverride == null ? getLastTimestamp(mongoOplogNamespace)
-					: timestampOverride;
+		private DBObject getOplogFilter(final BSONTimestamp time) {
 			BasicDBObject filter = new BasicDBObject();
 			List<DBObject> values2 = new ArrayList<DBObject>();
 
@@ -1239,7 +1263,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		}
 
 		private DBCursor oplogCursor(final BSONTimestamp timestampOverride) {
-			DBObject indexFilter = getIndexFilter(timestampOverride);
+			BSONTimestamp time = timestampOverride == null
+					? getLastTimestamp(mongoOplogNamespace) : timestampOverride;
+			DBObject indexFilter = getOplogFilter(time);
 			if (indexFilter == null) {
 				return null;
 			}
@@ -1392,29 +1418,39 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 	protected static class QueueEntry {
 
-		private BSONTimestamp oplogTimestamp;
-		private String oplogOperation;
 		private Map<String, Object> data;
+		private String operation;
+		private BSONTimestamp oplogTimestamp;
+
+		public QueueEntry(
+				Map<String, Object> data) {
+			this.data = data;
+			this.operation = OPLOG_INSERT_OPERATION;
+		}
 
 		public QueueEntry(
 				BSONTimestamp oplogTimestamp,
 				String oplogOperation,
 				Map<String, Object> data) {
-			this.oplogTimestamp = oplogTimestamp;
-			this.oplogOperation = oplogOperation;
 			this.data = data;
+			this.operation = oplogOperation;
+			this.oplogTimestamp = oplogTimestamp;
 		}
 
-		public BSONTimestamp getOplogTimestamp() {
-			return oplogTimestamp;
-		}
-
-		public String getOplogOperation() {
-			return oplogOperation;
+		public boolean isOplogEntry() {
+		  return oplogTimestamp != null;
 		}
 
 		public Map<String, Object> getData() {
 			return data;
+		}
+
+		public String getOperation() {
+			return operation;
+		}
+
+		public BSONTimestamp getOplogTimestamp() {
+			return oplogTimestamp;
 		}
 
 	}

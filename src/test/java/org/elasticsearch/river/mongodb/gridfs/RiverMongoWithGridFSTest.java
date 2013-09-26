@@ -51,9 +51,10 @@ public class RiverMongoWithGridFSTest extends RiverMongoDBTestAbstract {
 	private DBCollection mongoCollection;
 
 	protected RiverMongoWithGridFSTest() {
-		super("testgridfs-" + System.currentTimeMillis(), "testgridfs-"
-				+ System.currentTimeMillis(), "fs", "testattachmentindex-"
-				+ System.currentTimeMillis());
+		super("testgridfs-" + System.currentTimeMillis(),
+			"testgridfs-" + System.currentTimeMillis(),
+			"fs",
+			"testattachmentindex-" + System.currentTimeMillis());
 	}
 
 	@BeforeClass
