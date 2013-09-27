@@ -77,7 +77,7 @@ class Slurper implements Runnable {
 				}
 
 				BSONTimestamp startTimestamp = null;
-				if (MongoDBRiver.getLastTimestamp(client, definition) == null) {
+				if (!riverHasIndexedSomething()) {
 					startTimestamp = doInitialImport();
 				}
 
@@ -118,6 +118,10 @@ class Slurper implements Runnable {
 		}
 	}
 
+	protected boolean riverHasIndexedSomething() {
+		return MongoDBRiver.getLastTimestamp(client, definition) != null;
+	}
+
 	/**
 	 * Does an initial sync the same way MongoDB does.
 	 * https://groups.google.com/forum/?fromgroups=#!topic/mongodb-user/sOKlhD_E2ns
@@ -150,7 +154,7 @@ class Slurper implements Runnable {
 		return null;
 	}
 
-	private boolean assignCollections() {
+	protected boolean assignCollections() {
 		DB adminDb = mongo.getDB(MongoDBRiver.MONGODB_ADMIN_DATABASE);
 		oplogDb = mongo.getDB(MongoDBRiver.MONGODB_LOCAL_DATABASE);
 
