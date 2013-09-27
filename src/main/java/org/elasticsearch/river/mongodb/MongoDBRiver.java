@@ -149,6 +149,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		this.statusThread.start();
 	}
 
+	@Override
 	public void start() {
 		if (!MongoDBRiverHelper.isRiverEnabled(client, riverName.getName())) {
 			logger.debug("Cannot start river {}. It is currently disabled",
