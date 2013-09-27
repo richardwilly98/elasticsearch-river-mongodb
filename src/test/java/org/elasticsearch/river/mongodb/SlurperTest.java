@@ -21,7 +21,6 @@ package org.elasticsearch.river.mongodb;
 import java.util.List;
 
 import org.bson.types.BSONTimestamp;
-import org.elasticsearch.ElasticSearchException;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.xcontent.XContentHelper;
