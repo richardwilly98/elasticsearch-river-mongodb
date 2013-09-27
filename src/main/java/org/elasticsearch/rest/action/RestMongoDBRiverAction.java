@@ -27,13 +27,10 @@ import org.elasticsearch.search.SearchHit;
 
 public class RestMongoDBRiverAction extends BaseRestHandler {
 
-//	private final RiversService riversService;
-
 	@Inject
 	public RestMongoDBRiverAction(Settings settings, Client client,
 			RestController controller, Injector injector) {
 		super(settings, client);
-//		this.riversService = injector.getInstance(RiversService.class);
 		controller.registerHandler(RestRequest.Method.GET, "/_river/"
 				+ MongoDBRiver.TYPE + "/{action}", this);
 		controller.registerHandler(RestRequest.Method.POST, "/_river/"
