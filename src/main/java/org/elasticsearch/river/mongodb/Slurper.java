@@ -76,37 +76,13 @@ class Slurper implements Runnable {
 							// slurpedCollection
 				}
 
-				DBCursor cursor = null;
-
 				BSONTimestamp startTimestamp = null;
-
-				// Do an initial sync the same way MongoDB does
-				// https://groups.google.com/forum/?fromgroups=#!topic/mongodb-user/sOKlhD_E2ns
-				// TODO: support gridfs
-				if (!definition.isMongoGridFS()) {
-					BSONTimestamp lastIndexedTimestamp = MongoDBRiver.getLastTimestamp(client, definition);
-					if (lastIndexedTimestamp == null) {
-						// TODO: ensure the index type is empty
-						logger.info("MongoDBRiver is beginning initial import of "
-							+ slurpedCollection.getFullName());
-						startTimestamp = getCurrentOplogTimestamp();
-						try {
-							cursor = slurpedCollection.find();
-							while (cursor.hasNext()) {
-								DBObject object = cursor.next();
-								Map<String, Object> map = applyFieldFilter(object).toMap();
-								addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, null, map);
-							}	
-						} finally {
-							if (cursor != null) {
-								logger.trace("Closing initial import cursor");
-								cursor.close();
-							}
-						}
-					}
+				if (MongoDBRiver.getLastTimestamp(client, definition) == null) {
+					startTimestamp = doInitialImport();
 				}
 
 				// Slurp from oplog
+				DBCursor cursor = null;
 				try {
 					cursor = oplogCursor(startTimestamp);
 					if (cursor == null) {
@@ -130,18 +106,48 @@ class Slurper implements Runnable {
 					mongo = null;
 				}
 				break;
-			} catch (MongoException mEx) {
-				logger.error("Mongo gave an exception", mEx);
-			} catch (NoSuchElementException nEx) {
-				logger.warn("A mongoDB cursor bug ?", nEx);
+			} catch (MongoException e) {
+				logger.error("Mongo gave an exception", e);
+			} catch (NoSuchElementException e) {
+				logger.warn("A mongoDB cursor bug ?", e);
 			} catch (InterruptedException e) {
-				if (logger.isDebugEnabled()) {
-					logger.debug("river-mongodb slurper interrupted");
-				}
+				logger.debug("river-mongodb slurper interrupted");
 				Thread.currentThread().interrupt();
 				break;
 			}
 		}
+	}
+
+	/**
+	 * Does an initial sync the same way MongoDB does.
+	 * https://groups.google.com/forum/?fromgroups=#!topic/mongodb-user/sOKlhD_E2ns
+	 * @return the last oplog timestamp before the import began 
+	 * @throws InterruptedException if the blocking queue stream is interrupted while waiting
+	 */
+	protected BSONTimestamp doInitialImport() throws InterruptedException {
+		// TODO: support gridfs
+		if (!definition.isMongoGridFS()) {
+			// TODO: ensure the index type is empty
+			logger.info("MongoDBRiver is beginning initial import of "
+				+ slurpedCollection.getFullName());
+			BSONTimestamp startTimestamp = getCurrentOplogTimestamp();
+			DBCursor cursor = null;
+			try {
+				cursor = slurpedCollection.find();
+				while (cursor.hasNext()) {
+					DBObject object = cursor.next();
+					Map<String, Object> map = applyFieldFilter(object).toMap();
+					addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, null, map);
+				}	
+			} finally {
+				if (cursor != null) {
+					logger.trace("Closing initial import cursor");
+					cursor.close();
+				}
+			}
+			return startTimestamp;
+		}
+		return null;
 	}
 
 	private boolean assignCollections() {
