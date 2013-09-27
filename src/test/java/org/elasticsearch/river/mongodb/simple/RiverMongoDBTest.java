@@ -28,6 +28,9 @@ import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.count.CountResponse;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -104,12 +107,17 @@ public class RiverMongoDBTest extends RiverMongoDBTestAbstract {
 					.exists(new IndicesExistsRequest(getIndex()));
 			assertThat(response.actionGet().isExists(), equalTo(true));
 			refreshIndex();
-			CountResponse countResponse = getNode()
+			SearchRequest search = getNode().client()
+					.prepareSearch(getIndex())
+					.setQuery(QueryBuilders.fieldQuery("name", "Richard"))
+					.request();
+			SearchResponse searchResponse = getNode()
 					.client()
-					.count(countRequest(getIndex()).query(
-							fieldQuery("name", "Richard"))).actionGet();
-			logger.info("Document count: {}", countResponse.getCount());
-			countResponse = getNode()
+					.search(search).actionGet();
+			assertThat(searchResponse.getHits().getTotalHits(), equalTo(1l));
+			String chinese = (String) searchResponse.getHits().getAt(0).getSource().get("chinese");
+			assertThat(chinese, equalTo("中国菜很好吃。"));
+			CountResponse countResponse = getNode()
 					.client()
 					.count(countRequest(getIndex())
 							.query(fieldQuery("_id", id))).actionGet();
