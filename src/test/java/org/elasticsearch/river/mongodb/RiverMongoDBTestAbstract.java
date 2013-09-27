@@ -80,7 +80,7 @@ public abstract class RiverMongoDBTestAbstract {
 	public static final String TEST_SIMPLE_MONGODB_DOCUMENT_JSON = "/org/elasticsearch/river/mongodb/script/test-simple-mongodb-document.json";
 
 	protected final ESLogger logger = Loggers.getLogger(getClass());
-	protected final static long wait = 6000;
+	protected final static long wait = 2000;
 
 	public static final String ADMIN_DATABASE_NAME = "admin";
 	public static final String LOCAL_DATABASE_NAME = "local";

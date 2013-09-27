@@ -86,6 +86,7 @@ import com.mongodb.QueryOperators;
 import com.mongodb.ServerAddress;
 import com.mongodb.gridfs.GridFS;
 import com.mongodb.gridfs.GridFSDBFile;
+import com.mongodb.gridfs.GridFSFile;
 import com.mongodb.util.JSON;
 
 /**
@@ -93,11 +94,12 @@ import com.mongodb.util.JSON;
  * @author flaper87 (Flavio Percoco Premoli)
  * @author aparo (Alberto Paro)
  * @author kryptt (Rodolfo Hansen)
+ * @author benmccann (Ben McCann)
  */
 public class MongoDBRiver extends AbstractRiverComponent implements River {
 
-	public final static String IS_MONGODB_ATTACHMENT = "is_mongodb_attachment";
-	public final static String MONGODB_ATTACHMENT = "mongodb_attachment";
+//	public final static String IS_MONGODB_ATTACHMENT = "is_mongodb_attachment";
+//	public final static String MONGODB_ATTACHMENT = "mongodb_attachment";
 	public final static String TYPE = "mongodb";
 	public final static String NAME = "mongodb-river";
 	public final static String STATUS = "_mongodbstatus";
@@ -501,7 +503,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			String operation = entry.getOperation();
 			if (OPLOG_COMMAND_OPERATION.equals(operation)) {
 				try {
-					updateBulkRequest(bulk, entry.getData(), null, operation,
+					updateBulkRequest(bulk, entry.getData(), null, operation, 
 							definition.getIndexName(),
 							definition.getTypeName(), null, null);
 				} catch (IOException ioEx) {
@@ -510,14 +512,27 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				return lastTimestamp;
 			}
 
-			if (scriptExecutable != null
-					&& definition.isAdvancedTransformation()) {
-				return applyAdvancedTransformation(bulk, entry);
-			}
-
 			String objectId = "";
 			if (entry.getData().get(MONGODB_ID_FIELD) != null) {
 				objectId = entry.getData().get(MONGODB_ID_FIELD).toString();
+			}
+
+			// TODO: Should the river support script filter,
+			// advanced_transformation, include_collection for GridFS?
+			if (entry.isAttachment()) {
+				try {
+					updateBulkRequest(bulk, entry.getData(), objectId,
+							operation, definition.getIndexName(),
+							definition.getTypeName(), null, null);
+				} catch (IOException ioEx) {
+					logger.error("Update bulk failed.", ioEx);
+				}
+				return lastTimestamp;
+			}
+			
+			if (scriptExecutable != null
+					&& definition.isAdvancedTransformation()) {
+				return applyAdvancedTransformation(bulk, entry);
 			}
 
 			if (logger.isDebugEnabled()) {
@@ -541,7 +556,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			} catch (IOException e) {
 				logger.warn("failed to parse {}", e);
 			}
-			Map<String, Object> data = entry.getData();
+			Map<String, Object> data = entry.getData().toMap();
 			if (scriptExecutable != null) {
 				if (ctx != null) {
 					ctx.put("document", entry.getData());
@@ -595,7 +610,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				String parent = extractParent(ctx);
 				String routing = extractRouting(ctx);
 				objectId = extractObjectId(ctx, objectId);
-				updateBulkRequest(bulk, data, objectId, operation, index, type,
+				updateBulkRequest(bulk, new BasicDBObject(data), objectId, operation, index, type,
 						routing, parent);
 			} catch (IOException e) {
 				logger.warn("failed to parse {}", e, entry.getData());
@@ -604,20 +619,23 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		}
 
 		private void updateBulkRequest(final BulkRequestBuilder bulk,
-				Map<String, Object> data, String objectId, String operation,
-				String index, String type, String routing, String parent)
-				throws IOException {
+				DBObject data, String objectId, String operation, String index,
+				String type, String routing, String parent) throws IOException {
 			if (logger.isDebugEnabled()) {
 				logger.debug(
 						"Operation: {} - index: {} - type: {} - routing: {} - parent: {}",
 						operation, index, type, routing, parent);
 			}
+			boolean isAttachment = false;
+			
+			if (logger.isDebugEnabled()) {
+				isAttachment = (data instanceof GridFSDBFile);
+			}
 			if (OPLOG_INSERT_OPERATION.equals(operation)) {
 				if (logger.isDebugEnabled()) {
 					logger.debug(
 							"Insert operation - id: {} - contains attachment: {}",
-							operation, objectId,
-							data.containsKey(IS_MONGODB_ATTACHMENT));
+							operation, objectId, isAttachment);
 				}
 				bulk.add(indexRequest(index).type(type).id(objectId)
 						.source(build(data, objectId)).routing(routing)
@@ -628,7 +646,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 				if (logger.isDebugEnabled()) {
 					logger.debug(
 							"Update operation - id: {} - contains attachment: {}",
-							objectId, data.containsKey(IS_MONGODB_ATTACHMENT));
+							objectId, isAttachment);
 				}
 				deleteBulkRequest(bulk, objectId, index, type, routing, parent);
 				bulk.add(indexRequest(index).type(type).id(objectId)
@@ -644,7 +662,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			}
 			if (OPLOG_COMMAND_OPERATION.equals(operation)) {
 				if (definition.isDropCollection()) {
-					if (data.containsKey(OPLOG_DROP_COMMAND_OPERATION)
+					if (data.get(OPLOG_DROP_COMMAND_OPERATION) != null
 							&& data.get(OPLOG_DROP_COMMAND_OPERATION).equals(
 									definition.getMongoCollection())) {
 						logger.info("Drop collection request [{}], [{}]",
@@ -761,7 +779,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			if (scriptExecutable != null) {
 				if (ctx != null && documents != null) {
 
-					document.put("data", entry.getData());
+					document.put("data", entry.getData().toMap());
 					if (!objectId.isEmpty()) {
 						document.put("id", objectId);
 					}
@@ -823,7 +841,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 									continue;
 								}
 								try {
-									updateBulkRequest(bulk, _data, objectId,
+									updateBulkRequest(bulk, new BasicDBObject(_data), objectId,
 											operation, index, type, routing,
 											parent);
 								} catch (IOException ioEx) {
@@ -838,16 +856,15 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			return lastTimestamp;
 		}
 
-		private XContentBuilder build(final Map<String, Object> data,
-				final String objectId) throws IOException {
-			if (data.containsKey(IS_MONGODB_ATTACHMENT)) {
+		private XContentBuilder build(final DBObject data, final String objectId)
+				throws IOException {
+			if (data instanceof GridFSDBFile) {
 				logger.info("Add Attachment: {} to index {} / type {}",
 						objectId, definition.getIndexName(),
 						definition.getTypeName());
-				return MongoDBHelper.serialize((GridFSDBFile) data
-						.get(MONGODB_ATTACHMENT));
+				return MongoDBHelper.serialize((GridFSDBFile) data);
 			} else {
-				return XContentFactory.jsonBuilder().map(data);
+				return XContentFactory.jsonBuilder().map(data.toMap());
 			}
 		}
 
@@ -953,26 +970,38 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 					// Do an initial sync the same way MongoDB does
 					// https://groups.google.com/forum/?fromgroups=#!topic/mongodb-user/sOKlhD_E2ns
-					// TODO: support gridfs
-					if (!definition.isMongoGridFS()) {
-						BSONTimestamp lastIndexedTimestamp = getLastTimestamp(mongoOplogNamespace);
-						if (lastIndexedTimestamp == null) {
-							// TODO: ensure the index type is empty
-							logger.info("MongoDBRiver is beginning initial import of "
-								+ slurpedCollection.getFullName());
-							startTimestamp = getCurrentOplogTimestamp();
-							try {
+					// TODO: support GridFS
+					BSONTimestamp lastIndexedTimestamp = getLastTimestamp(mongoOplogNamespace);
+					if (lastIndexedTimestamp == null) {
+						// TODO: ensure the index type is empty
+						logger.info("MongoDBRiver is beginning initial import of "
+							+ slurpedCollection.getFullName());
+						startTimestamp = getCurrentOplogTimestamp();
+						try {
+							if (!definition.isMongoGridFS()) {
 								cursor = slurpedCollection.find();
 								while (cursor.hasNext()) {
 									DBObject object = cursor.next();
-									Map<String, Object> map = applyFieldFilter(object).toMap();
-									addToStream(OPLOG_INSERT_OPERATION, null, map);
+									addToStream(OPLOG_INSERT_OPERATION, null, applyFieldFilter(object));
 								}	
-							} finally {
-								if (cursor != null) {
-									logger.trace("Closing initial import cursor");
-									cursor.close();
+							} else {
+								// TODO: To be optimized. https://github.com/mongodb/mongo-java-driver/pull/48#issuecomment-25241988
+								// possible option: Get the object id list from .fs collection then call GriDFS.findOne
+								GridFS grid = new GridFS(mongo.getDB(definition.getMongoDb()),
+										definition.getMongoCollection());
+								cursor = grid.getFileList();
+								while (cursor.hasNext()) {
+									DBObject object = cursor.next();
+									if (object instanceof GridFSDBFile) {
+										GridFSDBFile file = grid.findOne(new ObjectId(object.get(MONGODB_ID_FIELD).toString()));
+										addToStream(OPLOG_INSERT_OPERATION, null, file);
+									}
 								}
+							}
+						} finally {
+							if (cursor != null) {
+								logger.trace("Closing initial import cursor");
+								cursor.close();
 							}
 						}
 					}
@@ -1101,7 +1130,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			return oplogCursor(currentTimestamp);
 		}
 
-		@SuppressWarnings("unchecked")
 		private void processOplogEntry(final DBObject entry)
 				throws InterruptedException {
 			String operation = entry.get(OPLOG_OPERATION).toString();
@@ -1161,29 +1189,31 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					throw new NullPointerException(MONGODB_ID_FIELD);
 				}
 				logger.info("Add attachment: {}", objectId);
-				object = applyFieldFilter(object);
-				HashMap<String, Object> data = new HashMap<String, Object>();
-				data.put(IS_MONGODB_ATTACHMENT, true);
-				data.put(MONGODB_ATTACHMENT, object);
-				data.put(MONGODB_ID_FIELD, objectId);
-				addToStream(operation, oplogTimestamp, data);
+				addToStream(operation, oplogTimestamp, applyFieldFilter(object));
 			} else {
 				if (OPLOG_UPDATE_OPERATION.equals(operation)) {
 					DBObject update = (DBObject) entry.get(OPLOG_UPDATE);
 					logger.debug("Updated item: {}", update);
 					addQueryToStream(operation, oplogTimestamp, update);
 				} else {
-					Map<String, Object> map = applyFieldFilter(object).toMap();
-					addToStream(operation, oplogTimestamp, map);
+					addToStream(operation, oplogTimestamp, applyFieldFilter(object));
 				}
 			}
 		}
 
 		private DBObject applyFieldFilter(DBObject object) {
-			object = MongoDBHelper.applyExcludeFields(object,
-					definition.getExcludeFields());
-			object = MongoDBHelper.applyIncludeFields(object,
-					definition.getIncludeFields());
+			if (object instanceof GridFSFile) {
+				GridFSFile file = (GridFSFile) object;
+				DBObject metadata = file.getMetaData();
+				if (metadata != null) {
+					file.setMetaData(applyFieldFilter(metadata));
+				}
+			} else {
+				object = MongoDBHelper.applyExcludeFields(object,
+						definition.getExcludeFields());
+				object = MongoDBHelper.applyIncludeFields(object,
+						definition.getIncludeFields());
+			}
 			return object;
 		}
 
@@ -1283,7 +1313,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 					.setOptions(options);
 		}
 
-		@SuppressWarnings("unchecked")
 		private void addQueryToStream(final String operation,
 				final BSONTimestamp currentTimestamp, final DBObject update)
 				throws InterruptedException {
@@ -1294,13 +1323,13 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			}
 
 			for (DBObject item : slurpedCollection.find(update, findKeys)) {
-				addToStream(operation, currentTimestamp, item.toMap());
+				addToStream(operation, currentTimestamp, item);
 			}
 		}
 
 		private void addToStream(final String operation,
-				final BSONTimestamp currentTimestamp,
-				final Map<String, Object> data) throws InterruptedException {
+				final BSONTimestamp currentTimestamp, final DBObject data)
+				throws InterruptedException {
 			if (logger.isDebugEnabled()) {
 				logger.debug(
 						"addToStream - operation [{}], currentTimestamp [{}], data [{}]",
@@ -1418,20 +1447,19 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 	protected static class QueueEntry {
 
-		private Map<String, Object> data;
-		private String operation;
-		private BSONTimestamp oplogTimestamp;
+		private final DBObject data;
+		private final String operation;
+		private final BSONTimestamp oplogTimestamp;
 
 		public QueueEntry(
-				Map<String, Object> data) {
-			this.data = data;
-			this.operation = OPLOG_INSERT_OPERATION;
+				DBObject data) {
+			this(null, OPLOG_INSERT_OPERATION, data);
 		}
 
 		public QueueEntry(
 				BSONTimestamp oplogTimestamp,
 				String oplogOperation,
-				Map<String, Object> data) {
+				DBObject data) {
 			this.data = data;
 			this.operation = oplogOperation;
 			this.oplogTimestamp = oplogTimestamp;
@@ -1441,7 +1469,11 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		  return oplogTimestamp != null;
 		}
 
-		public Map<String, Object> getData() {
+		public boolean isAttachment() {
+			  return (data instanceof GridFSDBFile);
+		}
+
+		public DBObject getData() {
 			return data;
 		}
 
