@@ -99,7 +99,7 @@ public abstract class RiverMongoDBTestAbstract {
 	private MongodExecutable mongodExe3;
 	private static int mongoPort3;
 	private static MongodProcess mongod3;
-	private static Mongo mongo;
+	protected static Mongo mongo;
 	private DB mongoAdminDB;
 
 	private static Node node;
@@ -108,10 +108,10 @@ public abstract class RiverMongoDBTestAbstract {
 	private boolean useDynamicPorts;
 	private String mongoVersion;
 
-	private final String river;
-	private final String database;
-	private final String collection;
-	private final String index;
+	protected final String river;
+	protected final String database;
+	protected final String collection;
+	protected final String index;
 
 	protected RiverMongoDBTestAbstract(String river, String database,
 			String collection, String index) {

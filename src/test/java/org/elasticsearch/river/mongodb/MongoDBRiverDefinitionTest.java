@@ -25,7 +25,7 @@ public class MongoDBRiverDefinitionTest {
 					Streams.copyToByteArray(in), false).v2());
 			ScriptService scriptService = null;
 			MongoDBRiverDefinition definition = MongoDBRiverDefinition
-					.parseSettings(riverName, riverSettings, scriptService);
+					.parseSettings(riverName, "my-river-index", riverSettings, scriptService);
 			Assert.assertNotNull(definition);
 			Assert.assertEquals("mycollection",
 					definition.getIncludeCollection());
@@ -38,6 +38,7 @@ public class MongoDBRiverDefinitionTest {
 			Assert.assertEquals("myindex", definition.getIndexName());
 			Assert.assertEquals(0, definition.getSocketTimeout());
 			Assert.assertEquals(11000, definition.getConnectTimeout());
+			Assert.assertEquals(riverName.getName(), definition.getRiverName());
 
 		} catch (Throwable t) {
 			Assert.fail("testLoadMongoDBRiverDefinition failed", t);
