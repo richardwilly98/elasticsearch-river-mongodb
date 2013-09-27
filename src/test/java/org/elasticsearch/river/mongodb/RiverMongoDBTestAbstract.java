@@ -77,7 +77,7 @@ public abstract class RiverMongoDBTestAbstract {
 	public static final String TEST_MONGODB_RIVER_WITH_SCRIPT_JSON = "/org/elasticsearch/river/mongodb/script/test-mongodb-river-with-script.json";
 	public static final String TEST_MONGODB_RIVER_EXCLUDE_FIELDS_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-exclude-fields.json";
 	public static final String TEST_MONGODB_RIVER_INCLUDE_FIELDS_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-include-fields.json";
-	public static final String TEST_SIMPLE_MONGODB_DOCUMENT_JSON = "/org/elasticsearch/river/mongodb/script/test-simple-mongodb-document.json";
+	public static final String TEST_SIMPLE_MONGODB_DOCUMENT_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-document.json";
 
 	protected final ESLogger logger = Loggers.getLogger(getClass());
 	protected final static long wait = 2000;
