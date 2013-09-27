@@ -1,9 +1,7 @@
 package org.elasticsearch.river.mongodb;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
@@ -30,6 +28,7 @@ import com.mongodb.QueryOperators;
 import com.mongodb.ServerAddress;
 import com.mongodb.gridfs.GridFS;
 import com.mongodb.gridfs.GridFSDBFile;
+import com.mongodb.gridfs.GridFSFile;
 import com.mongodb.util.JSON;
 
 class Slurper implements Runnable {
@@ -137,11 +136,25 @@ class Slurper implements Runnable {
 			BSONTimestamp startTimestamp = getCurrentOplogTimestamp();
 			DBCursor cursor = null;
 			try {
-				cursor = slurpedCollection.find();
-				while (cursor.hasNext()) {
-					DBObject object = cursor.next();
-					Map<String, Object> map = applyFieldFilter(object).toMap();
-					addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, null, map);
+				if (!definition.isMongoGridFS()) {
+					cursor = slurpedCollection.find();
+					while (cursor.hasNext()) {
+						DBObject object = cursor.next();
+						addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, null, applyFieldFilter(object));
+					}	
+				} else {
+					// TODO: To be optimized. https://github.com/mongodb/mongo-java-driver/pull/48#issuecomment-25241988
+					// possible option: Get the object id list from .fs collection then call GriDFS.findOne
+					GridFS grid = new GridFS(mongo.getDB(definition.getMongoDb()),
+							definition.getMongoCollection());
+					cursor = grid.getFileList();
+					while (cursor.hasNext()) {
+						DBObject object = cursor.next();
+						if (object instanceof GridFSDBFile) {
+							GridFSDBFile file = grid.findOne(new ObjectId(object.get(MongoDBRiver.MONGODB_ID_FIELD).toString()));
+							addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, null, file);
+						}
+					}
 				}	
 			} finally {
 				if (cursor != null) {
@@ -240,7 +253,6 @@ class Slurper implements Runnable {
 		return oplogCursor(currentTimestamp);
 	}
 
-	@SuppressWarnings("unchecked")
 	private void processOplogEntry(final DBObject entry)
 			throws InterruptedException {
 		String operation = entry.get(MongoDBRiver.OPLOG_OPERATION).toString();
@@ -300,29 +312,31 @@ class Slurper implements Runnable {
 				throw new NullPointerException(MongoDBRiver.MONGODB_ID_FIELD);
 			}
 			logger.info("Add attachment: {}", objectId);
-			object = applyFieldFilter(object);
-			HashMap<String, Object> data = new HashMap<String, Object>();
-			data.put(MongoDBRiver.IS_MONGODB_ATTACHMENT, true);
-			data.put(MongoDBRiver.MONGODB_ATTACHMENT, object);
-			data.put(MongoDBRiver.MONGODB_ID_FIELD, objectId);
-			addToStream(operation, oplogTimestamp, data);
+			addToStream(operation, oplogTimestamp, applyFieldFilter(object));
 		} else {
 			if (MongoDBRiver.OPLOG_UPDATE_OPERATION.equals(operation)) {
 				DBObject update = (DBObject) entry.get(MongoDBRiver.OPLOG_UPDATE);
 				logger.debug("Updated item: {}", update);
 				addQueryToStream(operation, oplogTimestamp, update);
 			} else {
-				Map<String, Object> map = applyFieldFilter(object).toMap();
-				addToStream(operation, oplogTimestamp, map);
+				addToStream(operation, oplogTimestamp, applyFieldFilter(object));
 			}
 		}
 	}
 
 	private DBObject applyFieldFilter(DBObject object) {
-		object = MongoDBHelper.applyExcludeFields(object,
-				definition.getExcludeFields());
-		object = MongoDBHelper.applyIncludeFields(object,
-				definition.getIncludeFields());
+		if (object instanceof GridFSFile) {
+			GridFSFile file = (GridFSFile) object;
+			DBObject metadata = file.getMetaData();
+			if (metadata != null) {
+				file.setMetaData(applyFieldFilter(metadata));
+			}
+		} else {
+			object = MongoDBHelper.applyExcludeFields(object,
+					definition.getExcludeFields());
+			object = MongoDBHelper.applyIncludeFields(object,
+					definition.getIncludeFields());
+		}
 		return object;
 	}
 
@@ -422,7 +436,6 @@ class Slurper implements Runnable {
 				.setOptions(options);
 	}
 
-	@SuppressWarnings("unchecked")
 	private void addQueryToStream(final String operation,
 			final BSONTimestamp currentTimestamp, final DBObject update)
 			throws InterruptedException {
@@ -433,13 +446,12 @@ class Slurper implements Runnable {
 		}
 
 		for (DBObject item : slurpedCollection.find(update, findKeys)) {
-			addToStream(operation, currentTimestamp, item.toMap());
+			addToStream(operation, currentTimestamp, item);
 		}
 	}
 
 	private void addToStream(final String operation,
-			final BSONTimestamp currentTimestamp,
-			final Map<String, Object> data) throws InterruptedException {
+			final BSONTimestamp currentTimestamp, final DBObject data) throws InterruptedException {
 		if (logger.isDebugEnabled()) {
 			logger.debug(
 					"addToStream - operation [{}], currentTimestamp [{}], data [{}]",

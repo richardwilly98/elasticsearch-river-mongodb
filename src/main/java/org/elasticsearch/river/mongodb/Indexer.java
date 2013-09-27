@@ -33,6 +33,8 @@ import org.elasticsearch.script.ExecutableScript;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.search.SearchHit;
 
+import com.mongodb.BasicDBObject;
+import com.mongodb.DBObject;
 import com.mongodb.gridfs.GridFSDBFile;
 
 class Indexer implements Runnable {
@@ -149,14 +151,27 @@ class Indexer implements Runnable {
 			return lastTimestamp;
 		}
 
-		if (scriptExecutable != null
-				&& definition.isAdvancedTransformation()) {
-			return applyAdvancedTransformation(bulk, entry);
-		}
-
 		String objectId = "";
 		if (entry.getData().get(MongoDBRiver.MONGODB_ID_FIELD) != null) {
 			objectId = entry.getData().get(MongoDBRiver.MONGODB_ID_FIELD).toString();
+		}
+
+		// TODO: Should the river support script filter,
+		// advanced_transformation, include_collection for GridFS?
+		if (entry.isAttachment()) {
+			try {
+				updateBulkRequest(bulk, entry.getData(), objectId,
+						operation, definition.getIndexName(),
+						definition.getTypeName(), null, null);
+			} catch (IOException ioEx) {
+				logger.error("Update bulk failed.", ioEx);
+			}
+			return lastTimestamp;
+		}
+		
+		if (scriptExecutable != null
+				&& definition.isAdvancedTransformation()) {
+			return applyAdvancedTransformation(bulk, entry);
 		}
 
 		if (logger.isDebugEnabled()) {
@@ -180,7 +195,7 @@ class Indexer implements Runnable {
 		} catch (IOException e) {
 			logger.warn("failed to parse {}", e);
 		}
-		Map<String, Object> data = entry.getData();
+		Map<String, Object> data = entry.getData().toMap();
 		if (scriptExecutable != null) {
 			if (ctx != null) {
 				ctx.put("document", entry.getData());
@@ -234,7 +249,7 @@ class Indexer implements Runnable {
 			String parent = extractParent(ctx);
 			String routing = extractRouting(ctx);
 			objectId = extractObjectId(ctx, objectId);
-			updateBulkRequest(bulk, data, objectId, operation, index, type,
+			updateBulkRequest(bulk, new BasicDBObject(data), objectId, operation, index, type,
 					routing, parent);
 		} catch (IOException e) {
 			logger.warn("failed to parse {}", e, entry.getData());
@@ -243,7 +258,7 @@ class Indexer implements Runnable {
 	}
 
 	private void updateBulkRequest(final BulkRequestBuilder bulk,
-			Map<String, Object> data, String objectId, String operation,
+			DBObject data, String objectId, String operation,
 			String index, String type, String routing, String parent)
 			throws IOException {
 		if (logger.isDebugEnabled()) {
@@ -251,12 +266,17 @@ class Indexer implements Runnable {
 					"Operation: {} - index: {} - type: {} - routing: {} - parent: {}",
 					operation, index, type, routing, parent);
 		}
+		boolean isAttachment = false;
+
+		if (logger.isDebugEnabled()) {
+			isAttachment = (data instanceof GridFSDBFile);
+		}
 		if (MongoDBRiver.OPLOG_INSERT_OPERATION.equals(operation)) {
 			if (logger.isDebugEnabled()) {
 				logger.debug(
 						"Insert operation - id: {} - contains attachment: {}",
 						operation, objectId,
-						data.containsKey(MongoDBRiver.IS_MONGODB_ATTACHMENT));
+						isAttachment);
 			}
 			bulk.add(indexRequest(index).type(type).id(objectId)
 					.source(build(data, objectId)).routing(routing)
@@ -267,7 +287,7 @@ class Indexer implements Runnable {
 			if (logger.isDebugEnabled()) {
 				logger.debug(
 						"Update operation - id: {} - contains attachment: {}",
-						objectId, data.containsKey(MongoDBRiver.IS_MONGODB_ATTACHMENT));
+						objectId, isAttachment);
 			}
 			deleteBulkRequest(bulk, objectId, index, type, routing, parent);
 			bulk.add(indexRequest(index).type(type).id(objectId)
@@ -283,7 +303,7 @@ class Indexer implements Runnable {
 		}
 		if (MongoDBRiver.OPLOG_COMMAND_OPERATION.equals(operation)) {
 			if (definition.isDropCollection()) {
-				if (data.containsKey(MongoDBRiver.OPLOG_DROP_COMMAND_OPERATION)
+				if (data.get(MongoDBRiver.OPLOG_DROP_COMMAND_OPERATION) != null
 						&& data.get(MongoDBRiver.OPLOG_DROP_COMMAND_OPERATION).equals(
 								definition.getMongoCollection())) {
 					logger.info("Drop collection request [{}], [{}]",
@@ -400,7 +420,7 @@ class Indexer implements Runnable {
 		if (scriptExecutable != null) {
 			if (ctx != null && documents != null) {
 
-				document.put("data", entry.getData());
+				document.put("data", entry.getData().toMap());
 				if (!objectId.isEmpty()) {
 					document.put("id", objectId);
 				}
@@ -449,9 +469,9 @@ class Indexer implements Runnable {
 							String routing = extractRouting(item);
 							String action = extractOperation(item);
 							boolean ignore = isDocumentIgnored(item);
-							Map<String, Object> _data = (Map<String, Object>) item
+							Map<String, Object> data = (Map<String, Object>) item
 									.get("data");
-							objectId = extractObjectId(_data, objectId);
+							objectId = extractObjectId(data, objectId);
 							if (logger.isDebugEnabled()) {
 								logger.debug(
 										"Id: {} - operation: {} - ignore: {} - index: {} - type: {} - routing: {} - parent: {}",
@@ -462,7 +482,7 @@ class Indexer implements Runnable {
 								continue;
 							}
 							try {
-								updateBulkRequest(bulk, _data, objectId,
+								updateBulkRequest(bulk, new BasicDBObject(data), objectId,
 										operation, index, type, routing,
 										parent);
 							} catch (IOException ioEx) {
@@ -477,16 +497,16 @@ class Indexer implements Runnable {
 		return lastTimestamp;
 	}
 
-	private XContentBuilder build(final Map<String, Object> data,
-			final String objectId) throws IOException {
-		if (data.containsKey(MongoDBRiver.IS_MONGODB_ATTACHMENT)) {
+	@SuppressWarnings("unchecked")
+	private XContentBuilder build(final DBObject data, final String objectId)
+			throws IOException {
+		if (data instanceof GridFSDBFile) {
 			logger.info("Add Attachment: {} to index {} / type {}",
 					objectId, definition.getIndexName(),
 					definition.getTypeName());
-			return MongoDBHelper.serialize((GridFSDBFile) data
-					.get(MongoDBRiver.MONGODB_ATTACHMENT));
+			return MongoDBHelper.serialize((GridFSDBFile) data);
 		} else {
-			return XContentFactory.jsonBuilder().map(data);
+			return XContentFactory.jsonBuilder().map(data.toMap());
 		}
 	}
 

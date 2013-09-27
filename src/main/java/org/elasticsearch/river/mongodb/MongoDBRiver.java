@@ -60,6 +60,7 @@ import com.mongodb.Mongo;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoException;
 import com.mongodb.ServerAddress;
+import com.mongodb.gridfs.GridFSDBFile;
 import com.mongodb.util.JSON;
 
 /**
@@ -67,11 +68,10 @@ import com.mongodb.util.JSON;
  * @author flaper87 (Flavio Percoco Premoli)
  * @author aparo (Alberto Paro)
  * @author kryptt (Rodolfo Hansen)
+ * @author benmccann (Ben McCann)
  */
 public class MongoDBRiver extends AbstractRiverComponent implements River {
 
-	public final static String IS_MONGODB_ATTACHMENT = "is_mongodb_attachment";
-	public final static String MONGODB_ATTACHMENT = "mongodb_attachment";
 	public final static String TYPE = "mongodb";
 	public final static String NAME = "mongodb-river";
 	public final static String STATUS = "_mongodbstatus";
@@ -450,30 +450,30 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
 	protected static class QueueEntry {
 
-		private Map<String, Object> data;
-		private String operation;
-		private BSONTimestamp oplogTimestamp;
+		private final DBObject data;
+		private final String operation;
+		private final BSONTimestamp oplogTimestamp;
 
-		public QueueEntry(
-				Map<String, Object> data) {
-			this.data = data;
-			this.operation = OPLOG_INSERT_OPERATION;
+		public QueueEntry(DBObject data) {
+			this(null, OPLOG_INSERT_OPERATION, data);
 		}
 
-		public QueueEntry(
-				BSONTimestamp oplogTimestamp,
-				String oplogOperation,
-				Map<String, Object> data) {
+		public QueueEntry(BSONTimestamp oplogTimestamp, String oplogOperation,
+				DBObject data) {
 			this.data = data;
 			this.operation = oplogOperation;
 			this.oplogTimestamp = oplogTimestamp;
 		}
 
 		public boolean isOplogEntry() {
-		  return oplogTimestamp != null;
+			return oplogTimestamp != null;
 		}
 
-		public Map<String, Object> getData() {
+		public boolean isAttachment() {
+			return (data instanceof GridFSDBFile);
+		}
+
+		public DBObject getData() {
 			return data;
 		}
 
