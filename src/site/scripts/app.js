@@ -4,9 +4,9 @@ var mongoDBRiverApp = angular.module('mongoDBRiverApp', ['ngResource', 'ui.boots
 
 mongoDBRiverApp.controller('MainCtrl', function ($log, $scope, $resource) {
   var riverResource = $resource('/_river/:type/:river/:action' , {type:'@type', river:'@river'}, {
-	  list: {method:'GET', params: {action: '_list'}, isArray: true},
-      start: {method:'POST', params: {action: '_start'}},
-      stop: {method:'POST', params: {action: '_stop'}}
+	  list: {method:'GET', params: {action: 'list'}, isArray: true},
+      start: {method:'POST', params: {action: 'start'}},
+      stop: {method:'POST', params: {action: 'stop'}}
     });
 
   $scope.rivers = [];
@@ -23,10 +23,6 @@ mongoDBRiverApp.controller('MainCtrl', function ($log, $scope, $resource) {
     $log.log('start: ' + name);
     riverResource.start({'type': $scope.type, 'river': name}, function(river, response) {
       setRiverEnabled(name, true);
-      // var river = _.find($scope.rivers, {'_name': name});
-      // if (river !== undefined) {
-      //   river._enabled = true;
-      // }
     });
   };
   $scope.stop = function(name){
@@ -45,4 +41,5 @@ mongoDBRiverApp.controller('MainCtrl', function ($log, $scope, $resource) {
         river._enabled = enabled;
       }
   }
+  $scope.list('mongodb');
 });
