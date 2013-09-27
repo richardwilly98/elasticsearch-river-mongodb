@@ -14,6 +14,7 @@ import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.river.mongodb.util.MongoDBHelper;
 
 import com.mongodb.BasicDBObject;
+import com.mongodb.BasicDBObjectBuilder;
 import com.mongodb.Bytes;
 import com.mongodb.CommandResult;
 import com.mongodb.DB;
@@ -128,43 +129,47 @@ class Slurper implements Runnable {
 	 * @throws InterruptedException if the blocking queue stream is interrupted while waiting
 	 */
 	protected BSONTimestamp doInitialImport() throws InterruptedException {
-		// TODO: support gridfs
-		if (!definition.isMongoGridFS()) {
-			// TODO: ensure the index type is empty
-			logger.info("MongoDBRiver is beginning initial import of "
+		// TODO: ensure the index type is empty
+		logger.info("MongoDBRiver is beginning initial import of "
 				+ slurpedCollection.getFullName());
-			BSONTimestamp startTimestamp = getCurrentOplogTimestamp();
-			DBCursor cursor = null;
-			try {
-				if (!definition.isMongoGridFS()) {
-					cursor = slurpedCollection.find();
-					while (cursor.hasNext()) {
-						DBObject object = cursor.next();
-						addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, null, applyFieldFilter(object));
-					}	
-				} else {
-					// TODO: To be optimized. https://github.com/mongodb/mongo-java-driver/pull/48#issuecomment-25241988
-					// possible option: Get the object id list from .fs collection then call GriDFS.findOne
-					GridFS grid = new GridFS(mongo.getDB(definition.getMongoDb()),
-							definition.getMongoCollection());
-					cursor = grid.getFileList();
-					while (cursor.hasNext()) {
-						DBObject object = cursor.next();
-						if (object instanceof GridFSDBFile) {
-							GridFSDBFile file = grid.findOne(new ObjectId(object.get(MongoDBRiver.MONGODB_ID_FIELD).toString()));
-							addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, null, file);
-						}
+		BSONTimestamp startTimestamp = getCurrentOplogTimestamp();
+		DBCursor cursor = null;
+		try {
+			if (!definition.isMongoGridFS()) {
+				cursor = slurpedCollection.find();
+				while (cursor.hasNext()) {
+					DBObject object = cursor.next();
+					addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, null,
+							applyFieldFilter(object));
+				}
+			} else {
+				// TODO: To be optimized.
+				// https://github.com/mongodb/mongo-java-driver/pull/48#issuecomment-25241988
+				// possible option: Get the object id list from .fs collection
+				// then call GriDFS.findOne
+				GridFS grid = new GridFS(mongo.getDB(definition.getMongoDb()),
+						definition.getMongoCollection());
+
+				 cursor = grid.getFileList();
+				while (cursor.hasNext()) {
+					DBObject object = cursor.next();
+					if (object instanceof GridFSDBFile) {
+						GridFSDBFile file = grid
+								.findOne(new ObjectId(object.get(
+										MongoDBRiver.MONGODB_ID_FIELD)
+										.toString()));
+						addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, null,
+								file);
 					}
-				}	
-			} finally {
-				if (cursor != null) {
-					logger.trace("Closing initial import cursor");
-					cursor.close();
 				}
 			}
-			return startTimestamp;
+		} finally {
+			if (cursor != null) {
+				logger.trace("Closing initial import cursor");
+				cursor.close();
+			}
 		}
-		return null;
+		return startTimestamp;
 	}
 
 	protected boolean assignCollections() {
