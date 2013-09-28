@@ -107,7 +107,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	protected final Client client;
 	protected final ScriptService scriptService;
 	protected final SharedContext context;
-	
+
 	protected volatile List<Thread> tailerThreads = new ArrayList<Thread>();
 	protected volatile Thread indexerThread;
 	protected volatile Thread statusThread;
@@ -122,7 +122,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 			RiverSettings settings,
 			@RiverIndexName String riverIndexName,
 			Client client,
-			ScriptService scriptService) {
+			ScriptService scriptService,
+			MongoDBRiverDefinition definition) {
 		super(riverName, settings);
 		if (logger.isDebugEnabled()) {
 			logger.debug("Prefix: [{}] - name: [{}]", logger.getPrefix(),
@@ -130,16 +131,11 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 		}
 		this.scriptService = scriptService;
 		this.client = client;
-		this.definition = MongoDBRiverDefinition.parseSettings(
-				riverName, riverIndexName, settings, scriptService);
+		this.definition = definition;
 
-		BlockingQueue<QueueEntry> stream;
-		if (definition.getThrottleSize() == -1) {
-			stream = new LinkedTransferQueue<QueueEntry>();
-		} else {
-			stream = new ArrayBlockingQueue<QueueEntry>(
-					definition.getThrottleSize());
-		}
+		BlockingQueue<QueueEntry> stream = definition.getThrottleSize() == -1
+				? new LinkedTransferQueue<QueueEntry>()
+				: new ArrayBlockingQueue<QueueEntry>(definition.getThrottleSize());
 
 		this.context = new SharedContext(stream, false);
 
@@ -392,7 +388,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 	 * Get the latest timestamp for a given namespace.
 	 */
 	@SuppressWarnings("unchecked")
-	static BSONTimestamp getLastTimestamp(
+	public static BSONTimestamp getLastTimestamp(
 			Client client,
 			MongoDBRiverDefinition definition) {
 

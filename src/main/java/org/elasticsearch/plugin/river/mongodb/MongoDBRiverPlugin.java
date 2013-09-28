@@ -19,7 +19,6 @@
 
 package org.elasticsearch.plugin.river.mongodb;
 
-import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.plugins.AbstractPlugin;
 import org.elasticsearch.rest.RestModule;
 import org.elasticsearch.rest.action.RestMongoDBRiverAction;
@@ -35,14 +34,13 @@ import org.elasticsearch.river.mongodb.MongoDBRiverModule;
 
 public class MongoDBRiverPlugin extends AbstractPlugin {
 
-  @Inject public MongoDBRiverPlugin() {
-  }
-
-  @Override public String name() {
+  @Override
+  public String name() {
     return MongoDBRiver.NAME;
   }
 
-  @Override public String description() {
+  @Override
+  public String description() {
 	  return MongoDBRiver.DESCRIPTION;
   }
 
@@ -63,4 +61,5 @@ public class MongoDBRiverPlugin extends AbstractPlugin {
   public void onModule(RestModule module) {
       module.addRestAction(RestMongoDBRiverAction.class);
   }
+
 }

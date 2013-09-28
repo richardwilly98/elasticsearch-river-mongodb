@@ -8,7 +8,6 @@ import java.util.Map;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
-import org.elasticsearch.common.inject.Injector;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.query.FieldQueryBuilder;
@@ -27,97 +26,96 @@ import org.elasticsearch.search.SearchHit;
 
 public class RestMongoDBRiverAction extends BaseRestHandler {
 
+	private static final String BASE_URL = "/_river/" + MongoDBRiver.TYPE;
+
 	@Inject
-	public RestMongoDBRiverAction(Settings settings, Client client,
-			RestController controller, Injector injector) {
+	public RestMongoDBRiverAction(Settings settings, Client client, RestController controller) {
 		super(settings, client);
-		controller.registerHandler(RestRequest.Method.GET, "/_river/"
-				+ MongoDBRiver.TYPE + "/{action}", this);
-		controller.registerHandler(RestRequest.Method.POST, "/_river/"
-				+ MongoDBRiver.TYPE + "/{river}/{action}", this);
-		controller.registerHandler(RestRequest.Method.POST, "/_river/"
-				+ MongoDBRiver.TYPE + "/{river}/{action}", this);
+		controller.registerHandler(RestRequest.Method.GET, BASE_URL + "/{action}", this);
+		controller.registerHandler(RestRequest.Method.POST, BASE_URL + "/{river}/{action}", this);
+		controller.registerHandler(RestRequest.Method.POST, BASE_URL + "/{river}/{action}", this);
 	}
 
 	@Override
-	public void handleRequest(final RestRequest request, RestChannel channel) {
-		// Get and check river name parameter
-		String riverName = request.param("river");
+	public void handleRequest(RestRequest request, RestChannel channel) {
 		String uri = request.uri();
 		logger.trace("uri: {}", uri);
 		logger.trace("action: {}", request.param("action"));
-		String action = null;
-		if (uri.endsWith("_start")) {
-			action = "start";
-		} else if (uri.endsWith("_stop")) {
-			action = "stop";
-		} else if (uri.endsWith("_list")) {
-			action = "list";
+		
+		if (uri.endsWith("list")) {
+			list(request, channel);
+			return;
+		} else if (uri.endsWith("start")) {
+			start(request, channel);
+			return;
+		} else if (uri.endsWith("stop")) {
+			stop(request, channel);
+			return;
 		}
 
-		if ("start".equals(action) || "stop".equals(action)) {
-			if (riverName == null || riverName.isEmpty()) {
-				respond(false, request, channel,
-						"Parameter 'river' is required", RestStatus.BAD_REQUEST);
-				return;
-			}
-		}
-
-		logger.warn("Start river: {} - action: {}", riverName, action);
-
-		if ("list".equals(action)) {
-			List<Map<String, Object>> rivers = getRivers();
-			try {
-				XContentBuilder builder = RestXContentBuilder
-						.restContentBuilder(request);
-				// builder.startObject();
-				builder.value(rivers);
-				// builder.endObject();
-				channel.sendResponse(new XContentRestResponse(request,
-						RestStatus.OK, builder));
-			} catch (IOException e) {
-				errorResponse(request, channel, e);
-			}
-
-		} else {
-//			String status = "started";
-			boolean enabled = true;
-			if ("stop".equals(action)) {
-//				status = "stopped";
-				enabled = false;
-			}
-			boolean success = true;
-//			try {
-//				setRiverStatus(riverName, status);
-				MongoDBRiverHelper.setRiverEnabled(client, riverName, enabled);
-//			} catch (IOException ioEx) {
-//				success = false;
-//			}
-			String error = !success ? null : "River not found: " + riverName;
-			respond(success, request, channel, error, RestStatus.OK);
-		}
+		respondError(request, channel, "action not found: " + uri, RestStatus.OK);
 	}
 
-	private void respond(boolean success, RestRequest request,
-			RestChannel channel, String error, RestStatus status) {
+	private void start(RestRequest request, RestChannel channel) {
+		String river = request.param("river");
+		if (river == null || river.isEmpty()) {
+			respondError(request, channel,
+					"Parameter 'river' is required", RestStatus.BAD_REQUEST);
+			return;
+		}
+		MongoDBRiverHelper.setRiverEnabled(client, river, true);
+		respondSuccess(request, channel, RestStatus.OK);		
+	}
+
+	private void stop(RestRequest request, RestChannel channel) {
+		String river = request.param("river");
+		if (river == null || river.isEmpty()) {
+			respondError(request, channel,
+					"Parameter 'river' is required", RestStatus.BAD_REQUEST);
+			return;
+		}
+		MongoDBRiverHelper.setRiverEnabled(client, river, false);
+		respondSuccess(request, channel, RestStatus.OK);		
+	}
+	
+	private void list(RestRequest request, RestChannel channel) {
+		List<Map<String, Object>> rivers = getRivers();
 		try {
-			XContentBuilder builder = RestXContentBuilder
-					.restContentBuilder(request);
+			XContentBuilder builder = RestXContentBuilder.restContentBuilder(request);
+			builder.value(rivers);
+			channel.sendResponse(new XContentRestResponse(request, RestStatus.OK, builder));
+		} catch (IOException e) {
+			errorResponse(request, channel, e);
+		}
+	}
+	
+	private void respondSuccess(RestRequest request, RestChannel channel, RestStatus status) {
+		try {
+			XContentBuilder builder = RestXContentBuilder.restContentBuilder(request);
 			builder.startObject();
-			builder.field("success", success);
-			if (error != null) {
-				builder.field("error", error);
-			}
+			builder.field("success", true);
 			builder.endObject();
-			channel.sendResponse(new XContentRestResponse(request, status,
-					builder));
+			channel.sendResponse(new XContentRestResponse(request, status, builder));
+		} catch (IOException e) {
+			errorResponse(request, channel, e);
+		}
+	}
+	
+	private void respondError(RestRequest request, RestChannel channel,
+			String error, RestStatus status) {
+		try {
+			XContentBuilder builder = RestXContentBuilder.restContentBuilder(request);
+			builder.startObject();
+			builder.field("success", false);
+			builder.field("error", error);
+			builder.endObject();
+			channel.sendResponse(new XContentRestResponse(request, status, builder));
 		} catch (IOException e) {
 			errorResponse(request, channel, e);
 		}
 	}
 
-	private void errorResponse(RestRequest request, RestChannel channel,
-			Throwable e) {
+	private void errorResponse(RestRequest request, RestChannel channel, Throwable e) {
 		try {
 			channel.sendResponse(new XContentThrowableRestResponse(request, e));
 		} catch (IOException ioEx) {
@@ -142,11 +140,4 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
 		return rivers;
 	}
 
-//	private void setRiverStatus(String riverName, String status)
-//			throws IOException {
-//		XContentBuilder xb = jsonBuilder().startObject().startObject("mongodb")
-//				.field("status", status).endObject().endObject();
-//		client.prepareIndex("_river", riverName, "_mongodbstatus")
-//				.setSource(xb).execute().actionGet();
-//	}
 }
