@@ -36,9 +36,9 @@ mongoDBRiverApp.controller('MainCtrl', function ($log, $scope, $resource) {
     return value;
   };
   function setRiverEnabled(name, enabled) {
-      var river = _.find($scope.rivers, {'_name': name});
+      var river = _.find($scope.rivers, {'name': name});
       if (river !== undefined) {
-        river._enabled = enabled;
+        river.enabled = enabled;
       }
   }
   $scope.list('mongodb');

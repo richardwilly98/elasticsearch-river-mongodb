@@ -47,7 +47,6 @@ public class MongoDBRiverModule extends AbstractModule {
       ScriptService scriptService) {
     return MongoDBRiverDefinition.parseSettings(
         riverName, riverIndexName, settings, scriptService);
-    
   }
 
 }
