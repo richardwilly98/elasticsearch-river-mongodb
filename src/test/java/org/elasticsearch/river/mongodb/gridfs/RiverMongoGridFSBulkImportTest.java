@@ -45,135 +45,129 @@ import com.mongodb.gridfs.GridFSInputFile;
 
 public class RiverMongoGridFSBulkImportTest extends RiverMongoDBTestAbstract {
 
-	private static final String TEST_ATTACHMENT_HTML = "/org/elasticsearch/river/mongodb/gridfs/test-attachment.html";
-	private static final String CRITERIA_ATTACHMENT_HTML = "Aliquam";
-	private static final String TEST_ATTACHMENT_PDF = "/org/elasticsearch/river/mongodb/gridfs/lorem.pdf";
-	private static final String CRITERIA_ATTACHMENT_PDF = "Lorem ipsum dolor";
-	private static final String TEST_ATTACHMENT_PDF_2 = "/org/elasticsearch/river/mongodb/gridfs/test-document.pdf";
-	private static final String CRITERIA_ATTACHMENT_PDF_2 = "Design and Specifications";
+    private static final String TEST_ATTACHMENT_HTML = "/org/elasticsearch/river/mongodb/gridfs/test-attachment.html";
+    private static final String CRITERIA_ATTACHMENT_HTML = "Aliquam";
+    private static final String TEST_ATTACHMENT_PDF = "/org/elasticsearch/river/mongodb/gridfs/lorem.pdf";
+    private static final String CRITERIA_ATTACHMENT_PDF = "Lorem ipsum dolor";
+    private static final String TEST_ATTACHMENT_PDF_2 = "/org/elasticsearch/river/mongodb/gridfs/test-document.pdf";
+    private static final String CRITERIA_ATTACHMENT_PDF_2 = "Design and Specifications";
 
-	private enum SampleFile {
-		HTML (TEST_ATTACHMENT_HTML, CRITERIA_ATTACHMENT_HTML),
-		PDF (TEST_ATTACHMENT_PDF, CRITERIA_ATTACHMENT_PDF),
-		PDF2 (TEST_ATTACHMENT_PDF_2, CRITERIA_ATTACHMENT_PDF_2),;
-		
-		private final String filename;
-		private final String criteria;
-		
-		private SampleFile(String filename, String criteria) {
-			this.filename = filename;
-			this.criteria = criteria;
-		}
-		
-		public String getFilename() {
-			return filename;
-		}
+    private enum SampleFile {
+        HTML(TEST_ATTACHMENT_HTML, CRITERIA_ATTACHMENT_HTML), PDF(TEST_ATTACHMENT_PDF, CRITERIA_ATTACHMENT_PDF), PDF2(
+                TEST_ATTACHMENT_PDF_2, CRITERIA_ATTACHMENT_PDF_2), ;
 
-		public String getCriteria() {
-			return criteria;
-		}
-	}
-	
-	private DB mongoDB;
-	private DBCollection mongoCollection;
-	private static final String timeStamp = String.valueOf(System
-			.currentTimeMillis());
-	private static final String river = "testgridfsbulkimport-" + timeStamp;
-	private static final String database = "testgridfsbulkimport-" + timeStamp;
-	private static final String collection = "fs";
-	private static final String index = "testattachmentindex-" + timeStamp;
+        private final String filename;
+        private final String criteria;
 
-	protected RiverMongoGridFSBulkImportTest() {
-		super(river, database, collection, index);
-	}
+        private SampleFile(String filename, String criteria) {
+            this.filename = filename;
+            this.criteria = criteria;
+        }
 
-	@BeforeClass
-	public void createDatabase() {
-		logger.debug("createDatabase {}", getDatabase());
-		try {
-			mongoDB = getMongo().getDB(getDatabase());
-			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
-			super.createRiver(TEST_MONGODB_RIVER_GRIDFS_JSON);
-			logger.info("Start createCollection");
-			mongoCollection = mongoDB.createCollection(getCollection(), null);
-			Assert.assertNotNull(mongoCollection);
-		} catch (Throwable t) {
-			logger.error("createDatabase failed.", t);
-		}
-	}
+        public String getFilename() {
+            return filename;
+        }
 
-	@AfterClass
-	public void cleanUp() {
-		super.deleteRiver();
-		logger.info("Drop database " + mongoDB.getName());
-		mongoDB.dropDatabase();
-	}
+        public String getCriteria() {
+            return criteria;
+        }
+    }
 
-	@Test(enabled = false)
-	public void testImportPDFAttachment() throws Exception {
-		logger.debug("*** testImportPDFAttachment ***");
-		long count = 10000;
-		List<String> ids = newArrayList();
-		SampleFile attachment = SampleFile.PDF2;
-		final byte[] content = copyToBytesFromClasspath(attachment.getFilename());
-		logger.debug("Content in bytes: {}", content.length);
+    private DB mongoDB;
+    private DBCollection mongoCollection;
+    private static final String timeStamp = String.valueOf(System.currentTimeMillis());
+    private static final String river = "testgridfsbulkimport-" + timeStamp;
+    private static final String database = "testgridfsbulkimport-" + timeStamp;
+    private static final String collection = "fs";
+    private static final String index = "testattachmentindex-" + timeStamp;
 
-		GridFS gridFS = new GridFS(mongoDB);
-		for (int i = 0; i < count; i++) {
+    protected RiverMongoGridFSBulkImportTest() {
+        super(river, database, collection, index);
+    }
 
-			GridFSInputFile in = gridFS.createFile(content);
-			in.setFilename("lorem-" + i + ".pdf");
-			in.setContentType("application/pdf");
-			in.save();
-			in.validate();
+    @BeforeClass
+    public void createDatabase() {
+        logger.debug("createDatabase {}", getDatabase());
+        try {
+            mongoDB = getMongo().getDB(getDatabase());
+            mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
+            super.createRiver(TEST_MONGODB_RIVER_GRIDFS_JSON);
+            logger.info("Start createCollection");
+            mongoCollection = mongoDB.createCollection(getCollection(), null);
+            Assert.assertNotNull(mongoCollection);
+        } catch (Throwable t) {
+            logger.error("createDatabase failed.", t);
+        }
+    }
 
-			String id = in.getId().toString();
-			logger.debug("GridFS in: {}", in);
-			logger.debug("Document created with id: {}", id);
-			GridFSDBFile out = gridFS.findOne(in.getFilename());
-			logger.debug("GridFS from findOne: {}", out);
-			out = gridFS.findOne(new ObjectId(id));
-			logger.debug("GridFS from findOne: {}", out);
-			Assert.assertEquals(out.getId(), in.getId());
-			ids.add(id);
-		}
+    @AfterClass
+    public void cleanUp() {
+        super.deleteRiver();
+        logger.info("Drop database " + mongoDB.getName());
+        mongoDB.dropDatabase();
+    }
 
-		CountResponse countResponse;
+    @Test(enabled = false)
+    public void testImportPDFAttachment() throws Exception {
+        logger.debug("*** testImportPDFAttachment ***");
+        long count = 10000;
+        List<String> ids = newArrayList();
+        SampleFile attachment = SampleFile.PDF2;
+        final byte[] content = copyToBytesFromClasspath(attachment.getFilename());
+        logger.debug("Content in bytes: {}", content.length);
 
-		while (true) {
-			Thread.sleep(wait);
-			refreshIndex();
-			countResponse = getNode().client().count(countRequest(getIndex()))
-					.actionGet();
-			logger.debug("Index total count: {}", countResponse.getCount());
-			if (countResponse.getCount() == count) {
-				break;
-			}
-		}
+        GridFS gridFS = new GridFS(mongoDB);
+        for (int i = 0; i < count; i++) {
 
-		countResponse = getNode().client().count(countRequest(getIndex()))
-				.actionGet();
-		logger.debug("Index total count: {}", countResponse.getCount());
-		assertThat(countResponse.getCount(), equalTo(count));
+            GridFSInputFile in = gridFS.createFile(content);
+            in.setFilename("lorem-" + i + ".pdf");
+            in.setContentType("application/pdf");
+            in.save();
+            in.validate();
 
-		SearchResponse response = getNode().client().prepareSearch(getIndex())
-				.setQuery(QueryBuilders.queryString(attachment.getCriteria()))
-				.execute().actionGet();
-		long totalHits = response.getHits().getTotalHits();
-		logger.debug("TotalHits: {}", totalHits);
-		assertThat(totalHits, equalTo(count));
+            String id = in.getId().toString();
+            logger.debug("GridFS in: {}", in);
+            logger.debug("Document created with id: {}", id);
+            GridFSDBFile out = gridFS.findOne(in.getFilename());
+            logger.debug("GridFS from findOne: {}", out);
+            out = gridFS.findOne(new ObjectId(id));
+            logger.debug("GridFS from findOne: {}", out);
+            Assert.assertEquals(out.getId(), in.getId());
+            ids.add(id);
+        }
 
-		for (String id : ids) {
-			gridFS.remove(new ObjectId(id));
-		}
+        CountResponse countResponse;
 
-		Thread.sleep(wait);
-		refreshIndex();
+        while (true) {
+            Thread.sleep(wait);
+            refreshIndex();
+            countResponse = getNode().client().count(countRequest(getIndex())).actionGet();
+            logger.debug("Index total count: {}", countResponse.getCount());
+            if (countResponse.getCount() == count) {
+                break;
+            }
+        }
 
-		countResponse = getNode().client().count(countRequest(getIndex()))
-				.actionGet();
-		logger.debug("Count after delete request: {}", countResponse.getCount());
-		assertThat(countResponse.getCount(), equalTo(0L));
-	}
+        countResponse = getNode().client().count(countRequest(getIndex())).actionGet();
+        logger.debug("Index total count: {}", countResponse.getCount());
+        assertThat(countResponse.getCount(), equalTo(count));
+
+        SearchResponse response = getNode().client().prepareSearch(getIndex())
+                .setQuery(QueryBuilders.queryString(attachment.getCriteria())).execute().actionGet();
+        long totalHits = response.getHits().getTotalHits();
+        logger.debug("TotalHits: {}", totalHits);
+        assertThat(totalHits, equalTo(count));
+
+        for (String id : ids) {
+            gridFS.remove(new ObjectId(id));
+        }
+
+        Thread.sleep(wait);
+        refreshIndex();
+
+        countResponse = getNode().client().count(countRequest(getIndex())).actionGet();
+        logger.debug("Count after delete request: {}", countResponse.getCount());
+        assertThat(countResponse.getCount(), equalTo(0L));
+    }
 
 }

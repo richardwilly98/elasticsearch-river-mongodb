@@ -9,28 +9,28 @@ import org.elasticsearch.river.mongodb.MongoDBRiver.QueueEntry;
  */
 public class SharedContext {
 
-	private BlockingQueue<QueueEntry> stream;
-	private boolean active;
+    private BlockingQueue<QueueEntry> stream;
+    private boolean active;
 
-	public SharedContext(BlockingQueue<QueueEntry> stream, boolean active) {
-		this.stream = stream;
-		this.active = active;
-	}
+    public SharedContext(BlockingQueue<QueueEntry> stream, boolean active) {
+        this.stream = stream;
+        this.active = active;
+    }
 
-	public BlockingQueue<QueueEntry> getStream() {
-		return stream;
-	}
+    public BlockingQueue<QueueEntry> getStream() {
+        return stream;
+    }
 
-	public void setStream(BlockingQueue<QueueEntry> stream) {
-		this.stream = stream;
-	}
+    public void setStream(BlockingQueue<QueueEntry> stream) {
+        this.stream = stream;
+    }
 
-	public boolean isActive() {
-		return active;
-	}
+    public boolean isActive() {
+        return active;
+    }
 
-	public void setActive(boolean active) {
-		this.active = active;
-	}
-	
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
 }

@@ -41,160 +41,139 @@ import com.mongodb.gridfs.GridFS;
 import com.mongodb.gridfs.GridFSDBFile;
 import com.mongodb.gridfs.GridFSInputFile;
 
-public class RiverMongoWithGridFSInitialImportTest extends
-		RiverMongoDBTestAbstract {
+public class RiverMongoWithGridFSInitialImportTest extends RiverMongoDBTestAbstract {
 
-	private DB mongoDB;
-	private DBCollection mongoCollection;
+    private DB mongoDB;
+    private DBCollection mongoCollection;
 
-	protected RiverMongoWithGridFSInitialImportTest() {
-		super("testgridfs-initialimport-" + System.currentTimeMillis(),
-				"testgridfs-initialimport-" + System.currentTimeMillis(), "fs",
-				"testattachmentindex-initialimport-"
-						+ System.currentTimeMillis());
-	}
+    protected RiverMongoWithGridFSInitialImportTest() {
+        super("testgridfs-initialimport-" + System.currentTimeMillis(), "testgridfs-initialimport-" + System.currentTimeMillis(), "fs",
+                "testattachmentindex-initialimport-" + System.currentTimeMillis());
+    }
 
-	// @BeforeClass
-	public void createDatabase() {
-		logger.debug("createDatabase {}", getDatabase());
-		try {
-			mongoDB = getMongo().getDB(getDatabase());
-			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
-			logger.info("Start createCollection");
-			mongoCollection = mongoDB.createCollection(getCollection(), null);
-			Assert.assertNotNull(mongoCollection);
-			Thread.sleep(wait);
-		} catch (Throwable t) {
-			logger.error("createDatabase failed.", t);
-		}
-	}
+    // @BeforeClass
+    public void createDatabase() {
+        logger.debug("createDatabase {}", getDatabase());
+        try {
+            mongoDB = getMongo().getDB(getDatabase());
+            mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
+            logger.info("Start createCollection");
+            mongoCollection = mongoDB.createCollection(getCollection(), null);
+            Assert.assertNotNull(mongoCollection);
+            Thread.sleep(wait);
+        } catch (Throwable t) {
+            logger.error("createDatabase failed.", t);
+        }
+    }
 
-	private void createRiver() throws Exception {
-		super.createRiver(TEST_MONGODB_RIVER_GRIDFS_JSON);
-		Thread.sleep(wait);
-	}
-	
-	// @AfterClass
-	public void cleanUp() {
-		super.deleteRiver();
-		logger.info("Drop database " + mongoDB.getName());
-		mongoDB.dropDatabase();
-	}
+    private void createRiver() throws Exception {
+        super.createRiver(TEST_MONGODB_RIVER_GRIDFS_JSON);
+        Thread.sleep(wait);
+    }
 
-	@Test
-	public void testImportAttachmentInitialImport() throws Exception {
-		logger.debug("*** testImportAttachmentInitialImport ***");
-		try {
-			createDatabase();
-			byte[] content = copyToBytesFromClasspath(RiverMongoWithGridFSTest.TEST_ATTACHMENT_HTML);
-			logger.debug("Content in bytes: {}", content.length);
-			GridFS gridFS = new GridFS(mongoDB);
-			GridFSInputFile in = gridFS.createFile(content);
-			in.setFilename("test-attachment.html");
-			in.setContentType("text/html");
-			in.save();
-			in.validate();
+    // @AfterClass
+    public void cleanUp() {
+        super.deleteRiver();
+        logger.info("Drop database " + mongoDB.getName());
+        mongoDB.dropDatabase();
+    }
 
-			String id = in.getId().toString();
-			logger.debug("GridFS in: {}", in);
-			logger.debug("Document created with id: {}", id);
+    @Test
+    public void testImportAttachmentInitialImport() throws Exception {
+        logger.debug("*** testImportAttachmentInitialImport ***");
+        try {
+            createDatabase();
+            byte[] content = copyToBytesFromClasspath(RiverMongoWithGridFSTest.TEST_ATTACHMENT_HTML);
+            logger.debug("Content in bytes: {}", content.length);
+            GridFS gridFS = new GridFS(mongoDB);
+            GridFSInputFile in = gridFS.createFile(content);
+            in.setFilename("test-attachment.html");
+            in.setContentType("text/html");
+            in.save();
+            in.validate();
 
-			GridFSDBFile out = gridFS.findOne(in.getFilename());
-			logger.debug("GridFS from findOne: {}", out);
-			out = gridFS.findOne(new ObjectId(id));
-			logger.debug("GridFS from findOne: {}", out);
-			Assert.assertEquals(out.getId(), in.getId());
+            String id = in.getId().toString();
+            logger.debug("GridFS in: {}", in);
+            logger.debug("Document created with id: {}", id);
 
-			createRiver();
-			Thread.sleep(wait);
-			refreshIndex();
+            GridFSDBFile out = gridFS.findOne(in.getFilename());
+            logger.debug("GridFS from findOne: {}", out);
+            out = gridFS.findOne(new ObjectId(id));
+            logger.debug("GridFS from findOne: {}", out);
+            Assert.assertEquals(out.getId(), in.getId());
 
-			CountResponse countResponse = getNode().client()
-					.count(countRequest(getIndex())).actionGet();
-			logger.debug("Index total count: {}", countResponse.getCount());
-			assertThat(countResponse.getCount(), equalTo(1l));
+            createRiver();
+            Thread.sleep(wait);
+            refreshIndex();
 
-			countResponse = getNode()
-					.client()
-					.count(countRequest(getIndex())
-							.query(fieldQuery("_id", id))).actionGet();
-			logger.debug("Index count for id {}: {}", id,
-					countResponse.getCount());
-			assertThat(countResponse.getCount(), equalTo(1l));
+            CountResponse countResponse = getNode().client().count(countRequest(getIndex())).actionGet();
+            logger.debug("Index total count: {}", countResponse.getCount());
+            assertThat(countResponse.getCount(), equalTo(1l));
 
-			SearchResponse response = getNode().client()
-					.prepareSearch(getIndex())
-					.setQuery(QueryBuilders.queryString("Aliquam")).execute()
-					.actionGet();
-			logger.debug("SearchResponse {}", response.toString());
-			long totalHits = response.getHits().getTotalHits();
-			logger.debug("TotalHits: {}", totalHits);
-			assertThat(totalHits, equalTo(1l));
+            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
+            logger.debug("Index count for id {}: {}", id, countResponse.getCount());
+            assertThat(countResponse.getCount(), equalTo(1l));
 
-			in = gridFS.createFile(content);
-			in.setFilename("test-attachment-2.html");
-			in.setContentType("text/html");
-			in.save();
-			in.validate();
+            SearchResponse response = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.queryString("Aliquam")).execute()
+                    .actionGet();
+            logger.debug("SearchResponse {}", response.toString());
+            long totalHits = response.getHits().getTotalHits();
+            logger.debug("TotalHits: {}", totalHits);
+            assertThat(totalHits, equalTo(1l));
 
-			id = in.getId().toString();
+            in = gridFS.createFile(content);
+            in.setFilename("test-attachment-2.html");
+            in.setContentType("text/html");
+            in.save();
+            in.validate();
 
-			out = gridFS.findOne(in.getFilename());
-			logger.debug("GridFS from findOne: {}", out);
-			out = gridFS.findOne(new ObjectId(id));
-			logger.debug("GridFS from findOne: {}", out);
-			Assert.assertEquals(out.getId(), in.getId());
+            id = in.getId().toString();
 
-			Thread.sleep(wait);
-			refreshIndex();
+            out = gridFS.findOne(in.getFilename());
+            logger.debug("GridFS from findOne: {}", out);
+            out = gridFS.findOne(new ObjectId(id));
+            logger.debug("GridFS from findOne: {}", out);
+            Assert.assertEquals(out.getId(), in.getId());
 
-			countResponse = getNode().client().count(countRequest(getIndex()))
-					.actionGet();
-			logger.debug("Index total count: {}", countResponse.getCount());
-			assertThat(countResponse.getCount(), equalTo(2l));
+            Thread.sleep(wait);
+            refreshIndex();
 
-			countResponse = getNode()
-					.client()
-					.count(countRequest(getIndex())
-							.query(fieldQuery("_id", id))).actionGet();
-			logger.debug("Index count for id {}: {}", id,
-					countResponse.getCount());
-			assertThat(countResponse.getCount(), equalTo(1l));
+            countResponse = getNode().client().count(countRequest(getIndex())).actionGet();
+            logger.debug("Index total count: {}", countResponse.getCount());
+            assertThat(countResponse.getCount(), equalTo(2l));
 
-			response = getNode().client().prepareSearch(getIndex())
-					.setQuery(QueryBuilders.queryString("Aliquam")).execute()
-					.actionGet();
-			logger.debug("SearchResponse {}", response.toString());
-			totalHits = response.getHits().getTotalHits();
-			logger.debug("TotalHits: {}", totalHits);
-			assertThat(totalHits, equalTo(2l));
+            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
+            logger.debug("Index count for id {}: {}", id, countResponse.getCount());
+            assertThat(countResponse.getCount(), equalTo(1l));
 
-			DBCursor cursor = gridFS.getFileList();
-			try {
-				while (cursor.hasNext()) {
-					DBObject object = cursor.next();
-					gridFS.remove(new ObjectId(object.get("_id").toString()));
-				}
-			} finally {
-				cursor.close();
-			}
+            response = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.queryString("Aliquam")).execute().actionGet();
+            logger.debug("SearchResponse {}", response.toString());
+            totalHits = response.getHits().getTotalHits();
+            logger.debug("TotalHits: {}", totalHits);
+            assertThat(totalHits, equalTo(2l));
 
-			Thread.sleep(wait);
-			refreshIndex();
+            DBCursor cursor = gridFS.getFileList();
+            try {
+                while (cursor.hasNext()) {
+                    DBObject object = cursor.next();
+                    gridFS.remove(new ObjectId(object.get("_id").toString()));
+                }
+            } finally {
+                cursor.close();
+            }
 
-			countResponse = getNode()
-					.client()
-					.count(countRequest(getIndex())
-							.query(fieldQuery("_id", id))).actionGet();
-			logger.debug("Count after delete request: {}",
-					countResponse.getCount());
-			assertThat(countResponse.getCount(), equalTo(0L));
-		} catch (Throwable t) {
-			logger.error("testImportAttachmentInitialImport failed.", t);
-			Assert.fail("testImportAttachmentInitialImport failed", t);
-		} finally {
-			cleanUp();
-		}
-	}
+            Thread.sleep(wait);
+            refreshIndex();
+
+            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
+            logger.debug("Count after delete request: {}", countResponse.getCount());
+            assertThat(countResponse.getCount(), equalTo(0L));
+        } catch (Throwable t) {
+            logger.error("testImportAttachmentInitialImport failed.", t);
+            Assert.fail("testImportAttachmentInitialImport failed", t);
+        } finally {
+            cleanUp();
+        }
+    }
 
 }

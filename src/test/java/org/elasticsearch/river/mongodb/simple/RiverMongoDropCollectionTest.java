@@ -42,152 +42,122 @@ import com.mongodb.util.JSON;
 @Test
 public class RiverMongoDropCollectionTest extends RiverMongoDBTestAbstract {
 
-	private static final String TEST_SIMPLE_MONGODB_RIVER_DROP_COLLECTION_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-drop-collection.json";
-	private DB mongoDB;
-	private DBCollection mongoCollection;
-	protected boolean dropCollectionOption = true;
+    private static final String TEST_SIMPLE_MONGODB_RIVER_DROP_COLLECTION_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-drop-collection.json";
+    private DB mongoDB;
+    private DBCollection mongoCollection;
+    protected boolean dropCollectionOption = true;
 
-	protected RiverMongoDropCollectionTest() {
-		super("drop-river-" + System.currentTimeMillis(), "drop-river-"
-				+ System.currentTimeMillis(), "drop-collection"
-				+ System.currentTimeMillis(), "drop-index-"
-				+ System.currentTimeMillis());
-	}
+    protected RiverMongoDropCollectionTest() {
+        super("drop-river-" + System.currentTimeMillis(), "drop-river-" + System.currentTimeMillis(), "drop-collection"
+                + System.currentTimeMillis(), "drop-index-" + System.currentTimeMillis());
+    }
 
-	protected RiverMongoDropCollectionTest(String river, String database,
-			String collection, String index) {
-		super(river, database, collection, index);
-	}
+    protected RiverMongoDropCollectionTest(String river, String database, String collection, String index) {
+        super(river, database, collection, index);
+    }
 
-	@BeforeClass
-	public void createDatabase() {
-		logger.debug("createDatabase {}", getDatabase());
-		try {
-			mongoDB = getMongo().getDB(getDatabase());
-			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
-			super.createRiver(TEST_SIMPLE_MONGODB_RIVER_DROP_COLLECTION_JSON,
-					getRiver(), (Object) String.valueOf(getMongoPort1()),
-					(Object) String.valueOf(getMongoPort2()),
-					(Object) String.valueOf(getMongoPort3()),
-					(Object) dropCollectionOption, (Object) getDatabase(),
-					(Object) getCollection(), (Object) getIndex(),
-					(Object) getDatabase());
-			logger.info("Start createCollection");
-			mongoCollection = mongoDB.createCollection(getCollection(), null);
-			Assert.assertNotNull(mongoCollection);
-		} catch (Throwable t) {
-			logger.error("createDatabase failed.", t);
-		}
-	}
+    @BeforeClass
+    public void createDatabase() {
+        logger.debug("createDatabase {}", getDatabase());
+        try {
+            mongoDB = getMongo().getDB(getDatabase());
+            mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
+            super.createRiver(TEST_SIMPLE_MONGODB_RIVER_DROP_COLLECTION_JSON, getRiver(), (Object) String.valueOf(getMongoPort1()),
+                    (Object) String.valueOf(getMongoPort2()), (Object) String.valueOf(getMongoPort3()), (Object) dropCollectionOption,
+                    (Object) getDatabase(), (Object) getCollection(), (Object) getIndex(), (Object) getDatabase());
+            logger.info("Start createCollection");
+            mongoCollection = mongoDB.createCollection(getCollection(), null);
+            Assert.assertNotNull(mongoCollection);
+        } catch (Throwable t) {
+            logger.error("createDatabase failed.", t);
+        }
+    }
 
-	@AfterClass
-	public void cleanUp() {
-		super.deleteRiver();
-		logger.info("Drop database " + mongoDB.getName());
-		mongoDB.dropDatabase();
-	}
+    @AfterClass
+    public void cleanUp() {
+        super.deleteRiver();
+        logger.info("Drop database " + mongoDB.getName());
+        mongoDB.dropDatabase();
+    }
 
-	@Test
-	public void testDropCollection() throws Throwable {
-		logger.debug("Start testDropCollection");
-		try {
-			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
-			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
-			mongoCollection.insert(dbObject);
-			Thread.sleep(wait);
+    @Test
+    public void testDropCollection() throws Throwable {
+        logger.debug("Start testDropCollection");
+        try {
+            String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
+            DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
+            mongoCollection.insert(dbObject);
+            Thread.sleep(wait);
 
-			assertThat(
-					getNode().client().admin().indices()
-							.exists(new IndicesExistsRequest(getIndex()))
-							.actionGet().isExists(), equalTo(true));
-			assertThat(
-					getNode().client().admin().indices()
-							.prepareTypesExists(getIndex())
-							.setTypes(getDatabase()).execute().actionGet()
-							.isExists(), equalTo(true));
-			String collectionName = mongoCollection.getName();
-			long countRequest = getNode().client()
-					.count(countRequest(getIndex())).actionGet().getCount();
-			mongoCollection.drop();
-			Thread.sleep(wait);
-			assertThat(mongoDB.collectionExists(collectionName), equalTo(false));
-			Thread.sleep(wait);
-			refreshIndex();
+            assertThat(getNode().client().admin().indices().exists(new IndicesExistsRequest(getIndex())).actionGet().isExists(),
+                    equalTo(true));
+            assertThat(getNode().client().admin().indices().prepareTypesExists(getIndex()).setTypes(getDatabase()).execute().actionGet()
+                    .isExists(), equalTo(true));
+            String collectionName = mongoCollection.getName();
+            long countRequest = getNode().client().count(countRequest(getIndex())).actionGet().getCount();
+            mongoCollection.drop();
+            Thread.sleep(wait);
+            assertThat(mongoDB.collectionExists(collectionName), equalTo(false));
+            Thread.sleep(wait);
+            refreshIndex();
 
-			if (!dropCollectionOption) {
-				countRequest = getNode().client()
-						.count(countRequest(getIndex())).actionGet().getCount();
-				assertThat(countRequest, greaterThan(0L));
-			} else {
-				countRequest = getNode().client()
-						.count(countRequest(getIndex())).actionGet().getCount();
-				assertThat(countRequest, equalTo(0L));
-			}
-		} catch (Throwable t) {
-			logger.error("testDropCollection failed.", t);
-			t.printStackTrace();
-			throw t;
-		}
-	}
+            if (!dropCollectionOption) {
+                countRequest = getNode().client().count(countRequest(getIndex())).actionGet().getCount();
+                assertThat(countRequest, greaterThan(0L));
+            } else {
+                countRequest = getNode().client().count(countRequest(getIndex())).actionGet().getCount();
+                assertThat(countRequest, equalTo(0L));
+            }
+        } catch (Throwable t) {
+            logger.error("testDropCollection failed.", t);
+            t.printStackTrace();
+            throw t;
+        }
+    }
 
-	@Test
-	public void testDropCollectionIssue79() throws Throwable {
-		logger.debug("Start testDropCollectionIssue79");
-		try {
-			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
-			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
-			mongoCollection.insert(dbObject);
-			Thread.sleep(wait);
+    @Test
+    public void testDropCollectionIssue79() throws Throwable {
+        logger.debug("Start testDropCollectionIssue79");
+        try {
+            String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
+            DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
+            mongoCollection.insert(dbObject);
+            Thread.sleep(wait);
 
-			assertThat(
-					getNode().client().admin().indices()
-							.exists(new IndicesExistsRequest(getIndex()))
-							.actionGet().isExists(), equalTo(true));
-			assertThat(
-					getNode().client().admin().indices()
-							.prepareTypesExists(getIndex())
-							.setTypes(getDatabase()).execute().actionGet()
-							.isExists(), equalTo(true));
-			String collectionName = mongoCollection.getName();
-			long countRequest = getNode().client()
-					.count(countRequest(getIndex())).actionGet().getCount();
-			mongoCollection.drop();
-			Thread.sleep(wait);
-			assertThat(mongoDB.collectionExists(collectionName), equalTo(false));
-			Thread.sleep(wait);
-			refreshIndex();
-			if (!dropCollectionOption) {
-				countRequest = getNode().client()
-						.count(countRequest(getIndex())).actionGet().getCount();
-				assertThat(countRequest, greaterThan(0L));
-			} else {
-				countRequest = getNode().client()
-						.count(countRequest(getIndex())).actionGet().getCount();
-				assertThat(countRequest, equalTo(0L));
-			}
-			dbObject = (DBObject) JSON.parse(mongoDocument);
-			String value = String.valueOf(System.currentTimeMillis());
-			dbObject.put("attribute1", value);
-			mongoCollection.insert(dbObject);
-			Thread.sleep(wait);
-			assertThat(
-					getNode().client().admin().indices()
-							.exists(new IndicesExistsRequest(getIndex()))
-							.actionGet().isExists(), equalTo(true));
-			assertThat(
-					getNode().client().admin().indices()
-							.prepareTypesExists(getIndex())
-							.setTypes(getDatabase()).execute().actionGet()
-							.isExists(), equalTo(true));
-			CountResponse countResponse = getNode()
-					.client()
-					.count(countRequest(getIndex()).query(
-							fieldQuery("attribute1", value))).actionGet();
-			assertThat(countResponse.getCount(), equalTo(1L));
-		} catch (Throwable t) {
-			logger.error("testDropCollectionIssue79 failed.", t);
-			t.printStackTrace();
-			throw t;
-		}
-	}
+            assertThat(getNode().client().admin().indices().exists(new IndicesExistsRequest(getIndex())).actionGet().isExists(),
+                    equalTo(true));
+            assertThat(getNode().client().admin().indices().prepareTypesExists(getIndex()).setTypes(getDatabase()).execute().actionGet()
+                    .isExists(), equalTo(true));
+            String collectionName = mongoCollection.getName();
+            long countRequest = getNode().client().count(countRequest(getIndex())).actionGet().getCount();
+            mongoCollection.drop();
+            Thread.sleep(wait);
+            assertThat(mongoDB.collectionExists(collectionName), equalTo(false));
+            Thread.sleep(wait);
+            refreshIndex();
+            if (!dropCollectionOption) {
+                countRequest = getNode().client().count(countRequest(getIndex())).actionGet().getCount();
+                assertThat(countRequest, greaterThan(0L));
+            } else {
+                countRequest = getNode().client().count(countRequest(getIndex())).actionGet().getCount();
+                assertThat(countRequest, equalTo(0L));
+            }
+            dbObject = (DBObject) JSON.parse(mongoDocument);
+            String value = String.valueOf(System.currentTimeMillis());
+            dbObject.put("attribute1", value);
+            mongoCollection.insert(dbObject);
+            Thread.sleep(wait);
+            assertThat(getNode().client().admin().indices().exists(new IndicesExistsRequest(getIndex())).actionGet().isExists(),
+                    equalTo(true));
+            assertThat(getNode().client().admin().indices().prepareTypesExists(getIndex()).setTypes(getDatabase()).execute().actionGet()
+                    .isExists(), equalTo(true));
+            CountResponse countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("attribute1", value)))
+                    .actionGet();
+            assertThat(countResponse.getCount(), equalTo(1L));
+        } catch (Throwable t) {
+            logger.error("testDropCollectionIssue79 failed.", t);
+            t.printStackTrace();
+            throw t;
+        }
+    }
 }

@@ -41,110 +41,94 @@ import com.mongodb.WriteResult;
 @Test
 public class SlurperTest extends RiverMongoDBTestAbstract {
 
-	private DB mongoDB;
-	private DBCollection mongoCollection;
+    private DB mongoDB;
+    private DBCollection mongoCollection;
 
-	protected SlurperTest() {
-		super("testmongodb-" + System.currentTimeMillis(),
-				"testriver-" + System.currentTimeMillis(),
-				"person-" + System.currentTimeMillis(),
-				"personindex-" + System.currentTimeMillis());
-	}
+    protected SlurperTest() {
+        super("testmongodb-" + System.currentTimeMillis(), "testriver-" + System.currentTimeMillis(), "person-"
+                + System.currentTimeMillis(), "personindex-" + System.currentTimeMillis());
+    }
 
-	private void createDatabase() {
-		logger.debug("createDatabase {}", getDatabase());
-		try {
-			mongoDB = getMongo().getDB(getDatabase());
-			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
-			logger.info("Start createCollection");
-			mongoCollection = mongoDB.createCollection(getCollection(), null);
-			Assert.assertNotNull(mongoCollection);
-		} catch (Throwable t) {
-			logger.error("createDatabase failed.", t);
-		}
-	}
-	
-	private void createIndex() throws Exception {
-		getNode().client().prepareIndex("_river", river, "_meta")
-			.setSource(getSettingsString()).execute().actionGet();
-	}
-	
-	private void cleanUp() {
-		logger.info("Drop database " + mongoDB.getName());
-		mongoDB.dropDatabase();
-	}
+    private void createDatabase() {
+        logger.debug("createDatabase {}", getDatabase());
+        try {
+            mongoDB = getMongo().getDB(getDatabase());
+            mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
+            logger.info("Start createCollection");
+            mongoCollection = mongoDB.createCollection(getCollection(), null);
+            Assert.assertNotNull(mongoCollection);
+        } catch (Throwable t) {
+            logger.error("createDatabase failed.", t);
+        }
+    }
 
-	@Test
-	public void testInitialImport() throws Throwable {
-		logger.debug("Start InitialImport");
-		try {
-			createDatabase();
-			createIndex();
+    private void createIndex() throws Exception {
+        getNode().client().prepareIndex("_river", river, "_meta").setSource(getSettingsString()).execute().actionGet();
+    }
 
-			DBObject dbObject1 = new BasicDBObject(ImmutableMap.of("name", "Richard"));
-			WriteResult result1 = mongoCollection.insert(dbObject1);
-			logger.info("WriteResult: {}", result1.toString());
-			Thread.sleep(wait);
+    private void cleanUp() {
+        logger.info("Drop database " + mongoDB.getName());
+        mongoDB.dropDatabase();
+    }
 
-			TestSlurper slurper = createSlurper();
-			Assert.assertTrue(slurper.assignCollections());
-			Assert.assertFalse(slurper.riverHasIndexedSomething());
+    @Test
+    public void testInitialImport() throws Throwable {
+        logger.debug("Start InitialImport");
+        try {
+            createDatabase();
+            createIndex();
 
-			new Thread(slurper).start();
-			Thread.sleep(wait);
+            DBObject dbObject1 = new BasicDBObject(ImmutableMap.of("name", "Richard"));
+            WriteResult result1 = mongoCollection.insert(dbObject1);
+            logger.info("WriteResult: {}", result1.toString());
+            Thread.sleep(wait);
 
-			Assert.assertTrue(slurper.doInitialImportHasBeenCalled());
-		} finally {
-			cleanUp();
-		}
-	}
+            TestSlurper slurper = createSlurper();
+            Assert.assertTrue(slurper.assignCollections());
+            Assert.assertFalse(slurper.riverHasIndexedSomething());
 
-	private String getSettingsString() throws Exception {
-		return getJsonSettings(TEST_MONGODB_RIVER_SIMPLE_JSON,
-				String.valueOf(getMongoPort1()),
-				String.valueOf(getMongoPort2()),
-				String.valueOf(getMongoPort3()),
-				database, collection, index);		
-	}
-	
-	private TestSlurper createSlurper() throws Exception {
-		super.createRiver(TEST_MONGODB_RIVER_SIMPLE_JSON);
+            new Thread(slurper).start();
+            Thread.sleep(wait);
 
-		RiverSettings riverSettings = new RiverSettings(
-				ImmutableSettings.settingsBuilder().build(),
-				XContentHelper.convertToMap(getSettingsString().getBytes(), false).v2());
-		RiverName riverName = new RiverName("mongodb", river);
-		MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(
-				riverName, index, riverSettings, null);
+            Assert.assertTrue(slurper.doInitialImportHasBeenCalled());
+        } finally {
+            cleanUp();
+        }
+    }
 
-		return new TestSlurper(
-				mongo.getServerAddressList(),
-				definition,
-				new SharedContext(null, true),
-				getNode().client());
-	}
+    private String getSettingsString() throws Exception {
+        return getJsonSettings(TEST_MONGODB_RIVER_SIMPLE_JSON, String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
+                String.valueOf(getMongoPort3()), database, collection, index);
+    }
 
-	private static class TestSlurper extends Slurper {
+    private TestSlurper createSlurper() throws Exception {
+        super.createRiver(TEST_MONGODB_RIVER_SIMPLE_JSON);
 
-		public TestSlurper(
-				List<ServerAddress> mongoServers,
-				MongoDBRiverDefinition definition,
-				SharedContext context,
-				Client client) {
-			super(mongoServers, definition, context, client);
-		}
+        RiverSettings riverSettings = new RiverSettings(ImmutableSettings.settingsBuilder().build(), XContentHelper.convertToMap(
+                getSettingsString().getBytes(), false).v2());
+        RiverName riverName = new RiverName("mongodb", river);
+        MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName, index, riverSettings, null);
 
-		private boolean doInitialImportCalled = false;
+        return new TestSlurper(mongo.getServerAddressList(), definition, new SharedContext(null, true), getNode().client());
+    }
 
-		public BSONTimestamp doInitialImport() {
-			doInitialImportCalled = true;
-			return null;
-		}
-		
-		public boolean doInitialImportHasBeenCalled() {
-			return doInitialImportCalled;
-		}
-		
-	}
+    private static class TestSlurper extends Slurper {
+
+        public TestSlurper(List<ServerAddress> mongoServers, MongoDBRiverDefinition definition, SharedContext context, Client client) {
+            super(mongoServers, definition, context, client);
+        }
+
+        private boolean doInitialImportCalled = false;
+
+        public BSONTimestamp doInitialImport() {
+            doInitialImportCalled = true;
+            return null;
+        }
+
+        public boolean doInitialImportHasBeenCalled() {
+            return doInitialImportCalled;
+        }
+
+    }
 
 }

@@ -45,295 +45,250 @@ import com.mongodb.util.JSON;
 @Test
 public class RiverMongoScriptTest extends RiverMongoDBTestAbstract {
 
-	private static final String JAVASCRIPT_SCRIPT_TYPE = "js";
-	private DB mongoDB;
-	private DBCollection mongoCollection;
+    private static final String JAVASCRIPT_SCRIPT_TYPE = "js";
+    private DB mongoDB;
+    private DBCollection mongoCollection;
 
-	protected RiverMongoScriptTest() {
-		super("testriver-" + System.currentTimeMillis(), "testdatabase-"
-				+ System.currentTimeMillis(), "documents-"
-				+ System.currentTimeMillis(), "testindex-"
-				+ System.currentTimeMillis());
-	}
+    protected RiverMongoScriptTest() {
+        super("testriver-" + System.currentTimeMillis(), "testdatabase-" + System.currentTimeMillis(), "documents-"
+                + System.currentTimeMillis(), "testindex-" + System.currentTimeMillis());
+    }
 
-	@BeforeClass
-	public void createDatabase() {
-		logger.debug("createDatabase {}", getDatabase());
-		try {
-			mongoDB = getMongo().getDB(getDatabase());
-			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
-			// logger.debug("Create river {}", river);
-			// super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON,
-			// String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
-			// String.valueOf(getMongoPort3()), getDatabase(), COLLECTION_NAME,
-			// SCRIPT, INDEX_NAME);
-			logger.info("Start createCollection");
-			mongoCollection = mongoDB.createCollection(getCollection(), null);
-			Assert.assertNotNull(mongoCollection);
-		} catch (Throwable t) {
-			logger.error("createDatabase failed.", t);
-		}
-	}
+    @BeforeClass
+    public void createDatabase() {
+        logger.debug("createDatabase {}", getDatabase());
+        try {
+            mongoDB = getMongo().getDB(getDatabase());
+            mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
+            // logger.debug("Create river {}", river);
+            // super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON,
+            // String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
+            // String.valueOf(getMongoPort3()), getDatabase(), COLLECTION_NAME,
+            // SCRIPT, INDEX_NAME);
+            logger.info("Start createCollection");
+            mongoCollection = mongoDB.createCollection(getCollection(), null);
+            Assert.assertNotNull(mongoCollection);
+        } catch (Throwable t) {
+            logger.error("createDatabase failed.", t);
+        }
+    }
 
-	@AfterClass
-	public void cleanUp() {
-		// super.deleteRiver(river);
-		logger.info("Drop database " + mongoDB.getName());
-		mongoDB.dropDatabase();
-	}
+    @AfterClass
+    public void cleanUp() {
+        // super.deleteRiver(river);
+        logger.info("Drop database " + mongoDB.getName());
+        mongoDB.dropDatabase();
+    }
 
-	@Test
-	public void testIgnoreScript() throws Throwable {
-		logger.debug("Start testIgnoreScript");
-		String river = "testignorescriptriver-" + System.currentTimeMillis();
-		String index = "testignorescriptindex-" + System.currentTimeMillis();
-		try {
-			logger.debug("Create river {}", river);
-			String script = "ctx.ignore = true;";
-			super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, river,
-					String.valueOf(getMongoPort1()),
-					String.valueOf(getMongoPort2()),
-					String.valueOf(getMongoPort3()), getDatabase(),
-					getCollection(), JAVASCRIPT_SCRIPT_TYPE, script,
-					index, getDatabase());
+    @Test
+    public void testIgnoreScript() throws Throwable {
+        logger.debug("Start testIgnoreScript");
+        String river = "testignorescriptriver-" + System.currentTimeMillis();
+        String index = "testignorescriptindex-" + System.currentTimeMillis();
+        try {
+            logger.debug("Create river {}", river);
+            String script = "ctx.ignore = true;";
+            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, river, String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
+                    String.valueOf(getMongoPort3()), getDatabase(), getCollection(), JAVASCRIPT_SCRIPT_TYPE, script, index, getDatabase());
 
-			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
-			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
-			WriteResult result = mongoCollection.insert(dbObject);
-			Thread.sleep(wait);
-			logger.info("WriteResult: {}", result.toString());
-			refreshIndex(index);
+            String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
+            DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
+            WriteResult result = mongoCollection.insert(dbObject);
+            Thread.sleep(wait);
+            logger.info("WriteResult: {}", result.toString());
+            refreshIndex(index);
 
-			ActionFuture<IndicesExistsResponse> response = getNode().client()
-					.admin().indices()
-					.exists(new IndicesExistsRequest(index));
-			assertThat(response.actionGet().isExists(), equalTo(true));
-			CountResponse countResponse = getNode().client()
-					.count(countRequest(index)).actionGet();
-			logger.info("Document count: {}", countResponse.getCount());
-			assertThat(countResponse.getCount(), equalTo(0l));
+            ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices().exists(new IndicesExistsRequest(index));
+            assertThat(response.actionGet().isExists(), equalTo(true));
+            CountResponse countResponse = getNode().client().count(countRequest(index)).actionGet();
+            logger.info("Document count: {}", countResponse.getCount());
+            assertThat(countResponse.getCount(), equalTo(0l));
 
-			mongoCollection.remove(dbObject);
+            mongoCollection.remove(dbObject);
 
-		} catch (Throwable t) {
-			logger.error("testIgnoreScript failed.", t);
-			t.printStackTrace();
-			throw t;
-		} finally {
-			super.deleteRiver(river);
-			super.deleteIndex(index);
-		}
-	}
+        } catch (Throwable t) {
+            logger.error("testIgnoreScript failed.", t);
+            t.printStackTrace();
+            throw t;
+        } finally {
+            super.deleteRiver(river);
+            super.deleteIndex(index);
+        }
+    }
 
-	@Test
-	public void testUpdateAttribute() throws Throwable {
-		logger.debug("Start testUpdateAttribute");
-		String river = "testupdateattributescriptriver-" + System.currentTimeMillis();
-		String index = "testupdateattributescriptindex-" + System.currentTimeMillis();
-		try {
-			logger.debug("Create river {}", river);
-			String script = "ctx.document.score = 200;";
-			super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, river,
-					String.valueOf(getMongoPort1()),
-					String.valueOf(getMongoPort2()),
-					String.valueOf(getMongoPort3()), getDatabase(),
-					getCollection(), JAVASCRIPT_SCRIPT_TYPE, script,
-					index, getDatabase());
+    @Test
+    public void testUpdateAttribute() throws Throwable {
+        logger.debug("Start testUpdateAttribute");
+        String river = "testupdateattributescriptriver-" + System.currentTimeMillis();
+        String index = "testupdateattributescriptindex-" + System.currentTimeMillis();
+        try {
+            logger.debug("Create river {}", river);
+            String script = "ctx.document.score = 200;";
+            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, river, String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
+                    String.valueOf(getMongoPort3()), getDatabase(), getCollection(), JAVASCRIPT_SCRIPT_TYPE, script, index, getDatabase());
 
-			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
-			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
-			WriteResult result = mongoCollection.insert(dbObject);
-			Thread.sleep(wait);
-			String id = dbObject.get("_id").toString();
-			logger.info("WriteResult: {}", result.toString());
-			refreshIndex(index);
+            String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
+            DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
+            WriteResult result = mongoCollection.insert(dbObject);
+            Thread.sleep(wait);
+            String id = dbObject.get("_id").toString();
+            logger.info("WriteResult: {}", result.toString());
+            refreshIndex(index);
 
-			ActionFuture<IndicesExistsResponse> response = getNode().client()
-					.admin().indices()
-					.exists(new IndicesExistsRequest(index));
-			assertThat(response.actionGet().isExists(), equalTo(true));
+            ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices().exists(new IndicesExistsRequest(index));
+            assertThat(response.actionGet().isExists(), equalTo(true));
 
-			SearchResponse sr = getNode().client().prepareSearch(index)
-					.setQuery(fieldQuery("_id", id)).execute().actionGet();
-			logger.debug("SearchResponse {}", sr.toString());
-			long totalHits = sr.getHits().getTotalHits();
-			logger.debug("TotalHits: {}", totalHits);
-			assertThat(totalHits, equalTo(1l));
+            SearchResponse sr = getNode().client().prepareSearch(index).setQuery(fieldQuery("_id", id)).execute().actionGet();
+            logger.debug("SearchResponse {}", sr.toString());
+            long totalHits = sr.getHits().getTotalHits();
+            logger.debug("TotalHits: {}", totalHits);
+            assertThat(totalHits, equalTo(1l));
 
-			assertThat(
-					sr.getHits().getHits()[0].sourceAsMap()
-							.containsKey("score"), equalTo(true));
-			int score = Integer.parseInt(sr.getHits().getHits()[0]
-					.sourceAsMap().get("score").toString());
+            assertThat(sr.getHits().getHits()[0].sourceAsMap().containsKey("score"), equalTo(true));
+            int score = Integer.parseInt(sr.getHits().getHits()[0].sourceAsMap().get("score").toString());
 
-			logger.debug("Score: {}", score);
-			assertThat(score, equalTo(200));
+            logger.debug("Score: {}", score);
+            assertThat(score, equalTo(200));
 
-			mongoCollection.remove(dbObject, WriteConcern.REPLICAS_SAFE);
+            mongoCollection.remove(dbObject, WriteConcern.REPLICAS_SAFE);
 
-		} catch (Throwable t) {
-			logger.error("testUpdateAttribute failed.", t);
-			t.printStackTrace();
-			throw t;
-		} finally {
-			super.deleteRiver(river);
-			super.deleteIndex(index);
-		}
-	}
+        } catch (Throwable t) {
+            logger.error("testUpdateAttribute failed.", t);
+            t.printStackTrace();
+            throw t;
+        } finally {
+            super.deleteRiver(river);
+            super.deleteIndex(index);
+        }
+    }
 
-	@Test
-	public void testRemoveAttribute() throws Throwable {
-		logger.debug("Start testRemoveAttribute");
-		String river = "testremoveattributescriptriver-" + System.currentTimeMillis();
-		String index = "testremoveattributescriptindex-" + System.currentTimeMillis();
-		try {
-			logger.debug("Create river {}", river);
-			String script = "delete ctx.document.score;";
-			super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, river,
-					String.valueOf(getMongoPort1()),
-					String.valueOf(getMongoPort2()),
-					String.valueOf(getMongoPort3()), getDatabase(),
-					getCollection(), JAVASCRIPT_SCRIPT_TYPE, script,
-					index, getDatabase());
+    @Test
+    public void testRemoveAttribute() throws Throwable {
+        logger.debug("Start testRemoveAttribute");
+        String river = "testremoveattributescriptriver-" + System.currentTimeMillis();
+        String index = "testremoveattributescriptindex-" + System.currentTimeMillis();
+        try {
+            logger.debug("Create river {}", river);
+            String script = "delete ctx.document.score;";
+            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, river, String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
+                    String.valueOf(getMongoPort3()), getDatabase(), getCollection(), JAVASCRIPT_SCRIPT_TYPE, script, index, getDatabase());
 
-			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
-			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
-			WriteResult result = mongoCollection.insert(dbObject);
-			Thread.sleep(wait);
-			String id = dbObject.get("_id").toString();
-			logger.info("WriteResult: {}", result.toString());
-			refreshIndex(index);
+            String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
+            DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
+            WriteResult result = mongoCollection.insert(dbObject);
+            Thread.sleep(wait);
+            String id = dbObject.get("_id").toString();
+            logger.info("WriteResult: {}", result.toString());
+            refreshIndex(index);
 
-			ActionFuture<IndicesExistsResponse> response = getNode().client()
-					.admin().indices()
-					.exists(new IndicesExistsRequest(index));
-			assertThat(response.actionGet().isExists(), equalTo(true));
+            ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices().exists(new IndicesExistsRequest(index));
+            assertThat(response.actionGet().isExists(), equalTo(true));
 
-			SearchResponse sr = getNode().client().prepareSearch(index)
-					.setQuery(fieldQuery("_id", id)).execute().actionGet();
-			logger.debug("SearchResponse {}", sr.toString());
-			long totalHits = sr.getHits().getTotalHits();
-			logger.debug("TotalHits: {}", totalHits);
-			assertThat(totalHits, equalTo(1l));
+            SearchResponse sr = getNode().client().prepareSearch(index).setQuery(fieldQuery("_id", id)).execute().actionGet();
+            logger.debug("SearchResponse {}", sr.toString());
+            long totalHits = sr.getHits().getTotalHits();
+            logger.debug("TotalHits: {}", totalHits);
+            assertThat(totalHits, equalTo(1l));
 
-			assertThat(
-					sr.getHits().getHits()[0].sourceAsMap()
-							.containsKey("score"), equalTo(false));
-			mongoCollection.remove(dbObject);
-		} catch (Throwable t) {
-			logger.error("testRemoveAttribute failed.", t);
-			t.printStackTrace();
-			throw t;
-		} finally {
-			super.deleteRiver(river);
-			super.deleteIndex(index);
-		}
-	}
+            assertThat(sr.getHits().getHits()[0].sourceAsMap().containsKey("score"), equalTo(false));
+            mongoCollection.remove(dbObject);
+        } catch (Throwable t) {
+            logger.error("testRemoveAttribute failed.", t);
+            t.printStackTrace();
+            throw t;
+        } finally {
+            super.deleteRiver(river);
+            super.deleteIndex(index);
+        }
+    }
 
-	@Test
-	public void testRenameAttribute() throws Throwable {
-		logger.debug("Start testRenameAttribute");
-		String river = "testrenameattributescriptriver-" + System.currentTimeMillis();
-		String index = "testrenameattributescriptindex-" + System.currentTimeMillis();
-		try {
-			logger.debug("Create river {}", river);
-			String script = "ctx.document.score2 = ctx.document.score; delete ctx.document.score;";
-			super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, river,
-					String.valueOf(getMongoPort1()),
-					String.valueOf(getMongoPort2()),
-					String.valueOf(getMongoPort3()), getDatabase(),
-					getCollection(), JAVASCRIPT_SCRIPT_TYPE, script,
-					index, getDatabase());
+    @Test
+    public void testRenameAttribute() throws Throwable {
+        logger.debug("Start testRenameAttribute");
+        String river = "testrenameattributescriptriver-" + System.currentTimeMillis();
+        String index = "testrenameattributescriptindex-" + System.currentTimeMillis();
+        try {
+            logger.debug("Create river {}", river);
+            String script = "ctx.document.score2 = ctx.document.score; delete ctx.document.score;";
+            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, river, String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
+                    String.valueOf(getMongoPort3()), getDatabase(), getCollection(), JAVASCRIPT_SCRIPT_TYPE, script, index, getDatabase());
 
-			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
-			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
-			WriteResult result = mongoCollection.insert(dbObject);
-			Thread.sleep(wait);
-			String id = dbObject.get("_id").toString();
-			logger.info("WriteResult: {}", result.toString());
-			refreshIndex(index);
+            String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
+            DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
+            WriteResult result = mongoCollection.insert(dbObject);
+            Thread.sleep(wait);
+            String id = dbObject.get("_id").toString();
+            logger.info("WriteResult: {}", result.toString());
+            refreshIndex(index);
 
-			ActionFuture<IndicesExistsResponse> response = getNode().client()
-					.admin().indices()
-					.exists(new IndicesExistsRequest(index));
-			assertThat(response.actionGet().isExists(), equalTo(true));
+            ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices().exists(new IndicesExistsRequest(index));
+            assertThat(response.actionGet().isExists(), equalTo(true));
 
-			SearchResponse sr = getNode().client().prepareSearch(index)
-					.setQuery(fieldQuery("_id", id)).execute().actionGet();
-			logger.debug("SearchResponse {}", sr.toString());
-			long totalHits = sr.getHits().getTotalHits();
-			logger.debug("TotalHits: {}", totalHits);
-			assertThat(totalHits, equalTo(1l));
+            SearchResponse sr = getNode().client().prepareSearch(index).setQuery(fieldQuery("_id", id)).execute().actionGet();
+            logger.debug("SearchResponse {}", sr.toString());
+            long totalHits = sr.getHits().getTotalHits();
+            logger.debug("TotalHits: {}", totalHits);
+            assertThat(totalHits, equalTo(1l));
 
-			assertThat(
-					sr.getHits().getHits()[0].sourceAsMap().containsKey(
-							"score2"), equalTo(true));
-			mongoCollection.remove(dbObject);
-		} catch (Throwable t) {
-			logger.error("testRenameAttribute failed.", t);
-			t.printStackTrace();
-			throw t;
-		} finally {
-			super.deleteRiver(river);
-			super.deleteIndex(index);
-		}
-	}
+            assertThat(sr.getHits().getHits()[0].sourceAsMap().containsKey("score2"), equalTo(true));
+            mongoCollection.remove(dbObject);
+        } catch (Throwable t) {
+            logger.error("testRenameAttribute failed.", t);
+            t.printStackTrace();
+            throw t;
+        } finally {
+            super.deleteRiver(river);
+            super.deleteIndex(index);
+        }
+    }
 
-	@Test
-	public void testDeleteDocument() throws Throwable {
-		logger.debug("Start testDeleteDocument");
-		String river = "testdeletedocumentscriptriver-" + System.currentTimeMillis();
-		String index = "testdeletedocumentscriptindex-" + System.currentTimeMillis();
-		try {
-			logger.debug("Create river {}", river);
-			String script = "if (ctx.document.to_be_deleted == true) { ctx.operation = 'd' };";
-			super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, river,
-					String.valueOf(getMongoPort1()),
-					String.valueOf(getMongoPort2()),
-					String.valueOf(getMongoPort3()), getDatabase(),
-					getCollection(), JAVASCRIPT_SCRIPT_TYPE, script,
-					index, getDatabase());
+    @Test
+    public void testDeleteDocument() throws Throwable {
+        logger.debug("Start testDeleteDocument");
+        String river = "testdeletedocumentscriptriver-" + System.currentTimeMillis();
+        String index = "testdeletedocumentscriptindex-" + System.currentTimeMillis();
+        try {
+            logger.debug("Create river {}", river);
+            String script = "if (ctx.document.to_be_deleted == true) { ctx.operation = 'd' };";
+            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, river, String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
+                    String.valueOf(getMongoPort3()), getDatabase(), getCollection(), JAVASCRIPT_SCRIPT_TYPE, script, index, getDatabase());
 
-			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
-			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
-			WriteResult result = mongoCollection.insert(dbObject);
-			Thread.sleep(wait);
-			String id = dbObject.get("_id").toString();
-			logger.info("WriteResult: {}", result.toString());
-			refreshIndex(index);
+            String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
+            DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
+            WriteResult result = mongoCollection.insert(dbObject);
+            Thread.sleep(wait);
+            String id = dbObject.get("_id").toString();
+            logger.info("WriteResult: {}", result.toString());
+            refreshIndex(index);
 
-			ActionFuture<IndicesExistsResponse> response = getNode().client()
-					.admin().indices()
-					.exists(new IndicesExistsRequest(index));
-			assertThat(response.actionGet().isExists(), equalTo(true));
+            ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices().exists(new IndicesExistsRequest(index));
+            assertThat(response.actionGet().isExists(), equalTo(true));
 
-			SearchResponse sr = getNode().client().prepareSearch(index)
-					.setQuery(fieldQuery("_id", id)).execute().actionGet();
-			logger.debug("SearchResponse {}", sr.toString());
-			long totalHits = sr.getHits().getTotalHits();
-			logger.debug("TotalHits: {}", totalHits);
-			assertThat(totalHits, equalTo(1l));
+            SearchResponse sr = getNode().client().prepareSearch(index).setQuery(fieldQuery("_id", id)).execute().actionGet();
+            logger.debug("SearchResponse {}", sr.toString());
+            long totalHits = sr.getHits().getTotalHits();
+            logger.debug("TotalHits: {}", totalHits);
+            assertThat(totalHits, equalTo(1l));
 
-			dbObject.put("to_be_deleted", Boolean.TRUE);
-			mongoCollection.save(dbObject);
+            dbObject.put("to_be_deleted", Boolean.TRUE);
+            mongoCollection.save(dbObject);
 
-			Thread.sleep(wait);
-			refreshIndex(index);
+            Thread.sleep(wait);
+            refreshIndex(index);
 
-			CountResponse countResponse = getNode().client()
-					.count(countRequest(index)).actionGet();
-			logger.info("Document count: {}", countResponse.getCount());
-			assertThat(countResponse.getCount(), equalTo(0l));
+            CountResponse countResponse = getNode().client().count(countRequest(index)).actionGet();
+            logger.info("Document count: {}", countResponse.getCount());
+            assertThat(countResponse.getCount(), equalTo(0l));
 
-			mongoCollection.remove(dbObject);
-		} catch (Throwable t) {
-			logger.error("testDeleteDocument failed.", t);
-			t.printStackTrace();
-			throw t;
-		} finally {
-			super.deleteRiver(river);
-			super.deleteIndex(index);
-		}
-	}
+            mongoCollection.remove(dbObject);
+        } catch (Throwable t) {
+            logger.error("testDeleteDocument failed.", t);
+            t.printStackTrace();
+            throw t;
+        } finally {
+            super.deleteRiver(river);
+            super.deleteIndex(index);
+        }
+    }
 
 }

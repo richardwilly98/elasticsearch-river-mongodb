@@ -41,92 +41,82 @@ import com.mongodb.WriteResult;
 @Test
 public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
 
-	private DB mongoDB;
-	private DBCollection mongoCollection;
+    private DB mongoDB;
+    private DBCollection mongoCollection;
 
-	protected RiverMongoInitialImportTest() {
-		super("testmongodb-" + System.currentTimeMillis(),
-				"testriver-" + System.currentTimeMillis(),
-				"person-" + System.currentTimeMillis(),
-				"personindex-" + System.currentTimeMillis());
-	}
+    protected RiverMongoInitialImportTest() {
+        super("testmongodb-" + System.currentTimeMillis(), "testriver-" + System.currentTimeMillis(), "person-"
+                + System.currentTimeMillis(), "personindex-" + System.currentTimeMillis());
+    }
 
-	private void createDatabase() {
-		logger.debug("createDatabase {}", getDatabase());
-		try {
-			mongoDB = getMongo().getDB(getDatabase());
-			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
-			logger.info("Start createCollection");
-			mongoCollection = mongoDB.createCollection(getCollection(), null);
-			Assert.assertNotNull(mongoCollection);
-		} catch (Throwable t) {
-			logger.error("createDatabase failed.", t);
-		}
-	}
+    private void createDatabase() {
+        logger.debug("createDatabase {}", getDatabase());
+        try {
+            mongoDB = getMongo().getDB(getDatabase());
+            mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
+            logger.info("Start createCollection");
+            mongoCollection = mongoDB.createCollection(getCollection(), null);
+            Assert.assertNotNull(mongoCollection);
+        } catch (Throwable t) {
+            logger.error("createDatabase failed.", t);
+        }
+    }
 
-	private void createRiver() throws Exception {
-		super.createRiver(TEST_MONGODB_RIVER_SIMPLE_JSON);
-	}
+    private void createRiver() throws Exception {
+        super.createRiver(TEST_MONGODB_RIVER_SIMPLE_JSON);
+    }
 
-	private void cleanUp() {
-		super.deleteRiver();
-		logger.info("Drop database " + mongoDB.getName());
-		mongoDB.dropDatabase();
-	}
+    private void cleanUp() {
+        super.deleteRiver();
+        logger.info("Drop database " + mongoDB.getName());
+        mongoDB.dropDatabase();
+    }
 
-	@Test
-	public void InitialImport() throws Throwable {
-		logger.debug("Start InitialImport");
-		try {
-			createDatabase();
+    @Test
+    public void InitialImport() throws Throwable {
+        logger.debug("Start InitialImport");
+        try {
+            createDatabase();
 
-			DBObject dbObject1 = new BasicDBObject(ImmutableMap.of("name", "Richard"));
-			WriteResult result1 = mongoCollection.insert(dbObject1);
-			logger.info("WriteResult: {}", result1.toString());
-			Thread.sleep(wait);
+            DBObject dbObject1 = new BasicDBObject(ImmutableMap.of("name", "Richard"));
+            WriteResult result1 = mongoCollection.insert(dbObject1);
+            logger.info("WriteResult: {}", result1.toString());
+            Thread.sleep(wait);
 
-			createRiver();
-			Thread.sleep(wait);
+            createRiver();
+            Thread.sleep(wait);
 
-			ActionFuture<IndicesExistsResponse> response = getNode().client()
-					.admin().indices()
-					.exists(new IndicesExistsRequest(getIndex()));
-			assertThat(response.actionGet().isExists(), equalTo(true));
-			refreshIndex();
-			CountResponse countResponse = getNode()
-					.client()
-					.count(countRequest(getIndex())).actionGet();
-			assertThat(countResponse.getCount(), equalTo(1l));
-			
-			DBObject dbObject2 = new BasicDBObject(ImmutableMap.of("name", "Ben"));
-			WriteResult result2 = mongoCollection.insert(dbObject2);
-			logger.info("WriteResult: {}", result2.toString());
-			Thread.sleep(wait);
+            ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices()
+                    .exists(new IndicesExistsRequest(getIndex()));
+            assertThat(response.actionGet().isExists(), equalTo(true));
+            refreshIndex();
+            CountResponse countResponse = getNode().client().count(countRequest(getIndex())).actionGet();
+            assertThat(countResponse.getCount(), equalTo(1l));
 
-			refreshIndex();
-			CountResponse countResponse2 = getNode()
-					.client()
-					.count(countRequest(getIndex())).actionGet();
-			assertThat(countResponse2.getCount(), equalTo(2l));
+            DBObject dbObject2 = new BasicDBObject(ImmutableMap.of("name", "Ben"));
+            WriteResult result2 = mongoCollection.insert(dbObject2);
+            logger.info("WriteResult: {}", result2.toString());
+            Thread.sleep(wait);
 
-			mongoCollection.remove(dbObject1, WriteConcern.REPLICAS_SAFE);
+            refreshIndex();
+            CountResponse countResponse2 = getNode().client().count(countRequest(getIndex())).actionGet();
+            assertThat(countResponse2.getCount(), equalTo(2l));
 
-			Thread.sleep(wait);
-			refreshIndex();
-			countResponse = getNode()
-					.client()
-					.count(countRequest(getIndex())).actionGet();
-			logger.debug("Count after delete request: {}",
-					countResponse.getCount());
-			assertThat(countResponse.getCount(), equalTo(1L));
+            mongoCollection.remove(dbObject1, WriteConcern.REPLICAS_SAFE);
 
-		} catch (Throwable t) {
-			logger.error("InitialImport failed.", t);
-			t.printStackTrace();
-			throw t;
-		} finally {
-			cleanUp();
-		}
-	}
+            Thread.sleep(wait);
+            refreshIndex();
+            countResponse = getNode().client().count(countRequest(getIndex())).actionGet();
+            logger.debug("Count after delete request: {}", countResponse.getCount());
+            assertThat(countResponse.getCount(), equalTo(1L));
+
+        } catch (Throwable t) {
+            logger.error("InitialImport failed.", t);
+            t.printStackTrace();
+            throw t;
+        } finally {
+            cleanUp();
+        }
+    }
 
 }

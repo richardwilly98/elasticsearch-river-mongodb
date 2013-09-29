@@ -12,36 +12,31 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 public class MongoDBRiverDefinitionTest {
-	@Test
-	public void testLoadMongoDBRiverDefinition() {
-		try {
-			RiverName riverName = new RiverName("mongodb", "mongodb-"
-					+ System.currentTimeMillis());
-			InputStream in = getClass()
-					.getResourceAsStream(
-							"/org/elasticsearch/river/mongodb/test-mongodb-river-definition.json");
-			RiverSettings riverSettings = new RiverSettings(ImmutableSettings
-					.settingsBuilder().build(), XContentHelper.convertToMap(
-					Streams.copyToByteArray(in), false).v2());
-			ScriptService scriptService = null;
-			MongoDBRiverDefinition definition = MongoDBRiverDefinition
-					.parseSettings(riverName, "my-river-index", riverSettings, scriptService);
-			Assert.assertNotNull(definition);
-			Assert.assertEquals("mycollection",
-					definition.getIncludeCollection());
-			Assert.assertTrue(definition.getParentTypes().contains("parent1"));
-			Assert.assertTrue(definition.getParentTypes().contains("parent2"));
-			Assert.assertFalse(definition.getParentTypes().contains("parent3"));
-			Assert.assertTrue(definition.isAdvancedTransformation());
-			Assert.assertEquals("mydatabase", definition.getMongoDb());
-			Assert.assertEquals("mycollection", definition.getMongoCollection());
-			Assert.assertEquals("myindex", definition.getIndexName());
-			Assert.assertEquals(0, definition.getSocketTimeout());
-			Assert.assertEquals(11000, definition.getConnectTimeout());
-			Assert.assertEquals(riverName.getName(), definition.getRiverName());
+    @Test
+    public void testLoadMongoDBRiverDefinition() {
+        try {
+            RiverName riverName = new RiverName("mongodb", "mongodb-" + System.currentTimeMillis());
+            InputStream in = getClass().getResourceAsStream("/org/elasticsearch/river/mongodb/test-mongodb-river-definition.json");
+            RiverSettings riverSettings = new RiverSettings(ImmutableSettings.settingsBuilder().build(), XContentHelper.convertToMap(
+                    Streams.copyToByteArray(in), false).v2());
+            ScriptService scriptService = null;
+            MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName, "my-river-index", riverSettings,
+                    scriptService);
+            Assert.assertNotNull(definition);
+            Assert.assertEquals("mycollection", definition.getIncludeCollection());
+            Assert.assertTrue(definition.getParentTypes().contains("parent1"));
+            Assert.assertTrue(definition.getParentTypes().contains("parent2"));
+            Assert.assertFalse(definition.getParentTypes().contains("parent3"));
+            Assert.assertTrue(definition.isAdvancedTransformation());
+            Assert.assertEquals("mydatabase", definition.getMongoDb());
+            Assert.assertEquals("mycollection", definition.getMongoCollection());
+            Assert.assertEquals("myindex", definition.getIndexName());
+            Assert.assertEquals(0, definition.getSocketTimeout());
+            Assert.assertEquals(11000, definition.getConnectTimeout());
+            Assert.assertEquals(riverName.getName(), definition.getRiverName());
 
-		} catch (Throwable t) {
-			Assert.fail("testLoadMongoDBRiverDefinition failed", t);
-		}
-	}
+        } catch (Throwable t) {
+            Assert.fail("testLoadMongoDBRiverDefinition failed", t);
+        }
+    }
 }

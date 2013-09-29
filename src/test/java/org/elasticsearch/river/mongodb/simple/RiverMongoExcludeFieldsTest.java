@@ -43,103 +43,92 @@ import com.mongodb.WriteConcern;
 @Test
 public class RiverMongoExcludeFieldsTest extends RiverMongoDBTestAbstract {
 
-	private DB mongoDB;
-	private DBCollection mongoCollection;
-	protected boolean dropCollectionOption = true;
+    private DB mongoDB;
+    private DBCollection mongoCollection;
+    protected boolean dropCollectionOption = true;
 
-	protected RiverMongoExcludeFieldsTest() {
-		super("exclude-fields-river-" + System.currentTimeMillis(),
-				"exclude-fields-db-" + System.currentTimeMillis(),
-				"exclude-fields-collection-" + System.currentTimeMillis(),
-				"exclude-fields-index-" + System.currentTimeMillis());
-	}
+    protected RiverMongoExcludeFieldsTest() {
+        super("exclude-fields-river-" + System.currentTimeMillis(), "exclude-fields-db-" + System.currentTimeMillis(),
+                "exclude-fields-collection-" + System.currentTimeMillis(), "exclude-fields-index-" + System.currentTimeMillis());
+    }
 
-	protected RiverMongoExcludeFieldsTest(String river, String database,
-			String collection, String index) {
-		super(river, database, collection, index);
-	}
+    protected RiverMongoExcludeFieldsTest(String river, String database, String collection, String index) {
+        super(river, database, collection, index);
+    }
 
-	@BeforeClass
-	public void createDatabase() {
-		logger.debug("createDatabase {}", getDatabase());
-		try {
-			mongoDB = getMongo().getDB(getDatabase());
-			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
-			super.createRiver(TEST_MONGODB_RIVER_EXCLUDE_FIELDS_JSON,
-					getRiver(), (Object) String.valueOf(getMongoPort1()),
-					(Object) String.valueOf(getMongoPort2()),
-					(Object) String.valueOf(getMongoPort3()),
-					(Object) "[\"exclude-field-1\", \"exclude-field-2\"]",
-					(Object) getDatabase(), (Object) getCollection(),
-					(Object) getIndex(), (Object) getDatabase());
-			logger.info("Start createCollection");
-			mongoCollection = mongoDB.createCollection(getCollection(), null);
-			Assert.assertNotNull(mongoCollection);
-		} catch (Throwable t) {
-			logger.error("createDatabase failed.", t);
-		}
-	}
+    @BeforeClass
+    public void createDatabase() {
+        logger.debug("createDatabase {}", getDatabase());
+        try {
+            mongoDB = getMongo().getDB(getDatabase());
+            mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
+            super.createRiver(TEST_MONGODB_RIVER_EXCLUDE_FIELDS_JSON, getRiver(), (Object) String.valueOf(getMongoPort1()),
+                    (Object) String.valueOf(getMongoPort2()), (Object) String.valueOf(getMongoPort3()),
+                    (Object) "[\"exclude-field-1\", \"exclude-field-2\"]", (Object) getDatabase(), (Object) getCollection(),
+                    (Object) getIndex(), (Object) getDatabase());
+            logger.info("Start createCollection");
+            mongoCollection = mongoDB.createCollection(getCollection(), null);
+            Assert.assertNotNull(mongoCollection);
+        } catch (Throwable t) {
+            logger.error("createDatabase failed.", t);
+        }
+    }
 
-	@AfterClass
-	public void cleanUp() {
-		super.deleteRiver();
-		logger.info("Drop database " + mongoDB.getName());
-		mongoDB.dropDatabase();
-	}
+    @AfterClass
+    public void cleanUp() {
+        super.deleteRiver();
+        logger.info("Drop database " + mongoDB.getName());
+        mongoDB.dropDatabase();
+    }
 
-	@Test
-	public void testExcludeFields() throws Throwable {
-		logger.debug("Start testExcludeFields");
-		try {
-			DBObject dbObject = new BasicDBObject();
-			dbObject.put("exclude-field-1", System.currentTimeMillis());
-			dbObject.put("exclude-field-2", System.currentTimeMillis());
-			dbObject.put("include-field-1", System.currentTimeMillis());
-			mongoCollection.insert(dbObject);
-			Thread.sleep(wait);
-			String id = dbObject.get("_id").toString();
-			assertThat(
-					getNode().client().admin().indices()
-							.exists(new IndicesExistsRequest(getIndex()))
-							.actionGet().isExists(), equalTo(true));
-			refreshIndex();
+    @Test
+    public void testExcludeFields() throws Throwable {
+        logger.debug("Start testExcludeFields");
+        try {
+            DBObject dbObject = new BasicDBObject();
+            dbObject.put("exclude-field-1", System.currentTimeMillis());
+            dbObject.put("exclude-field-2", System.currentTimeMillis());
+            dbObject.put("include-field-1", System.currentTimeMillis());
+            mongoCollection.insert(dbObject);
+            Thread.sleep(wait);
+            String id = dbObject.get("_id").toString();
+            assertThat(getNode().client().admin().indices().exists(new IndicesExistsRequest(getIndex())).actionGet().isExists(),
+                    equalTo(true));
+            refreshIndex();
 
-			SearchResponse sr = getNode().client().prepareSearch(getIndex())
-					.setQuery(fieldQuery("_id", id)).execute().actionGet();
-			logger.debug("SearchResponse {}", sr.toString());
-			long totalHits = sr.getHits().getTotalHits();
-			logger.debug("TotalHits: {}", totalHits);
-			assertThat(totalHits, equalTo(1l));
+            SearchResponse sr = getNode().client().prepareSearch(getIndex()).setQuery(fieldQuery("_id", id)).execute().actionGet();
+            logger.debug("SearchResponse {}", sr.toString());
+            long totalHits = sr.getHits().getTotalHits();
+            logger.debug("TotalHits: {}", totalHits);
+            assertThat(totalHits, equalTo(1l));
 
-			Map<String, Object> object = sr.getHits().getHits()[0]
-					.sourceAsMap();
-			assertThat(object.containsKey("exclude-field-1"), equalTo(false));
-			assertThat(object.containsKey("exclude-field-2"), equalTo(false));
-			assertThat(object.containsKey("include-field-1"), equalTo(true));
+            Map<String, Object> object = sr.getHits().getHits()[0].sourceAsMap();
+            assertThat(object.containsKey("exclude-field-1"), equalTo(false));
+            assertThat(object.containsKey("exclude-field-2"), equalTo(false));
+            assertThat(object.containsKey("include-field-1"), equalTo(true));
 
-			// Update Mongo object
-			dbObject = mongoCollection.findOne(new BasicDBObject("_id", new ObjectId(id)));
-			dbObject.put("include-field-2", System.currentTimeMillis());
-			mongoCollection.save(dbObject);
-			Thread.sleep(wait);
+            // Update Mongo object
+            dbObject = mongoCollection.findOne(new BasicDBObject("_id", new ObjectId(id)));
+            dbObject.put("include-field-2", System.currentTimeMillis());
+            mongoCollection.save(dbObject);
+            Thread.sleep(wait);
 
-			sr = getNode().client().prepareSearch(getIndex())
-					.setQuery(fieldQuery("_id", id)).execute().actionGet();
-			logger.debug("SearchResponse {}", sr.toString());
-			totalHits = sr.getHits().getTotalHits();
-			logger.debug("TotalHits: {}", totalHits);
-			assertThat(totalHits, equalTo(1l));
+            sr = getNode().client().prepareSearch(getIndex()).setQuery(fieldQuery("_id", id)).execute().actionGet();
+            logger.debug("SearchResponse {}", sr.toString());
+            totalHits = sr.getHits().getTotalHits();
+            logger.debug("TotalHits: {}", totalHits);
+            assertThat(totalHits, equalTo(1l));
 
-			object = sr.getHits().getHits()[0].sourceAsMap();
-			assertThat(object.containsKey("exclude-field-1"), equalTo(false));
-			assertThat(object.containsKey("exclude-field-2"), equalTo(false));
-			assertThat(object.containsKey("include-field-1"), equalTo(true));
-			assertThat(object.containsKey("include-field-2"), equalTo(true));
-		} catch (Throwable t) {
-			logger.error("testExcludeFields failed.", t);
-			t.printStackTrace();
-			throw t;
-		}
-	}
+            object = sr.getHits().getHits()[0].sourceAsMap();
+            assertThat(object.containsKey("exclude-field-1"), equalTo(false));
+            assertThat(object.containsKey("exclude-field-2"), equalTo(false));
+            assertThat(object.containsKey("include-field-1"), equalTo(true));
+            assertThat(object.containsKey("include-field-2"), equalTo(true));
+        } catch (Throwable t) {
+            logger.error("testExcludeFields failed.", t);
+            t.printStackTrace();
+            throw t;
+        }
+    }
 
 }

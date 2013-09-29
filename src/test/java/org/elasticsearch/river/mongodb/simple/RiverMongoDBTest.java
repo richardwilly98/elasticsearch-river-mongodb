@@ -48,98 +48,83 @@ import com.mongodb.util.JSON;
 @Test
 public class RiverMongoDBTest extends RiverMongoDBTestAbstract {
 
-	private DB mongoDB;
-	private DBCollection mongoCollection;
+    private DB mongoDB;
+    private DBCollection mongoCollection;
 
-	protected RiverMongoDBTest() {
-		super("testmongodb-" + System.currentTimeMillis(), "testriver-"
-				+ System.currentTimeMillis(), "person-"
-				+ System.currentTimeMillis(), "personindex-"
-				+ System.currentTimeMillis());
-	}
+    protected RiverMongoDBTest() {
+        super("testmongodb-" + System.currentTimeMillis(), "testriver-" + System.currentTimeMillis(), "person-"
+                + System.currentTimeMillis(), "personindex-" + System.currentTimeMillis());
+    }
 
-	@BeforeClass
-	public void createDatabase() {
-		logger.debug("createDatabase {}", getDatabase());
-		try {
-			mongoDB = getMongo().getDB(getDatabase());
-			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
-			super.createRiver(TEST_MONGODB_RIVER_SIMPLE_JSON);
-			logger.info("Start createCollection");
-			mongoCollection = mongoDB.createCollection(getCollection(), null);
-			Assert.assertNotNull(mongoCollection);
-		} catch (Throwable t) {
-			logger.error("createDatabase failed.", t);
-		}
-	}
+    @BeforeClass
+    public void createDatabase() {
+        logger.debug("createDatabase {}", getDatabase());
+        try {
+            mongoDB = getMongo().getDB(getDatabase());
+            mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
+            super.createRiver(TEST_MONGODB_RIVER_SIMPLE_JSON);
+            logger.info("Start createCollection");
+            mongoCollection = mongoDB.createCollection(getCollection(), null);
+            Assert.assertNotNull(mongoCollection);
+        } catch (Throwable t) {
+            logger.error("createDatabase failed.", t);
+        }
+    }
 
-	@AfterClass
-	public void cleanUp() {
-		super.deleteRiver();
-		logger.info("Drop database " + mongoDB.getName());
-		mongoDB.dropDatabase();
-	}
+    @AfterClass
+    public void cleanUp() {
+        super.deleteRiver();
+        logger.info("Drop database " + mongoDB.getName());
+        mongoDB.dropDatabase();
+    }
 
-	@Test(enabled = false)
-	public void mongoCRUDTest() {
-		logger.info("Start mongoCRUDTest");
-		DBObject dbObject = new BasicDBObject("count", "-1");
-		mongoCollection.insert(dbObject, WriteConcern.REPLICAS_SAFE);
-		logger.debug("New object inserted: {}", dbObject.toString());
-		DBObject dbObject2 = mongoCollection.findOne(new BasicDBObject("_id",
-				dbObject.get("_id")));
-		Assert.assertEquals(dbObject.get("count"), dbObject2.get("count"));
-		mongoCollection.remove(dbObject, WriteConcern.REPLICAS_SAFE);
-	}
+    @Test(enabled = false)
+    public void mongoCRUDTest() {
+        logger.info("Start mongoCRUDTest");
+        DBObject dbObject = new BasicDBObject("count", "-1");
+        mongoCollection.insert(dbObject, WriteConcern.REPLICAS_SAFE);
+        logger.debug("New object inserted: {}", dbObject.toString());
+        DBObject dbObject2 = mongoCollection.findOne(new BasicDBObject("_id", dbObject.get("_id")));
+        Assert.assertEquals(dbObject.get("count"), dbObject2.get("count"));
+        mongoCollection.remove(dbObject, WriteConcern.REPLICAS_SAFE);
+    }
 
-	@Test
-	public void simpleBSONObject() throws Throwable {
-		logger.debug("Start simpleBSONObject");
-		try {
-			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
-			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
-			WriteResult result = mongoCollection.insert(dbObject);
-			Thread.sleep(wait);
-			String id = dbObject.get("_id").toString();
-			logger.info("WriteResult: {}", result.toString());
-			ActionFuture<IndicesExistsResponse> response = getNode().client()
-					.admin().indices()
-					.exists(new IndicesExistsRequest(getIndex()));
-			assertThat(response.actionGet().isExists(), equalTo(true));
-			refreshIndex();
-			SearchRequest search = getNode().client()
-					.prepareSearch(getIndex())
-					.setQuery(QueryBuilders.fieldQuery("name", "Richard"))
-					.request();
-			SearchResponse searchResponse = getNode()
-					.client()
-					.search(search).actionGet();
-			assertThat(searchResponse.getHits().getTotalHits(), equalTo(1l));
-			String chinese = (String) searchResponse.getHits().getAt(0).getSource().get("chinese");
-			assertThat(chinese, equalTo("中国菜很好吃。"));
-			CountResponse countResponse = getNode()
-					.client()
-					.count(countRequest(getIndex())
-							.query(fieldQuery("_id", id))).actionGet();
-			assertThat(countResponse.getCount(), equalTo(1l));
+    @Test
+    public void simpleBSONObject() throws Throwable {
+        logger.debug("Start simpleBSONObject");
+        try {
+            String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
+            DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
+            WriteResult result = mongoCollection.insert(dbObject);
+            Thread.sleep(wait);
+            String id = dbObject.get("_id").toString();
+            logger.info("WriteResult: {}", result.toString());
+            ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices()
+                    .exists(new IndicesExistsRequest(getIndex()));
+            assertThat(response.actionGet().isExists(), equalTo(true));
+            refreshIndex();
+            SearchRequest search = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.fieldQuery("name", "Richard"))
+                    .request();
+            SearchResponse searchResponse = getNode().client().search(search).actionGet();
+            assertThat(searchResponse.getHits().getTotalHits(), equalTo(1l));
+            String chinese = (String) searchResponse.getHits().getAt(0).getSource().get("chinese");
+            assertThat(chinese, equalTo("中国菜很好吃。"));
+            CountResponse countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
+            assertThat(countResponse.getCount(), equalTo(1l));
 
-			mongoCollection.remove(dbObject, WriteConcern.REPLICAS_SAFE);
+            mongoCollection.remove(dbObject, WriteConcern.REPLICAS_SAFE);
 
-			Thread.sleep(wait);
-			refreshIndex();
-			countResponse = getNode()
-					.client()
-					.count(countRequest(getIndex())
-							.query(fieldQuery("_id", id))).actionGet();
-			logger.debug("Count after delete request: {}",
-					countResponse.getCount());
-			assertThat(countResponse.getCount(), equalTo(0L));
+            Thread.sleep(wait);
+            refreshIndex();
+            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
+            logger.debug("Count after delete request: {}", countResponse.getCount());
+            assertThat(countResponse.getCount(), equalTo(0L));
 
-		} catch (Throwable t) {
-			logger.error("simpleBSONObject failed.", t);
-			t.printStackTrace();
-			throw t;
-		}
-	}
+        } catch (Throwable t) {
+            logger.error("simpleBSONObject failed.", t);
+            t.printStackTrace();
+            throw t;
+        }
+    }
 
 }

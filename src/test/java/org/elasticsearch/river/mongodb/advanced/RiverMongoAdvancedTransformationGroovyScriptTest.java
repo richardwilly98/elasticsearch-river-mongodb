@@ -43,82 +43,75 @@ import com.mongodb.util.JSON;
 @Test
 public class RiverMongoAdvancedTransformationGroovyScriptTest extends RiverMongoDBTestAbstract {
 
-	private static final String GROOVY_SCRIPT_TYPE = "groovy";
-	public static final String TEST_MONGODB_RIVER_WITH_ADVANCED_TRANSFORMATION_JSON = "/org/elasticsearch/river/mongodb/advanced/test-mongodb-river-with-advanced-transformation.json";
-	private DB mongoDB;
-	private DBCollection mongoCollection;
+    private static final String GROOVY_SCRIPT_TYPE = "groovy";
+    public static final String TEST_MONGODB_RIVER_WITH_ADVANCED_TRANSFORMATION_JSON = "/org/elasticsearch/river/mongodb/advanced/test-mongodb-river-with-advanced-transformation.json";
+    private DB mongoDB;
+    private DBCollection mongoCollection;
 
-	protected RiverMongoAdvancedTransformationGroovyScriptTest() {
-		super("testadvancedtransformationgroovyriver-" + System.currentTimeMillis(),
-				"testadvancedtransformationgroovydatabase-" + System.currentTimeMillis(),
-				"testadvancedtransformationgroovydocuments-" + System.currentTimeMillis(),
-				"testadvancedtransformationgroovyindex-" + System.currentTimeMillis());
-	}
+    protected RiverMongoAdvancedTransformationGroovyScriptTest() {
+        super("testadvancedtransformationgroovyriver-" + System.currentTimeMillis(), "testadvancedtransformationgroovydatabase-"
+                + System.currentTimeMillis(), "testadvancedtransformationgroovydocuments-" + System.currentTimeMillis(),
+                "testadvancedtransformationgroovyindex-" + System.currentTimeMillis());
+    }
 
-	@BeforeClass
-	public void createDatabase() {
-		logger.debug("createDatabase {}", getDatabase());
-		try {
-			mongoDB = getMongo().getDB(getDatabase());
-			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
+    @BeforeClass
+    public void createDatabase() {
+        logger.debug("createDatabase {}", getDatabase());
+        try {
+            mongoDB = getMongo().getDB(getDatabase());
+            mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
 
-			logger.info("Start createCollection");
-			mongoCollection = mongoDB.createCollection(getCollection(), null);
-			Assert.assertNotNull(mongoCollection);
-		} catch (Throwable t) {
-			logger.error("createDatabase failed.", t);
-		}
-	}
+            logger.info("Start createCollection");
+            mongoCollection = mongoDB.createCollection(getCollection(), null);
+            Assert.assertNotNull(mongoCollection);
+        } catch (Throwable t) {
+            logger.error("createDatabase failed.", t);
+        }
+    }
 
-	@AfterClass
-	public void cleanUp() {
-		logger.info("Drop database " + mongoDB.getName());
-		mongoDB.dropDatabase();
-	}
+    @AfterClass
+    public void cleanUp() {
+        logger.info("Drop database " + mongoDB.getName());
+        mongoDB.dropDatabase();
+    }
 
-	@Test
-	public void testSimpleTransformationScript() throws Throwable {
-		logger.debug("Start testSimpleTransformationScript");
-		String river = "testsimpletransformationscriptgroovyriver-" + System.currentTimeMillis();
-		String index = "testsimpletransformationscriptgroovyindex-" + System.currentTimeMillis();
-		try {
-			logger.debug("Create river {}", river);
-			String script = "ctx.documents << [data: [id: 12345, name: '99'], operation: 'i'] ";
-			script += "<< [data: [id: 6666, name: 'document-ignored'], ignore: true] "; 
-			super.createRiver(TEST_MONGODB_RIVER_WITH_ADVANCED_TRANSFORMATION_JSON, river,
-					String.valueOf(getMongoPort1()),
-					String.valueOf(getMongoPort2()),
-					String.valueOf(getMongoPort3()), (Object) "[]", getDatabase(),
-					getCollection(), GROOVY_SCRIPT_TYPE, script, index,
-					getDatabase());
+    @Test
+    public void testSimpleTransformationScript() throws Throwable {
+        logger.debug("Start testSimpleTransformationScript");
+        String river = "testsimpletransformationscriptgroovyriver-" + System.currentTimeMillis();
+        String index = "testsimpletransformationscriptgroovyindex-" + System.currentTimeMillis();
+        try {
+            logger.debug("Create river {}", river);
+            String script = "ctx.documents << [data: [id: 12345, name: '99'], operation: 'i'] ";
+            script += "<< [data: [id: 6666, name: 'document-ignored'], ignore: true] ";
+            super.createRiver(TEST_MONGODB_RIVER_WITH_ADVANCED_TRANSFORMATION_JSON, river, String.valueOf(getMongoPort1()),
+                    String.valueOf(getMongoPort2()), String.valueOf(getMongoPort3()), (Object) "[]", getDatabase(), getCollection(),
+                    GROOVY_SCRIPT_TYPE, script, index, getDatabase());
 
-			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
-			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
-			WriteResult result = mongoCollection.insert(dbObject);
-			Thread.sleep(wait);
-			logger.info("WriteResult: {}", result.toString());
-			refreshIndex(index);
+            String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
+            DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
+            WriteResult result = mongoCollection.insert(dbObject);
+            Thread.sleep(wait);
+            logger.info("WriteResult: {}", result.toString());
+            refreshIndex(index);
 
-			ActionFuture<IndicesExistsResponse> response = getNode().client()
-					.admin().indices()
-					.exists(new IndicesExistsRequest(index));
-			assertThat(response.actionGet().isExists(), equalTo(true));
-			CountResponse countResponse = getNode().client()
-					.count(countRequest(index)).actionGet();
-			logger.info("Document count: {}", countResponse.getCount());
-			assertThat(countResponse.getCount(), equalTo(2l));
+            ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices().exists(new IndicesExistsRequest(index));
+            assertThat(response.actionGet().isExists(), equalTo(true));
+            CountResponse countResponse = getNode().client().count(countRequest(index)).actionGet();
+            logger.info("Document count: {}", countResponse.getCount());
+            assertThat(countResponse.getCount(), equalTo(2l));
 
-			mongoCollection.remove(dbObject);
+            mongoCollection.remove(dbObject);
 
-		} catch (Throwable t) {
-			logger.error("testSimpleTransformationScript failed.", t);
-			t.printStackTrace();
-			throw t;
-		} finally {
-			super.deleteRiver(river);
-			super.deleteIndex(index);
-			logger.debug("End testSimpleTransformationScript");
-		}
-	}
+        } catch (Throwable t) {
+            logger.error("testSimpleTransformationScript failed.", t);
+            t.printStackTrace();
+            throw t;
+        } finally {
+            super.deleteRiver(river);
+            super.deleteIndex(index);
+            logger.debug("End testSimpleTransformationScript");
+        }
+    }
 
 }

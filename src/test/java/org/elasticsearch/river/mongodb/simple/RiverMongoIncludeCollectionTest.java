@@ -41,84 +41,69 @@ import com.mongodb.util.JSON;
 @Test
 public class RiverMongoIncludeCollectionTest extends RiverMongoDBTestAbstract {
 
-	private static final String TEST_SIMPLE_MONGODB_RIVER_INCLUDE_COLLECTION_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-include-collection.json";
-	private DB mongoDB;
-	private DBCollection mongoCollection;
-	private String includeCollectionOption = "mycollection";
+    private static final String TEST_SIMPLE_MONGODB_RIVER_INCLUDE_COLLECTION_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-include-collection.json";
+    private DB mongoDB;
+    private DBCollection mongoCollection;
+    private String includeCollectionOption = "mycollection";
 
-	protected RiverMongoIncludeCollectionTest() {
-		super("include-river-" + System.currentTimeMillis(), "include-river-"
-				+ System.currentTimeMillis(), "include-collection"
-				+ System.currentTimeMillis(), "include-index-"
-				+ System.currentTimeMillis());
-	}
+    protected RiverMongoIncludeCollectionTest() {
+        super("include-river-" + System.currentTimeMillis(), "include-river-" + System.currentTimeMillis(), "include-collection"
+                + System.currentTimeMillis(), "include-index-" + System.currentTimeMillis());
+    }
 
-	protected RiverMongoIncludeCollectionTest(String river, String database,
-			String collection, String index) {
-		super(river, database, collection, index);
-	}
+    protected RiverMongoIncludeCollectionTest(String river, String database, String collection, String index) {
+        super(river, database, collection, index);
+    }
 
-	@BeforeClass
-	public void createDatabase() {
-		logger.debug("createDatabase {}", getDatabase());
-		try {
-			mongoDB = getMongo().getDB(getDatabase());
-			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
-			super.createRiver(
-					TEST_SIMPLE_MONGODB_RIVER_INCLUDE_COLLECTION_JSON,
-					getRiver(), (Object) String.valueOf(getMongoPort1()),
-					(Object) String.valueOf(getMongoPort2()),
-					(Object) String.valueOf(getMongoPort3()),
-					(Object) includeCollectionOption, (Object) getDatabase(),
-					(Object) getCollection(), (Object) getIndex(),
-					(Object) getDatabase());
-			logger.info("Start createCollection");
-			mongoCollection = mongoDB.createCollection(getCollection(), null);
-			Assert.assertNotNull(mongoCollection);
-		} catch (Throwable t) {
-			logger.error("createDatabase failed.", t);
-		}
-	}
+    @BeforeClass
+    public void createDatabase() {
+        logger.debug("createDatabase {}", getDatabase());
+        try {
+            mongoDB = getMongo().getDB(getDatabase());
+            mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
+            super.createRiver(TEST_SIMPLE_MONGODB_RIVER_INCLUDE_COLLECTION_JSON, getRiver(), (Object) String.valueOf(getMongoPort1()),
+                    (Object) String.valueOf(getMongoPort2()), (Object) String.valueOf(getMongoPort3()), (Object) includeCollectionOption,
+                    (Object) getDatabase(), (Object) getCollection(), (Object) getIndex(), (Object) getDatabase());
+            logger.info("Start createCollection");
+            mongoCollection = mongoDB.createCollection(getCollection(), null);
+            Assert.assertNotNull(mongoCollection);
+        } catch (Throwable t) {
+            logger.error("createDatabase failed.", t);
+        }
+    }
 
-	@AfterClass
-	public void cleanUp() {
-		super.deleteRiver();
-		logger.info("Drop database " + mongoDB.getName());
-		mongoDB.dropDatabase();
-	}
+    @AfterClass
+    public void cleanUp() {
+        super.deleteRiver();
+        logger.info("Drop database " + mongoDB.getName());
+        mongoDB.dropDatabase();
+    }
 
-	@Test
-	public void testIncludeCollection() throws Throwable {
-		logger.debug("Start testIncludeCollection");
-		try {
-			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
-			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
-			mongoCollection.insert(dbObject);
-			Thread.sleep(wait);
+    @Test
+    public void testIncludeCollection() throws Throwable {
+        logger.debug("Start testIncludeCollection");
+        try {
+            String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
+            DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
+            mongoCollection.insert(dbObject);
+            Thread.sleep(wait);
 
-			assertThat(
-					getNode().client().admin().indices()
-							.exists(new IndicesExistsRequest(getIndex()))
-							.actionGet().isExists(), equalTo(true));
-			assertThat(
-					getNode().client().admin().indices()
-							.prepareTypesExists(getIndex())
-							.setTypes(getDatabase()).execute().actionGet()
-							.isExists(), equalTo(true));
+            assertThat(getNode().client().admin().indices().exists(new IndicesExistsRequest(getIndex())).actionGet().isExists(),
+                    equalTo(true));
+            assertThat(getNode().client().admin().indices().prepareTypesExists(getIndex()).setTypes(getDatabase()).execute().actionGet()
+                    .isExists(), equalTo(true));
 
-			String collectionName = mongoCollection.getName();
+            String collectionName = mongoCollection.getName();
 
-			refreshIndex();
+            refreshIndex();
 
-			CountResponse countResponse = getNode()
-					.client()
-					.count(countRequest(getIndex())
-							.query(fieldQuery(includeCollectionOption, collectionName))).actionGet();
-			assertThat(countResponse.getCount(), equalTo(1L));
-		} catch (Throwable t) {
-			logger.error("testIncludeCollection failed.", t);
-			t.printStackTrace();
-			throw t;
-		}
-	}
+            CountResponse countResponse = getNode().client()
+                    .count(countRequest(getIndex()).query(fieldQuery(includeCollectionOption, collectionName))).actionGet();
+            assertThat(countResponse.getCount(), equalTo(1L));
+        } catch (Throwable t) {
+            logger.error("testIncludeCollection failed.", t);
+            t.printStackTrace();
+            throw t;
+        }
+    }
 }

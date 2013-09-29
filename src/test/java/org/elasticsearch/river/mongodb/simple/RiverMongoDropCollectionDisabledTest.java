@@ -23,32 +23,29 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 @Test
-public class RiverMongoDropCollectionDisabledTest extends
-		RiverMongoDropCollectionTest {
+public class RiverMongoDropCollectionDisabledTest extends RiverMongoDropCollectionTest {
 
-	protected RiverMongoDropCollectionDisabledTest() {
-		super("drop-river-" + System.currentTimeMillis(), "drop-river-"
-				+ System.currentTimeMillis(), "drop-collection-"
-				+ System.currentTimeMillis(), "drop-index-"
-				+ System.currentTimeMillis());
-		dropCollectionOption = false;
-	}
+    protected RiverMongoDropCollectionDisabledTest() {
+        super("drop-river-" + System.currentTimeMillis(), "drop-river-" + System.currentTimeMillis(), "drop-collection-"
+                + System.currentTimeMillis(), "drop-index-" + System.currentTimeMillis());
+        dropCollectionOption = false;
+    }
 
-	@Override
-	@BeforeClass
-	public void createDatabase() {
-		super.createDatabase();
-	}
+    @Override
+    @BeforeClass
+    public void createDatabase() {
+        super.createDatabase();
+    }
 
-	@Override
-	@AfterClass
-	public void cleanUp() {
-		super.cleanUp();
-	}
+    @Override
+    @AfterClass
+    public void cleanUp() {
+        super.cleanUp();
+    }
 
-	@Override
-	@Test
-	public void testDropCollection() throws Throwable {
-		super.testDropCollection();
-	}
+    @Override
+    @Test
+    public void testDropCollection() throws Throwable {
+        super.testDropCollection();
+    }
 }

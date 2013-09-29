@@ -34,19 +34,15 @@ import org.elasticsearch.script.ScriptService;
  */
 public class MongoDBRiverModule extends AbstractModule {
 
-  @Override
-  protected void configure() {
-    bind(River.class).to(MongoDBRiver.class).asEagerSingleton();
-  }
+    @Override
+    protected void configure() {
+        bind(River.class).to(MongoDBRiver.class).asEagerSingleton();
+    }
 
-  @Provides
-  protected MongoDBRiverDefinition provideDefinition(
-      RiverName riverName,
-      RiverSettings settings,
-      @RiverIndexName String riverIndexName,
-      ScriptService scriptService) {
-    return MongoDBRiverDefinition.parseSettings(
-        riverName, riverIndexName, settings, scriptService);
-  }
+    @Provides
+    protected MongoDBRiverDefinition provideDefinition(RiverName riverName, RiverSettings settings, @RiverIndexName String riverIndexName,
+            ScriptService scriptService) {
+        return MongoDBRiverDefinition.parseSettings(riverName, riverIndexName, settings, scriptService);
+    }
 
 }

@@ -40,178 +40,147 @@ import com.mongodb.util.JSON;
 @Test
 public class RiverMongoInitialTimestampTest extends RiverMongoDBTestAbstract {
 
-	private static final String TEST_SIMPLE_MONGODB_RIVER_INITIAL_TIMESTAMP_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-initial-timestamp.json";
-	private static final String GROOVY_SCRIPT_TYPE = "groovy";
-	private static final String JAVASCRIPT_SCRIPT_TYPE = "js";
-	private DB mongoDB;
-	private DBCollection mongoCollection;
+    private static final String TEST_SIMPLE_MONGODB_RIVER_INITIAL_TIMESTAMP_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-initial-timestamp.json";
+    private static final String GROOVY_SCRIPT_TYPE = "groovy";
+    private static final String JAVASCRIPT_SCRIPT_TYPE = "js";
+    private DB mongoDB;
+    private DBCollection mongoCollection;
 
-	protected RiverMongoInitialTimestampTest() {
-		super("initial-timestamp-river-" + System.currentTimeMillis(),
-				"initial-timestamp-river-" + System.currentTimeMillis(),
-				"initial-timestamp-collection-" + System.currentTimeMillis(),
-				"initial-timestamp-index-" + System.currentTimeMillis());
-	}
+    protected RiverMongoInitialTimestampTest() {
+        super("initial-timestamp-river-" + System.currentTimeMillis(), "initial-timestamp-river-" + System.currentTimeMillis(),
+                "initial-timestamp-collection-" + System.currentTimeMillis(), "initial-timestamp-index-" + System.currentTimeMillis());
+    }
 
-	protected RiverMongoInitialTimestampTest(String river, String database,
-			String collection, String index) {
-		super(river, database, collection, index);
-	}
+    protected RiverMongoInitialTimestampTest(String river, String database, String collection, String index) {
+        super(river, database, collection, index);
+    }
 
-	@BeforeClass
-	public void createDatabase() {
-		logger.debug("createDatabase {}", getDatabase());
-		try {
-			mongoDB = getMongo().getDB(getDatabase());
-			mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
-			logger.info("Start createCollection");
-			mongoCollection = mongoDB.createCollection(getCollection(), null);
-			Assert.assertNotNull(mongoCollection);
-		} catch (Throwable t) {
-			logger.error("createDatabase failed.", t);
-		}
-	}
+    @BeforeClass
+    public void createDatabase() {
+        logger.debug("createDatabase {}", getDatabase());
+        try {
+            mongoDB = getMongo().getDB(getDatabase());
+            mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
+            logger.info("Start createCollection");
+            mongoCollection = mongoDB.createCollection(getCollection(), null);
+            Assert.assertNotNull(mongoCollection);
+        } catch (Throwable t) {
+            logger.error("createDatabase failed.", t);
+        }
+    }
 
-	@AfterClass
-	public void cleanUp() {
-		// super.deleteRiver(river);
-		logger.info("Drop database " + mongoDB.getName());
-		mongoDB.dropDatabase();
-	}
+    @AfterClass
+    public void cleanUp() {
+        // super.deleteRiver(river);
+        logger.info("Drop database " + mongoDB.getName());
+        mongoDB.dropDatabase();
+    }
 
-	//String script = "def now = new Date(); println 'Now: ${now}'; ctx.document.modified = now.clearTime();";
-	@Test
-	public void testInitialTimestampInGroovy() throws Throwable {
-		logger.debug("Start testInitialTimestampInGroovy");
-		String river = "testinitialtimestampgroovyriver-" + System.currentTimeMillis();
-		String index = "testinitialtimestampgroovyindex-" + System.currentTimeMillis();
-		try {
-			String script = "import groovy.time.TimeCategory; use(TimeCategory){def date = new Date() + 5.second; date.time;}";
-			super.createRiver(TEST_SIMPLE_MONGODB_RIVER_INITIAL_TIMESTAMP_JSON,
-					river, (Object) String.valueOf(getMongoPort1()),
-					(Object) String.valueOf(getMongoPort2()),
-					(Object) String.valueOf(getMongoPort3()),
-					(Object) GROOVY_SCRIPT_TYPE, (Object) script,
-					(Object) getDatabase(), (Object) getCollection(),
-					(Object) index, (Object) getDatabase());
+    // String script =
+    // "def now = new Date(); println 'Now: ${now}'; ctx.document.modified = now.clearTime();";
+    @Test
+    public void testInitialTimestampInGroovy() throws Throwable {
+        logger.debug("Start testInitialTimestampInGroovy");
+        String river = "testinitialtimestampgroovyriver-" + System.currentTimeMillis();
+        String index = "testinitialtimestampgroovyindex-" + System.currentTimeMillis();
+        try {
+            String script = "import groovy.time.TimeCategory; use(TimeCategory){def date = new Date() + 5.second; date.time;}";
+            super.createRiver(TEST_SIMPLE_MONGODB_RIVER_INITIAL_TIMESTAMP_JSON, river, (Object) String.valueOf(getMongoPort1()),
+                    (Object) String.valueOf(getMongoPort2()), (Object) String.valueOf(getMongoPort3()), (Object) GROOVY_SCRIPT_TYPE,
+                    (Object) script, (Object) getDatabase(), (Object) getCollection(), (Object) index, (Object) getDatabase());
 
-			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
-			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
-			mongoCollection.insert(dbObject);
-			Thread.sleep(wait);
+            String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
+            DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
+            mongoCollection.insert(dbObject);
+            Thread.sleep(wait);
 
-			assertThat(
-					getNode().client().admin().indices()
-							.exists(new IndicesExistsRequest(index))
-							.actionGet().isExists(), equalTo(true));
+            assertThat(getNode().client().admin().indices().exists(new IndicesExistsRequest(index)).actionGet().isExists(), equalTo(true));
 
-			refreshIndex(index);
+            refreshIndex(index);
 
-			CountResponse countResponse = getNode().client()
-					.count(countRequest(index)).actionGet();
-			assertThat(countResponse.getCount(), equalTo(0L));
+            CountResponse countResponse = getNode().client().count(countRequest(index)).actionGet();
+            assertThat(countResponse.getCount(), equalTo(0L));
 
-			mongoCollection.remove(dbObject);
-			
-			// Wait 5 seconds and store a new document
-			Thread.sleep(5000);
+            mongoCollection.remove(dbObject);
 
-			dbObject = (DBObject) JSON.parse(mongoDocument);
-			mongoCollection.insert(dbObject);
-			Thread.sleep(wait);
+            // Wait 5 seconds and store a new document
+            Thread.sleep(5000);
 
-			assertThat(
-					getNode().client().admin().indices()
-							.exists(new IndicesExistsRequest(index))
-							.actionGet().isExists(), equalTo(true));
-			assertThat(
-					getNode().client().admin().indices()
-							.prepareTypesExists(index)
-							.setTypes(getDatabase()).execute().actionGet()
-							.isExists(), equalTo(true));
+            dbObject = (DBObject) JSON.parse(mongoDocument);
+            mongoCollection.insert(dbObject);
+            Thread.sleep(wait);
 
-			refreshIndex(index);
+            assertThat(getNode().client().admin().indices().exists(new IndicesExistsRequest(index)).actionGet().isExists(), equalTo(true));
+            assertThat(getNode().client().admin().indices().prepareTypesExists(index).setTypes(getDatabase()).execute().actionGet()
+                    .isExists(), equalTo(true));
 
-			countResponse = getNode().client().count(countRequest(index))
-					.actionGet();
-			assertThat(countResponse.getCount(), equalTo(1L));
-			
-			mongoCollection.remove(dbObject);
-		} catch (Throwable t) {
-			logger.error("testInitialTimestampInGroovy failed.", t);
-			t.printStackTrace();
-			throw t;
-		} finally {
-			super.deleteRiver(river);
-			super.deleteIndex(index);
-		}
-	}
+            refreshIndex(index);
 
-	// Convert JavaScript types to Java types: http://stackoverflow.com/questions/6730062/passing-common-types-between-java-and-rhino-javascript
-	@Test
-	public void testInitialTimestampInJavascript() throws Throwable {
-		logger.debug("Start testInitialTimestampInJavascript");
-		String river = "testinitialtimestampjavascriptriver-" + System.currentTimeMillis();
-		String index = "testinitialtimestampjavascriptindex-" + System.currentTimeMillis();
-		try {
-			String script = "var date = new Date(); date.setSeconds(date.getSeconds() + 5); new java.lang.Long(date.getTime());";
-			super.createRiver(TEST_SIMPLE_MONGODB_RIVER_INITIAL_TIMESTAMP_JSON,
-					river, (Object) String.valueOf(getMongoPort1()),
-					(Object) String.valueOf(getMongoPort2()),
-					(Object) String.valueOf(getMongoPort3()),
-					(Object) JAVASCRIPT_SCRIPT_TYPE, (Object) script,
-					(Object) getDatabase(), (Object) getCollection(),
-					(Object) index, (Object) getDatabase());
+            countResponse = getNode().client().count(countRequest(index)).actionGet();
+            assertThat(countResponse.getCount(), equalTo(1L));
 
-			String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
-			DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
-			mongoCollection.insert(dbObject);
-			Thread.sleep(wait);
+            mongoCollection.remove(dbObject);
+        } catch (Throwable t) {
+            logger.error("testInitialTimestampInGroovy failed.", t);
+            t.printStackTrace();
+            throw t;
+        } finally {
+            super.deleteRiver(river);
+            super.deleteIndex(index);
+        }
+    }
 
-			assertThat(
-					getNode().client().admin().indices()
-							.exists(new IndicesExistsRequest(index))
-							.actionGet().isExists(), equalTo(true));
+    // Convert JavaScript types to Java types:
+    // http://stackoverflow.com/questions/6730062/passing-common-types-between-java-and-rhino-javascript
+    @Test
+    public void testInitialTimestampInJavascript() throws Throwable {
+        logger.debug("Start testInitialTimestampInJavascript");
+        String river = "testinitialtimestampjavascriptriver-" + System.currentTimeMillis();
+        String index = "testinitialtimestampjavascriptindex-" + System.currentTimeMillis();
+        try {
+            String script = "var date = new Date(); date.setSeconds(date.getSeconds() + 5); new java.lang.Long(date.getTime());";
+            super.createRiver(TEST_SIMPLE_MONGODB_RIVER_INITIAL_TIMESTAMP_JSON, river, (Object) String.valueOf(getMongoPort1()),
+                    (Object) String.valueOf(getMongoPort2()), (Object) String.valueOf(getMongoPort3()), (Object) JAVASCRIPT_SCRIPT_TYPE,
+                    (Object) script, (Object) getDatabase(), (Object) getCollection(), (Object) index, (Object) getDatabase());
 
-			refreshIndex(index);
+            String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
+            DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
+            mongoCollection.insert(dbObject);
+            Thread.sleep(wait);
 
-			CountResponse countResponse = getNode().client()
-					.count(countRequest(index)).actionGet();
-			assertThat(countResponse.getCount(), equalTo(0L));
+            assertThat(getNode().client().admin().indices().exists(new IndicesExistsRequest(index)).actionGet().isExists(), equalTo(true));
 
-			mongoCollection.remove(dbObject);
-			
-			// Wait 5 seconds and store a new document
-			Thread.sleep(5000);
+            refreshIndex(index);
 
-			dbObject = (DBObject) JSON.parse(mongoDocument);
-			mongoCollection.insert(dbObject);
-			Thread.sleep(wait);
+            CountResponse countResponse = getNode().client().count(countRequest(index)).actionGet();
+            assertThat(countResponse.getCount(), equalTo(0L));
 
-			assertThat(
-					getNode().client().admin().indices()
-							.exists(new IndicesExistsRequest(index))
-							.actionGet().isExists(), equalTo(true));
-			assertThat(
-					getNode().client().admin().indices()
-							.prepareTypesExists(index)
-							.setTypes(getDatabase()).execute().actionGet()
-							.isExists(), equalTo(true));
+            mongoCollection.remove(dbObject);
 
-			refreshIndex(index);
+            // Wait 5 seconds and store a new document
+            Thread.sleep(5000);
 
-			countResponse = getNode().client().count(countRequest(index))
-					.actionGet();
-			assertThat(countResponse.getCount(), equalTo(1L));
-			
-			mongoCollection.remove(dbObject);
-		} catch (Throwable t) {
-			logger.error("testInitialTimestampInJavascript failed.", t);
-			t.printStackTrace();
-			throw t;
-		} finally {
-			super.deleteRiver(river);
-			super.deleteIndex(index);
-		}
-	}
+            dbObject = (DBObject) JSON.parse(mongoDocument);
+            mongoCollection.insert(dbObject);
+            Thread.sleep(wait);
+
+            assertThat(getNode().client().admin().indices().exists(new IndicesExistsRequest(index)).actionGet().isExists(), equalTo(true));
+            assertThat(getNode().client().admin().indices().prepareTypesExists(index).setTypes(getDatabase()).execute().actionGet()
+                    .isExists(), equalTo(true));
+
+            refreshIndex(index);
+
+            countResponse = getNode().client().count(countRequest(index)).actionGet();
+            assertThat(countResponse.getCount(), equalTo(1L));
+
+            mongoCollection.remove(dbObject);
+        } catch (Throwable t) {
+            logger.error("testInitialTimestampInJavascript failed.", t);
+            t.printStackTrace();
+            throw t;
+        } finally {
+            super.deleteRiver(river);
+            super.deleteIndex(index);
+        }
+    }
 }
