@@ -2,6 +2,7 @@ package org.elasticsearch.rest.action;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -11,7 +12,6 @@ import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.query.FieldQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.rest.BaseRestHandler;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestController;
@@ -32,7 +32,6 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
 	public RestMongoDBRiverAction(Settings settings, Client client, RestController controller) {
 		super(settings, client);
 		controller.registerHandler(RestRequest.Method.GET, BASE_URL + "/{action}", this);
-		controller.registerHandler(RestRequest.Method.POST, BASE_URL + "/{river}/{action}", this);
 		controller.registerHandler(RestRequest.Method.POST, BASE_URL + "/{river}/{action}", this);
 	}
 
@@ -124,16 +123,18 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
 	}
 
 	private List<Map<String, Object>> getRivers() {
-		QueryBuilder query = new FieldQueryBuilder("type", "mongodb");
-		SearchResponse searchResponse = client.prepareSearch("_river")
-				.setQuery(query).execute().actionGet();
+		SearchResponse searchResponse = client
+				.prepareSearch("_river")
+				.setQuery(new FieldQueryBuilder("type", "mongodb"))
+				.execute().actionGet();
 		long totalHits = searchResponse.getHits().totalHits();
 		logger.trace("totalHits: {}", totalHits);
 		List<Map<String, Object>> rivers = new ArrayList<Map<String, Object>>();
 		for (SearchHit hit : searchResponse.getHits().hits()) {
-			Map<String, Object> source = hit.getSource();
-			source.put("_name", hit.getType());
-			source.put("_enabled", MongoDBRiverHelper.isRiverEnabled(client, hit.getType()));
+			Map<String, Object> source = new HashMap<String,Object>();
+			source.put("name", hit.getType());
+			source.put("enabled", MongoDBRiverHelper.isRiverEnabled(client, hit.getType()));
+			source.put("settings", hit.getSource());
 			logger.trace("source: {}", hit.getSourceAsString());
 			rivers.add(source);
 		}
