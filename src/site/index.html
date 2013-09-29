@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-ng-app="mongoDBRiverApp">
+<html lang="en" x-ng-app="mongoDBRiverApp">
   <head>
     <meta charset="utf-8">
     <title>MongoDB River Plugin for ElasticSearch</title>
@@ -11,25 +11,27 @@
     <link rel="icon" href="images/favicon.ico" type="image/x-icon">
   </head>
   <body>
-    <div data-ng-controller="MainCtrl" class="container">
+    <div x-ng-controller="MainCtrl" class="container">
       <div class="row">
         <div class="col-md-12">
           <h3>MongoDB River Administration</h3>
           <tabset>
             <tab heading="Home">
               <div class="content">
-                <div data-ng-repeat="river in rivers">
+                <div x-ng-repeat="river in rivers">
                   <div class="panel panel-info">
-                    <div class="panel-heading">River: {{ river._name }} - Status: 
-                      <span data-ng-show="!river._enabled" class="label label-warning">Disabled</span>
-                      <span data-ng-show="river._enabled" class="label label-success">Enabled</span>
+                    <div class="panel-heading">
+                      <h2 class="panel-title">
+                        {{ river.name }}
+                        <span x-ng-if="river.enabled" class="label label-success">Enabled</span>
+                        <span x-ng-if="!river.enabled" class="label label-warning">Disabled</span>
+                      </h2>
                     </div>
-                    Settings: 
-                    <pre>{{ toString(river) }}</pre>
-                    <br/>
-                    Actions: 
-                    <span class="btn btn-small btn-success" data-ng-disabled="river._enabled" data-ng-click="start(river._name)">Start</span>
-                    <span class="btn btn-small btn-danger" data-ng-disabled="!river._enabled" data-ng-click="stop(river._name)">Stop</span>
+                    <div class="panel-body">
+                      <pre>Settings:<br/><br/>{{ toString(river.settings) }}</pre>
+                      <span x-ng-if="river.enabled" class="btn btn-small btn-danger" x-ng-click="stop(river.name)">Stop</span>
+                      <span x-ng-if="!river.enabled" class="btn btn-small btn-success" x-ng-click="start(river.name)">Start</span>
+                    </div>
                   </div>
                 </div>
               </div>
