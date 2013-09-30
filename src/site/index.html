@@ -21,10 +21,11 @@
               <div x-ng-repeat="river in rivers">
                 <div class="panel panel-info">
                   <div class="panel-heading">
-                    <h2 class="panel-title">
+                    <h2 class="panel-title" x-ng-switch="river.status">
                       {{ river.name }}
-                      <span x-ng-if="river.enabled" class="label label-success">Enabled</span>
-                      <span x-ng-if="!river.enabled" class="label label-warning">Disabled</span>
+                      <span x-ng-switch-when="RUNNING" class="label label-success">{{river.status}}</span>
+                      <span x-ng-switch-when="STOPPED" class="label label-warning">{{river.status}}</span>
+                      <span x-ng-switch-default class="label label-danger">{{river.status}}</span>
                     </h2>
                   </div>
                   <div class="panel-body">
@@ -32,8 +33,8 @@
                     Documents Indexed - {{ river.indexCount }}<br/>
                     <br/>
                     <pre>Settings:<br /><br />{{ toString(river.settings) }}</pre>
-                    <span x-ng-if="river.enabled" class="btn btn-small btn-danger" x-ng-click="stop(river.name)">Stop</span>
-                    <span x-ng-if="!river.enabled" class="btn btn-small btn-success" x-ng-click="start(river.name)">Start</span>
+                    <span x-ng-if="river.status == 'RUNNING'" class="btn btn-small btn-danger" x-ng-click="stop(river.name)">Stop</span>
+                    <span x-ng-if="river.status != 'RUNNING'" class="btn btn-small btn-success" x-ng-click="start(river.name)">Start</span>
                   </div>
                 </div>
               </div>

@@ -75,8 +75,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
     public final static String TYPE = "mongodb";
     public final static String NAME = "mongodb-river";
-    public final static String STATUS = "_mongodbstatus";
-    public final static String ENABLED = "enabled";
+    public final static String STATUS_ID = "_riverstatus";
+    public final static String STATUS_FIELD = "status";
     public final static String DESCRIPTION = "MongoDB River Plugin";
     public final static String LAST_TIMESTAMP_FIELD = "_last_ts";
     public final static String MONGODB_LOCAL_DATABASE = "local";
@@ -131,21 +131,21 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         BlockingQueue<QueueEntry> stream = definition.getThrottleSize() == -1 ? new LinkedTransferQueue<QueueEntry>()
                 : new ArrayBlockingQueue<QueueEntry>(definition.getThrottleSize());
 
-        this.context = new SharedContext(stream, false);
+        this.context = new SharedContext(stream, Status.STOPPED);
 
         this.statusThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_status").newThread(
-                new Status(this, definition, context));
+                new StatusChecker(this, definition, context));
         this.statusThread.start();
     }
 
     @Override
     public void start() {
-        if (!MongoDBRiverHelper.isRiverEnabled(client, riverName.getName())) {
+        if (MongoDBRiverHelper.getRiverStatus(client, riverName.getName()) == Status.STOPPED) {
             logger.debug("Cannot start river {}. It is currently disabled", riverName.getName());
             startInvoked = true;
             return;
         }
-        this.context.setActive(true);
+        this.context.setStatus(Status.RUNNING);
         for (ServerAddress server : definition.getMongoServers()) {
             logger.info("Using mongodb server(s): host [{}], port [{}]", server.getHost(), server.getPort());
         }
@@ -331,7 +331,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         } catch (Throwable t) {
             logger.error("Fail to close river {}", t, riverName.getName());
         } finally {
-            this.context.setActive(false);
+            this.context.setStatus(Status.STOPPED);
         }
     }
 

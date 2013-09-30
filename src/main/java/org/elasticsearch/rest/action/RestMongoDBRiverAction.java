@@ -24,6 +24,7 @@ import org.elasticsearch.river.RiverIndexName;
 import org.elasticsearch.river.RiverSettings;
 import org.elasticsearch.river.mongodb.MongoDBRiver;
 import org.elasticsearch.river.mongodb.MongoDBRiverDefinition;
+import org.elasticsearch.river.mongodb.Status;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 import org.elasticsearch.search.SearchHit;
 
@@ -66,7 +67,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
             respondError(request, channel, "Parameter 'river' is required", RestStatus.BAD_REQUEST);
             return;
         }
-        MongoDBRiverHelper.setRiverEnabled(client, river, true);
+        MongoDBRiverHelper.setRiverStatus(client, river, Status.RUNNING);
         respondSuccess(request, channel, RestStatus.OK);
     }
 
@@ -76,7 +77,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
             respondError(request, channel, "Parameter 'river' is required", RestStatus.BAD_REQUEST);
             return;
         }
-        MongoDBRiverHelper.setRiverEnabled(client, river, false);
+        MongoDBRiverHelper.setRiverStatus(client, river, Status.STOPPED);
         respondSuccess(request, channel, RestStatus.OK);
     }
 
@@ -138,7 +139,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
             MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName, riverIndexName, riverSettings, null);
 
             source.put("name", riverName);
-            source.put("enabled", MongoDBRiverHelper.isRiverEnabled(client, hit.getType()));
+            source.put("status", MongoDBRiverHelper.getRiverStatus(client, hit.getType()));
             source.put("settings", hit.getSource());
             source.put("lastTimestamp", MongoDBRiver.getLastTimestamp(client, definition));
             source.put("indexCount", MongoDBRiver.getIndexCount(client, definition));

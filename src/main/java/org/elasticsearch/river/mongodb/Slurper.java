@@ -64,7 +64,7 @@ class Slurper implements Runnable {
 
     @Override
     public void run() {
-        while (context.isActive()) {
+        while (context.getStatus() == Status.RUNNING) {
             try {
                 if (!assignCollections()) {
                     break; // failed to assign oplogCollection or
@@ -73,6 +73,9 @@ class Slurper implements Runnable {
 
                 BSONTimestamp startTimestamp = null;
                 if (!riverHasIndexedSomething()) {
+                    //if (MongoDBRiver.getIndexCount(client, definition) > 0) {
+                    //    break;
+                    //}
                     startTimestamp = doInitialImport();
                 }
 

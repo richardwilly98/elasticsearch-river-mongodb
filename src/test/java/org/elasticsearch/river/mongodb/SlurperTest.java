@@ -109,7 +109,7 @@ public class SlurperTest extends RiverMongoDBTestAbstract {
         RiverName riverName = new RiverName("mongodb", river);
         MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName.name(), index, riverSettings, null);
 
-        return new TestSlurper(mongo.getServerAddressList(), definition, new SharedContext(null, true), getNode().client());
+        return new TestSlurper(mongo.getServerAddressList(), definition, new SharedContext(null, Status.RUNNING), getNode().client());
     }
 
     private static class TestSlurper extends Slurper {
