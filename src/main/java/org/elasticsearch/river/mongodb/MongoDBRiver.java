@@ -32,6 +32,7 @@ import java.util.concurrent.BlockingQueue;
 import org.bson.types.BSONTimestamp;
 import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
+import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.block.ClusterBlockException;
@@ -351,8 +352,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     public static BSONTimestamp getLastTimestamp(Client client, MongoDBRiverDefinition definition) {
 
         GetResponse lastTimestampResponse = client
-                .prepareGet(definition.getRiverIndexName(), definition.getRiverName(), definition.getMongoOplogNamespace()).execute()
-                .actionGet();
+                .prepareGet(definition.getRiverIndexName(), definition.getRiverName(), definition.getMongoOplogNamespace())
+                .execute().actionGet();
 
         // API changes since 0.90.0 lastTimestampResponse.exists() replaced by
         // lastTimestampResponse.isExists()
@@ -395,6 +396,14 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             logger.error("error updating last timestamp for namespace {}", definition.getMongoOplogNamespace());
         }
     }
+
+    public static long getIndexCount(Client client, MongoDBRiverDefinition definition) {
+        CountResponse countResponse = client
+                .prepareCount(definition.getIndexName())
+                .execute().actionGet();
+        return countResponse.getCount();
+    }
+
 
     protected static class QueueEntry {
 

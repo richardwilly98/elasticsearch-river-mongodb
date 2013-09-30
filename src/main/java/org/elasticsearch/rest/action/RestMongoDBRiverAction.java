@@ -140,7 +140,8 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
             source.put("name", riverName);
             source.put("enabled", MongoDBRiverHelper.isRiverEnabled(client, hit.getType()));
             source.put("settings", hit.getSource());
-            source.put("lastTimestamp", MongoDBRiver.getLastTimestamp(client, definition));            
+            source.put("lastTimestamp", MongoDBRiver.getLastTimestamp(client, definition));
+            source.put("indexCount", MongoDBRiver.getIndexCount(client, definition));
             logger.trace("source: {}", hit.getSourceAsString());
             rivers.add(source);
         }

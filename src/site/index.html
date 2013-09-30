@@ -29,6 +29,7 @@
                   </div>
                   <div class="panel-body">
                     Last Replicated - {{ river.lastTimestamp }}<br/>
+                    Documents Indexed - {{ river.indexCount }}<br/>
                     <br/>
                     <pre>Settings:<br /><br />{{ toString(river.settings) }}</pre>
                     <span x-ng-if="river.enabled" class="btn btn-small btn-danger" x-ng-click="stop(river.name)">Stop</span>
