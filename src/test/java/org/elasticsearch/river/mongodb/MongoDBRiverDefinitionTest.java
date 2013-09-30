@@ -20,7 +20,7 @@ public class MongoDBRiverDefinitionTest {
             RiverSettings riverSettings = new RiverSettings(ImmutableSettings.settingsBuilder().build(), XContentHelper.convertToMap(
                     Streams.copyToByteArray(in), false).v2());
             ScriptService scriptService = null;
-            MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName, "my-river-index", riverSettings,
+            MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName.name(), "my-river-index", riverSettings,
                     scriptService);
             Assert.assertNotNull(definition);
             Assert.assertEquals("mycollection", definition.getIncludeCollection());

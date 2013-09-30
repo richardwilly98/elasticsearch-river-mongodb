@@ -107,7 +107,7 @@ public class SlurperTest extends RiverMongoDBTestAbstract {
         RiverSettings riverSettings = new RiverSettings(ImmutableSettings.settingsBuilder().build(), XContentHelper.convertToMap(
                 getSettingsString().getBytes(), false).v2());
         RiverName riverName = new RiverName("mongodb", river);
-        MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName, index, riverSettings, null);
+        MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName.name(), index, riverSettings, null);
 
         return new TestSlurper(mongo.getServerAddressList(), definition, new SharedContext(null, true), getNode().client());
     }

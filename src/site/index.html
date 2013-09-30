@@ -1,52 +1,50 @@
 <!doctype html>
 <html lang="en" x-ng-app="mongoDBRiverApp">
-<head>
-<meta charset="utf-8">
-<title>MongoDB River Plugin for ElasticSearch</title>
-<link rel="stylesheet"
-	href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css">
-<script type="text/javascript"
-	src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.0-rc.2/angular.min.js"></script>
-<script type="text/javascript"
-	src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.0-rc.2/angular-resource.min.js"></script>
-<script type="text/javascript"
-	src="//cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/0.6.0/ui-bootstrap-tpls.min.js"></script>
-<script type="text/javascript"
-	src="//cdnjs.cloudflare.com/ajax/libs/lodash.js/2.1.0/lodash.min.js"></script>
-<link rel="icon" href="images/favicon.ico" type="image/x-icon">
-</head>
-<body>
-	<div x-ng-controller="MainCtrl" class="container">
-		<div class="row">
-			<div class="col-md-12">
-				<h3>MongoDB River Administration</h3>
-				<tabset> <tab heading="Home">
-				<div class="content">
-					<div x-ng-repeat="river in rivers">
-						<div class="panel panel-info">
-							<div class="panel-heading">
-								<h2 class="panel-title">
-									{{ river.name }} <span x-ng-if="river.enabled"
-										class="label label-success">Enabled</span> <span
-										x-ng-if="!river.enabled" class="label label-warning">Disabled</span>
-								</h2>
-							</div>
-							<div class="panel-body">
-								<pre>Settings:<br /><br />{{ toString(river.settings) }}</pre>
-								<span x-ng-if="river.enabled" class="btn btn-small btn-danger"
-									x-ng-click="stop(river.name)">Stop</span> <span
-									x-ng-if="!river.enabled" class="btn btn-small btn-success"
-									x-ng-click="start(river.name)">Start</span>
-							</div>
-						</div>
-					</div>
-				</div>
-				</tab> <!--
+  <head>
+    <meta charset="utf-8">
+    <title>MongoDB River Plugin for ElasticSearch</title>
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css">
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.0-rc.2/angular.min.js"></script>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.0-rc.2/angular-resource.min.js"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/0.6.0/ui-bootstrap-tpls.min.js"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/lodash.js/2.1.0/lodash.min.js"></script>
+    <link rel="icon" href="images/favicon.ico" type="image/x-icon">
+  </head>
+  <body>
+  <div x-ng-controller="MainCtrl" class="container">
+      <div class="row">
+      <div class="col-md-12">
+        <h3>MongoDB River Administration</h3>
+        <tabset>
+          <tab heading="Home">
+            <div class="content">
+              <div x-ng-repeat="river in rivers">
+                <div class="panel panel-info">
+                  <div class="panel-heading">
+                    <h2 class="panel-title">
+                      {{ river.name }}
+                      <span x-ng-if="river.enabled" class="label label-success">Enabled</span>
+                      <span x-ng-if="!river.enabled" class="label label-warning">Disabled</span>
+                    </h2>
+                  </div>
+                  <div class="panel-body">
+                    Last Replicated - {{ river.lastTimestamp }}<br/>
+                    <br/>
+                    <pre>Settings:<br /><br />{{ toString(river.settings) }}</pre>
+                    <span x-ng-if="river.enabled" class="btn btn-small btn-danger" x-ng-click="stop(river.name)">Stop</span>
+                    <span x-ng-if="!river.enabled" class="btn btn-small btn-success" x-ng-click="start(river.name)">Start</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            </tab>
+            <!--
             <tab heading="Logging">Logging</tab>
-            --> </tabset>
-			</div>
-		</div>
-	</div>
-	<script type="text/javascript" src="scripts/app.js"></script>
-</body>
+            --> 
+          </tabset>
+        </div>
+      </div>
+    </div>
+    <script type="text/javascript" src="scripts/app.js"></script>
+  </body>
 </html>
