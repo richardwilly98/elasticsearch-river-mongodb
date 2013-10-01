@@ -29,12 +29,14 @@ public abstract class MongoDBRiverHelper {
     }
 
     public static void setRiverStatus(Client client, String riverName, Status status) {
+        logger.debug("setRiverStatus called with {}", status);
         XContentBuilder xb;
         try {
             xb = jsonBuilder().startObject().startObject(MongoDBRiver.TYPE).field(MongoDBRiver.STATUS_FIELD, status).endObject().endObject();
             client.prepareIndex("_river", riverName, MongoDBRiver.STATUS_ID).setSource(xb).execute().actionGet();
         } catch (IOException ioEx) {
-            logger.error("setRiverEnabled failed for river {}", ioEx, riverName);
+            logger.error("setRiverStatus failed for river {}", ioEx, riverName);
         }
     }
+
 }
