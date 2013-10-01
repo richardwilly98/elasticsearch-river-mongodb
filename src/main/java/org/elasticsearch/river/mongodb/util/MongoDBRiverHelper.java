@@ -11,34 +11,32 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.support.XContentMapValues;
 import org.elasticsearch.river.mongodb.MongoDBRiver;
+import org.elasticsearch.river.mongodb.Status;
 
 public abstract class MongoDBRiverHelper {
 
     private static final ESLogger logger = Loggers.getLogger(MongoDBRiverHelper.class);
 
-    public static boolean isRiverEnabled(Client client, String riverName) {
-        boolean enabled = true;
-        GetResponse getResponse = client.prepareGet("_river", riverName, MongoDBRiver.STATUS).execute().actionGet();
-
-        if (!getResponse.isExists()) {
-            setRiverEnabled(client, riverName, true);
+    public static Status getRiverStatus(Client client, String riverName) {
+        GetResponse statusResponse = client.prepareGet("_river", riverName, MongoDBRiver.STATUS_ID).execute().actionGet();
+        if (!statusResponse.isExists()) {
+            setRiverStatus(client, riverName, Status.RUNNING);
+            return Status.RUNNING;
         } else {
-            Object obj = XContentMapValues.extractValue(MongoDBRiver.TYPE + "." + MongoDBRiver.ENABLED, getResponse.getSourceAsMap());
-            if (obj != null) {
-                enabled = Boolean.parseBoolean(obj.toString());
-            }
+            Object obj = XContentMapValues.extractValue(MongoDBRiver.TYPE + "." + MongoDBRiver.STATUS_FIELD, statusResponse.getSourceAsMap());
+            return Status.valueOf(obj.toString());
         }
-        // logger.trace("River {} enabled? {}", riverName, enabled);
-        return enabled;
     }
 
-    public static void setRiverEnabled(Client client, String riverName, boolean enabled) {
+    public static void setRiverStatus(Client client, String riverName, Status status) {
+        logger.debug("setRiverStatus called with {}", status);
         XContentBuilder xb;
         try {
-            xb = jsonBuilder().startObject().startObject(MongoDBRiver.TYPE).field(MongoDBRiver.ENABLED, enabled).endObject().endObject();
-            client.prepareIndex("_river", riverName, MongoDBRiver.STATUS).setSource(xb).execute().actionGet();
+            xb = jsonBuilder().startObject().startObject(MongoDBRiver.TYPE).field(MongoDBRiver.STATUS_FIELD, status).endObject().endObject();
+            client.prepareIndex("_river", riverName, MongoDBRiver.STATUS_ID).setSource(xb).execute().actionGet();
         } catch (IOException ioEx) {
-            logger.error("setRiverEnabled failed for river {}", ioEx, riverName);
+            logger.error("setRiverStatus failed for river {}", ioEx, riverName);
         }
     }
+
 }

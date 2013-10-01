@@ -40,9 +40,9 @@ public class MongoDBRiverModule extends AbstractModule {
     }
 
     @Provides
-    protected MongoDBRiverDefinition provideDefinition(RiverName riverName, RiverSettings settings, @RiverIndexName String riverIndexName,
-            ScriptService scriptService) {
-        return MongoDBRiverDefinition.parseSettings(riverName, riverIndexName, settings, scriptService);
+    protected MongoDBRiverDefinition provideDefinition(
+            RiverName riverName, RiverSettings settings, @RiverIndexName String riverIndexName, ScriptService scriptService) {
+        return MongoDBRiverDefinition.parseSettings(riverName.name(), riverIndexName, settings, scriptService);
     }
 
 }

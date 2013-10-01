@@ -10,11 +10,11 @@ import org.elasticsearch.river.mongodb.MongoDBRiver.QueueEntry;
 public class SharedContext {
 
     private BlockingQueue<QueueEntry> stream;
-    private boolean active;
+    private Status status;
 
-    public SharedContext(BlockingQueue<QueueEntry> stream, boolean active) {
+    public SharedContext(BlockingQueue<QueueEntry> stream, Status status) {
         this.stream = stream;
-        this.active = active;
+        this.status = status;
     }
 
     public BlockingQueue<QueueEntry> getStream() {
@@ -25,12 +25,12 @@ public class SharedContext {
         this.stream = stream;
     }
 
-    public boolean isActive() {
-        return active;
+    public Status getStatus() {
+        return status;
     }
 
-    public void setActive(boolean active) {
-        this.active = active;
+    public void setStatus(Status status) {
+        this.status = status;
     }
 
 }

@@ -25,9 +25,6 @@ import static org.hamcrest.Matchers.equalTo;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
-import org.elasticsearch.action.get.GetResponse;
-import org.elasticsearch.common.xcontent.support.XContentMapValues;
-import org.elasticsearch.river.mongodb.MongoDBRiver;
 import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.elasticsearch.river.mongodb.Status;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
@@ -43,12 +40,12 @@ import com.mongodb.WriteConcern;
 import com.mongodb.WriteResult;
 
 @Test
-public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
+public class RiverMongoIndexExistsTest extends RiverMongoDBTestAbstract {
 
     private DB mongoDB;
     private DBCollection mongoCollection;
 
-    protected RiverMongoInitialImportTest() {
+    protected RiverMongoIndexExistsTest() {
         super("testmongodb-" + System.currentTimeMillis(),
               "testriver-" + System.currentTimeMillis(),
               "person-"  + System.currentTimeMillis(),
@@ -56,7 +53,7 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
     }
 
     @Test
-    public void initialImport() throws Throwable {
+    public void dontDoInitialImportIfCollectionExists() throws Throwable {
         logger.debug("Start InitialImport");
         try {
             createDatabase();
@@ -66,43 +63,22 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
             logger.info("WriteResult: {}", result1.toString());
             Thread.sleep(wait);
 
-            // Make sure we're starting out with the river not setup
-            GetResponse statusResponse = getNode().client().prepareGet("_river", river, MongoDBRiver.STATUS_ID).execute().actionGet();
-            Assert.assertFalse(statusResponse.isExists(),
-                    "Expected no river but found one " + XContentMapValues.extractValue(MongoDBRiver.TYPE + "." + MongoDBRiver.STATUS_FIELD, statusResponse.getSourceAsMap()));
-
-            // Setup the river
             createRiver();
             Thread.sleep(wait);
 
-            // Check that it did an initial import successfully
             ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices()
                     .exists(new IndicesExistsRequest(getIndex()));
             assertThat(response.actionGet().isExists(), equalTo(true));
-            Assert.assertEquals(Status.RUNNING, 
-                    MongoDBRiverHelper.getRiverStatus(getNode().client(), river));
+            refreshIndex();
             assertThat(getNode().client().count(countRequest(getIndex())).actionGet().getCount(),
                     equalTo(1l));
 
-            // Check that it syncs the oplog
-            DBObject dbObject2 = new BasicDBObject(ImmutableMap.of("name", "Ben"));
-            WriteResult result2 = mongoCollection.insert(dbObject2);
-            logger.info("WriteResult: {}", result2.toString());
-            Thread.sleep(wait);
+            deleteRiver();
+            createRiver();
 
-            refreshIndex();
-            Assert.assertEquals(Status.RUNNING, 
+            Thread.sleep(wait);
+            Assert.assertEquals(Status.INITIAL_IMPORT_FAILED, 
                     MongoDBRiverHelper.getRiverStatus(getNode().client(), river));
-            assertThat(getNode().client().count(countRequest(getIndex())).actionGet().getCount(),
-                    equalTo(2l));
-
-            mongoCollection.remove(dbObject1, WriteConcern.REPLICAS_SAFE);
-
-            Thread.sleep(wait);
-            refreshIndex();
-            assertThat(getNode().client().count(countRequest(getIndex())).actionGet().getCount(),
-                    equalTo(1L));
-
         } catch (Throwable t) {
             logger.error("InitialImport failed.", t);
             t.printStackTrace();

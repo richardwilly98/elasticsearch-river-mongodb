@@ -60,7 +60,7 @@ class Indexer implements Runnable {
 
     @Override
     public void run() {
-        while (context.isActive()) {
+        while (context.getStatus() == Status.RUNNING) {
             sw = new StopWatch().start();
             deletedDocuments = 0;
             insertedDocuments = 0;

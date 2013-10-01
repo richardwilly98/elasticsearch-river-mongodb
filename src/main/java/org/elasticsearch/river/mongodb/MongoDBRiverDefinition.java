@@ -23,7 +23,6 @@ import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.support.XContentMapValues;
-import org.elasticsearch.river.RiverName;
 import org.elasticsearch.river.RiverSettings;
 import org.elasticsearch.script.ExecutableScript;
 import org.elasticsearch.script.ScriptService;
@@ -319,7 +318,7 @@ public class MongoDBRiverDefinition {
     }
 
     @SuppressWarnings("unchecked")
-    public synchronized static MongoDBRiverDefinition parseSettings(RiverName riverName, String riverIndexName, RiverSettings settings,
+    public synchronized static MongoDBRiverDefinition parseSettings(String riverName, String riverIndexName, RiverSettings settings,
             ScriptService scriptService) {
 
         Preconditions.checkNotNull(riverName, "No riverName specified");
@@ -327,7 +326,7 @@ public class MongoDBRiverDefinition {
         Preconditions.checkNotNull(settings, "No settings specified");
 
         Builder builder = new Builder();
-        builder.riverName(riverName.name());
+        builder.riverName(riverName);
         builder.riverIndexName(riverIndexName);
 
         List<ServerAddress> mongoServers = new ArrayList<ServerAddress>();
@@ -513,8 +512,8 @@ public class MongoDBRiverDefinition {
                 // mongoDbPassword = mdp;
             }
 
-            builder.mongoDb(XContentMapValues.nodeStringValue(mongoSettings.get(DB_FIELD), riverName.name()));
-            builder.mongoCollection(XContentMapValues.nodeStringValue(mongoSettings.get(COLLECTION_FIELD), riverName.name()));
+            builder.mongoDb(XContentMapValues.nodeStringValue(mongoSettings.get(DB_FIELD), riverName));
+            builder.mongoCollection(XContentMapValues.nodeStringValue(mongoSettings.get(COLLECTION_FIELD), riverName));
             builder.mongoGridFS(XContentMapValues.nodeBooleanValue(mongoSettings.get(GRIDFS_FIELD), false));
             if (mongoSettings.containsKey(FILTER_FIELD)) {
                 builder.mongoFilter(XContentMapValues.nodeStringValue(mongoSettings.get(FILTER_FIELD), ""));
@@ -541,8 +540,8 @@ public class MongoDBRiverDefinition {
             } catch (UnknownHostException e) {
                 e.printStackTrace();
             }
-            builder.mongoDb(riverName.name());
-            builder.mongoCollection(riverName.name());
+            builder.mongoDb(riverName);
+            builder.mongoCollection(riverName);
         }
 
         if (settings.settings().containsKey(INDEX_OBJECT)) {
