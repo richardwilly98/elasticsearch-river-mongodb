@@ -73,7 +73,7 @@ class Slurper implements Runnable {
                 }
 
                 BSONTimestamp startTimestamp = null;
-                if (!riverHasIndexedFromOplog()) {
+                if (!riverHasIndexedFromOplog() && definition.getInitialTimestamp() == null) {
                     if (!isIndexEmpty()) {
                         MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.INITIAL_IMPORT_FAILED);
                         break;
