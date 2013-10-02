@@ -32,6 +32,7 @@ import java.util.concurrent.BlockingQueue;
 import org.bson.types.BSONTimestamp;
 import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
+import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.block.ClusterBlockException;
@@ -74,8 +75,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
     public final static String TYPE = "mongodb";
     public final static String NAME = "mongodb-river";
-    public final static String STATUS = "_mongodbstatus";
-    public final static String ENABLED = "enabled";
+    public final static String STATUS_ID = "_riverstatus";
+    public final static String STATUS_FIELD = "status";
     public final static String DESCRIPTION = "MongoDB River Plugin";
     public final static String LAST_TIMESTAMP_FIELD = "_last_ts";
     public final static String MONGODB_LOCAL_DATABASE = "local";
@@ -130,21 +131,21 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         BlockingQueue<QueueEntry> stream = definition.getThrottleSize() == -1 ? new LinkedTransferQueue<QueueEntry>()
                 : new ArrayBlockingQueue<QueueEntry>(definition.getThrottleSize());
 
-        this.context = new SharedContext(stream, false);
+        this.context = new SharedContext(stream, Status.STOPPED);
 
         this.statusThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_status").newThread(
-                new Status(this, definition, context));
+                new StatusChecker(this, definition, context));
         this.statusThread.start();
     }
 
     @Override
     public void start() {
-        if (!MongoDBRiverHelper.isRiverEnabled(client, riverName.getName())) {
+        if (MongoDBRiverHelper.getRiverStatus(client, riverName.getName()) == Status.STOPPED) {
             logger.debug("Cannot start river {}. It is currently disabled", riverName.getName());
             startInvoked = true;
             return;
         }
-        this.context.setActive(true);
+        this.context.setStatus(Status.RUNNING);
         for (ServerAddress server : definition.getMongoServers()) {
             logger.info("Using mongodb server(s): host [{}], port [{}]", server.getHost(), server.getPort());
         }
@@ -330,7 +331,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         } catch (Throwable t) {
             logger.error("Fail to close river {}", t, riverName.getName());
         } finally {
-            this.context.setActive(false);
+            this.context.setStatus(Status.STOPPED);
         }
     }
 
@@ -351,8 +352,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     public static BSONTimestamp getLastTimestamp(Client client, MongoDBRiverDefinition definition) {
 
         GetResponse lastTimestampResponse = client
-                .prepareGet(definition.getRiverIndexName(), definition.getRiverName(), definition.getMongoOplogNamespace()).execute()
-                .actionGet();
+                .prepareGet(definition.getRiverIndexName(), definition.getRiverName(), definition.getMongoOplogNamespace())
+                .execute().actionGet();
 
         // API changes since 0.90.0 lastTimestampResponse.exists() replaced by
         // lastTimestampResponse.isExists()
@@ -395,6 +396,14 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             logger.error("error updating last timestamp for namespace {}", definition.getMongoOplogNamespace());
         }
     }
+
+    public static long getIndexCount(Client client, MongoDBRiverDefinition definition) {
+        CountResponse countResponse = client
+                .prepareCount(definition.getIndexName())
+                .execute().actionGet();
+        return countResponse.getCount();
+    }
+
 
     protected static class QueueEntry {
 

@@ -20,19 +20,25 @@ import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.rest.XContentRestResponse;
 import org.elasticsearch.rest.XContentThrowableRestResponse;
 import org.elasticsearch.rest.action.support.RestXContentBuilder;
+import org.elasticsearch.river.RiverIndexName;
+import org.elasticsearch.river.RiverSettings;
 import org.elasticsearch.river.mongodb.MongoDBRiver;
+import org.elasticsearch.river.mongodb.MongoDBRiverDefinition;
+import org.elasticsearch.river.mongodb.Status;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 import org.elasticsearch.search.SearchHit;
 
 public class RestMongoDBRiverAction extends BaseRestHandler {
 
-    private static final String BASE_URL = "/_river/" + MongoDBRiver.TYPE;
+    private final String riverIndexName;
 
     @Inject
-    public RestMongoDBRiverAction(Settings settings, Client client, RestController controller) {
+    public RestMongoDBRiverAction(Settings settings, Client client, RestController controller, @RiverIndexName String riverIndexName) {
         super(settings, client);
-        controller.registerHandler(RestRequest.Method.GET, BASE_URL + "/{action}", this);
-        controller.registerHandler(RestRequest.Method.POST, BASE_URL + "/{river}/{action}", this);
+        this.riverIndexName = riverIndexName;
+        String baseUrl = "/" + riverIndexName + "/" + MongoDBRiver.TYPE;
+        controller.registerHandler(RestRequest.Method.GET, baseUrl + "/{action}", this);
+        controller.registerHandler(RestRequest.Method.POST, baseUrl + "/{river}/{action}", this);
     }
 
     @Override
@@ -61,7 +67,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
             respondError(request, channel, "Parameter 'river' is required", RestStatus.BAD_REQUEST);
             return;
         }
-        MongoDBRiverHelper.setRiverEnabled(client, river, true);
+        MongoDBRiverHelper.setRiverStatus(client, river, Status.RUNNING);
         respondSuccess(request, channel, RestStatus.OK);
     }
 
@@ -71,7 +77,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
             respondError(request, channel, "Parameter 'river' is required", RestStatus.BAD_REQUEST);
             return;
         }
-        MongoDBRiverHelper.setRiverEnabled(client, river, false);
+        MongoDBRiverHelper.setRiverStatus(client, river, Status.STOPPED);
         respondSuccess(request, channel, RestStatus.OK);
     }
 
@@ -120,16 +126,23 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
     }
 
     private List<Map<String, Object>> getRivers() {
-        SearchResponse searchResponse = client.prepareSearch("_river").setQuery(new FieldQueryBuilder("type", "mongodb")).execute()
-                .actionGet();
+        SearchResponse searchResponse = client.prepareSearch("_river")
+                .setQuery(new FieldQueryBuilder("type", "mongodb"))
+                .execute().actionGet();
         long totalHits = searchResponse.getHits().totalHits();
         logger.trace("totalHits: {}", totalHits);
         List<Map<String, Object>> rivers = new ArrayList<Map<String, Object>>();
         for (SearchHit hit : searchResponse.getHits().hits()) {
             Map<String, Object> source = new HashMap<String, Object>();
-            source.put("name", hit.getType());
-            source.put("enabled", MongoDBRiverHelper.isRiverEnabled(client, hit.getType()));
+            String riverName = hit.getType();
+            RiverSettings riverSettings = new RiverSettings(null, hit.getSource());
+            MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName, riverIndexName, riverSettings, null);
+
+            source.put("name", riverName);
+            source.put("status", MongoDBRiverHelper.getRiverStatus(client, hit.getType()));
             source.put("settings", hit.getSource());
+            source.put("lastTimestamp", MongoDBRiver.getLastTimestamp(client, definition));
+            source.put("indexCount", MongoDBRiver.getIndexCount(client, definition));
             logger.trace("source: {}", hit.getSourceAsString());
             rivers.add(source);
         }

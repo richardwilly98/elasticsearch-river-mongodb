@@ -12,6 +12,7 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.river.mongodb.util.MongoDBHelper;
+import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.Bytes;
@@ -64,7 +65,7 @@ class Slurper implements Runnable {
 
     @Override
     public void run() {
-        while (context.isActive()) {
+        while (context.getStatus() == Status.RUNNING) {
             try {
                 if (!assignCollections()) {
                     break; // failed to assign oplogCollection or
@@ -72,7 +73,11 @@ class Slurper implements Runnable {
                 }
 
                 BSONTimestamp startTimestamp = null;
-                if (!riverHasIndexedSomething()) {
+                if (!riverHasIndexedFromOplog()) {
+                    if (!isIndexEmpty()) {
+                        MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.INITIAL_IMPORT_FAILED);
+                        break;
+                    }
                     startTimestamp = doInitialImport();
                 }
 
@@ -113,15 +118,19 @@ class Slurper implements Runnable {
         }
     }
 
-    protected boolean riverHasIndexedSomething() {
+    protected boolean riverHasIndexedFromOplog() {
         return MongoDBRiver.getLastTimestamp(client, definition) != null;
+    }
+
+    protected boolean isIndexEmpty() {
+        return MongoDBRiver.getIndexCount(client, definition) == 0;
     }
 
     /**
      * Does an initial sync the same way MongoDB does.
      * https://groups.google.com/
      * forum/?fromgroups=#!topic/mongodb-user/sOKlhD_E2ns
-     * 
+     *
      * @return the last oplog timestamp before the import began
      * @throws InterruptedException
      *             if the blocking queue stream is interrupted while waiting
