@@ -4,6 +4,7 @@ MongoDB River Plugin for ElasticSearch
 | MongoDB River Plugin     | ElasticSearch    | MongoDB |
 |--------------------------|------------------|---------|
 | master                   | 0.90.5           | 2.4.6   |
+| 1.7.1                    | 0.90.5           | 2.4.6   |
 | 1.7.0                    | 0.90.3           | 2.4.5   |
 | 1.6.11                   | 0.90.2           | 2.4.5   |
 | 1.6.9                    | 0.90.1           | 2.4.4   |
@@ -121,7 +122,17 @@ License
 Changelog
 -------
 
+#### 1.7.1
+- Update versions ES 0.90.5, MongoDB driver 2.11.3
+- Initial import using the collection by @benmccann. (see issue [#47](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/47))
+- Add unit test to validate Chinese support (see issue [#95](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/95))
+- Ensure MongoDB cursor is closed (see issue [#comment-24427369](https://github.com/richardwilly98/elasticsearch-river-mongodb/pull/106#issuecomment-24427369))
+- River administration has been improved. (see issue [#109](https://github.com/richardwilly98/elasticsearch-river-mongodb/pull/109))
+- Allow fields ```ts``` or ```op``` to be used in user collection. (see pr [#136](https://github.com/richardwilly98/elasticsearch-river-mongodb/pull/136))
+- Use of OPLOG_REPLAY to query oplog.rs
+
 #### 1.7.0
+- Update versions ES 0.90.3, MongoDB 2.4.6
 - Ability to index documents from a given datetime (see issue [#102](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/102))
 - Fix for ```options/exclude_fields``` by @ozanozen (see issue [#103](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/103))
 - Fix for ```options/drop_collection``` (see issue [#105](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/105))
