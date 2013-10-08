@@ -140,9 +140,15 @@ class Slurper implements Runnable {
         logger.info("MongoDBRiver is beginning initial import of " + slurpedCollection.getFullName());
         BSONTimestamp startTimestamp = getCurrentOplogTimestamp();
         DBCursor cursor = null;
+        DBObject filter = new BasicDBObject();
+
+        if (!definition.getMongoImportFilter().isEmpty()) {
+            filter = (DBObject) JSON.parse(definition.getMongoImportFilter());
+        }
+
         try {
             if (!definition.isMongoGridFS()) {
-                cursor = slurpedCollection.find();
+                cursor = slurpedCollection.find(filter);
                 while (cursor.hasNext()) {
                     DBObject object = cursor.next();
                     addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, null, applyFieldFilter(object));
