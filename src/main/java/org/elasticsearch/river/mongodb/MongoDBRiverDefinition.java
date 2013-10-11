@@ -60,6 +60,7 @@ public class MongoDBRiverDefinition {
     public final static String ADVANCED_TRANSFORMATION_FIELD = "advanced_transformation";
     public final static String PARENT_TYPES_FIELD = "parent_types";
     public final static String FILTER_FIELD = "filter";
+    public final static String IMPORT_FILTER_FIELD = "import_filter";
     public final static String CREDENTIALS_FIELD = "credentials";
     public final static String USER_FIELD = "user";
     public final static String PASSWORD_FIELD = "password";
@@ -87,6 +88,7 @@ public class MongoDBRiverDefinition {
     private final String mongoCollection;
     private final boolean mongoGridFS;
     private final String mongoFilter;
+    private final String mongoImportFilter;
     // mongodb.credentials
     private final String mongoAdminUser;
     private final String mongoAdminPassword;
@@ -128,6 +130,7 @@ public class MongoDBRiverDefinition {
         private String mongoCollection;
         private boolean mongoGridFS;
         private String mongoFilter = "";
+        private String mongoImportFilter = "";
         // mongodb.credentials
         private String mongoAdminUser = "";
         private String mongoAdminPassword = "";
@@ -189,6 +192,11 @@ public class MongoDBRiverDefinition {
 
         public Builder mongoFilter(String mongoFilter) {
             this.mongoFilter = mongoFilter;
+            return this;
+        }
+
+        public Builder mongoImportFilter(String mongoImportFilter) {
+            this.mongoImportFilter = mongoImportFilter;
             return this;
         }
 
@@ -521,6 +529,12 @@ public class MongoDBRiverDefinition {
                 builder.mongoFilter("");
             }
 
+            if (mongoSettings.containsKey(IMPORT_FILTER_FIELD)) {
+                builder.mongoImportFilter(XContentMapValues.nodeStringValue(mongoSettings.get(IMPORT_FILTER_FIELD), ""));
+            } else {
+                builder.mongoImportFilter("");
+            }
+
             if (mongoSettings.containsKey(SCRIPT_FIELD)) {
                 String scriptType = "js";
                 builder.script(mongoSettings.get(SCRIPT_FIELD).toString());
@@ -608,6 +622,7 @@ public class MongoDBRiverDefinition {
         this.mongoCollection = builder.mongoCollection;
         this.mongoGridFS = builder.mongoGridFS;
         this.mongoFilter = builder.mongoFilter;
+        this.mongoImportFilter = builder.mongoImportFilter;
         // mongodb.credentials
         this.mongoAdminUser = builder.mongoAdminUser;
         this.mongoAdminPassword = builder.mongoAdminPassword;
@@ -666,6 +681,10 @@ public class MongoDBRiverDefinition {
 
     public String getMongoFilter() {
         return mongoFilter;
+    }
+
+    public String getMongoImportFilter() {
+        return mongoImportFilter;
     }
 
     public String getMongoAdminUser() {
