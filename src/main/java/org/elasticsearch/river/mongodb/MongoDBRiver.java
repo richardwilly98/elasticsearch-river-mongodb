@@ -154,7 +154,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         logger.info(
                 "starting mongodb stream. options: secondaryreadpreference [{}], drop_collection [{}], include_collection [{}], throttlesize [{}], gridfs [{}], filter [{}], db [{}], collection [{}], script [{}], indexing to [{}]/[{}]",
                 definition.isMongoSecondaryReadPreference(), definition.isDropCollection(), definition.getIncludeCollection(),
-                definition.getThrottleSize(), definition.isMongoGridFS(), definition.getMongoFilter(), definition.getMongoDb(),
+                definition.getThrottleSize(), definition.isMongoGridFS(), definition.getMongoOplogFilter(), definition.getMongoDb(),
                 definition.getMongoCollection(), definition.getScript(), definition.getIndexName(), definition.getTypeName());
 
         // Create the index if it does not exist

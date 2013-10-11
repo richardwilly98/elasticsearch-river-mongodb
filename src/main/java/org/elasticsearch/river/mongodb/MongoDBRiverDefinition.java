@@ -16,6 +16,7 @@ import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
+import org.bson.BasicBSONObject;
 import org.bson.types.BSONTimestamp;
 import org.elasticsearch.common.Preconditions;
 import org.elasticsearch.common.collect.Maps;
@@ -27,9 +28,12 @@ import org.elasticsearch.river.RiverSettings;
 import org.elasticsearch.script.ExecutableScript;
 import org.elasticsearch.script.ScriptService;
 
+import com.mongodb.BasicDBObject;
+import com.mongodb.DBObject;
 import com.mongodb.MongoClientOptions;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
+import com.mongodb.util.JSON;
 
 public class MongoDBRiverDefinition {
 
@@ -86,7 +90,8 @@ public class MongoDBRiverDefinition {
     private final String mongoDb;
     private final String mongoCollection;
     private final boolean mongoGridFS;
-    private final String mongoFilter;
+    private final BasicDBObject mongoOplogFilter;
+    private final BasicDBObject mongoCollectionFilter;
     // mongodb.credentials
     private final String mongoAdminUser;
     private final String mongoAdminPassword;
@@ -127,7 +132,8 @@ public class MongoDBRiverDefinition {
         private String mongoDb;
         private String mongoCollection;
         private boolean mongoGridFS;
-        private String mongoFilter = "";
+        private BasicDBObject mongoOplogFilter = new BasicDBObject();
+        private BasicDBObject mongoCollectionFilter = new BasicDBObject();
         // mongodb.credentials
         private String mongoAdminUser = "";
         private String mongoAdminPassword = "";
@@ -187,8 +193,13 @@ public class MongoDBRiverDefinition {
             return this;
         }
 
-        public Builder mongoFilter(String mongoFilter) {
-            this.mongoFilter = mongoFilter;
+        public Builder mongoOplogFilter(BasicDBObject mongoOplogFilter) {
+            this.mongoOplogFilter = mongoOplogFilter;
+            return this;
+        }
+
+        public Builder mongoCollectionFilter(BasicDBObject mongoCollectionFilter) {
+            this.mongoCollectionFilter = mongoCollectionFilter;
             return this;
         }
 
@@ -516,9 +527,13 @@ public class MongoDBRiverDefinition {
             builder.mongoCollection(XContentMapValues.nodeStringValue(mongoSettings.get(COLLECTION_FIELD), riverName));
             builder.mongoGridFS(XContentMapValues.nodeBooleanValue(mongoSettings.get(GRIDFS_FIELD), false));
             if (mongoSettings.containsKey(FILTER_FIELD)) {
-                builder.mongoFilter(XContentMapValues.nodeStringValue(mongoSettings.get(FILTER_FIELD), ""));
-            } else {
-                builder.mongoFilter("");
+                String filter = XContentMapValues.nodeStringValue(mongoSettings.get(FILTER_FIELD), "");
+                filter = removePrefix("o.", filter);
+                builder.mongoCollectionFilter(convertToBasicDBObject(filter));
+//                DBObject bsonObject = (DBObject) JSON.parse(filter);
+                builder.mongoOplogFilter(convertToBasicDBObject(addPrefix("o.", filter)));
+//            } else {
+//                builder.mongoOplogFilter("");
             }
 
             if (mongoSettings.containsKey(SCRIPT_FIELD)) {
@@ -596,6 +611,50 @@ public class MongoDBRiverDefinition {
         return SSLSocketFactory.getDefault();
     }
 
+    static BasicDBObject convertToBasicDBObject
+    (String object) {
+        if (object == null || object.length() == 0) {
+            return new BasicDBObject();
+        } else {
+            return (BasicDBObject)JSON.parse(object);
+        }
+    }
+
+    static String removePrefix(String prefix, String object) {
+        return addRemovePrefix(prefix, object, false);
+    }
+
+    static String addPrefix(String prefix, String object) {
+        return addRemovePrefix(prefix, object, true);
+    }
+
+    static String addRemovePrefix(String prefix, String object, boolean add) {
+        if (prefix == null) {
+            throw new IllegalArgumentException("prefix");
+        }
+        if (object == null) {
+            throw new NullPointerException("object");
+        }
+        if (object.length() == 0) {
+            return "";
+        }
+        DBObject bsonObject = (DBObject) JSON.parse(object);
+        
+        BasicBSONObject newObject = new BasicBSONObject();
+        for (String key : bsonObject.keySet()) {
+            if (add) {
+                newObject.put(prefix + key, bsonObject.get(key));
+            } else {
+                if (key.startsWith(prefix)) {
+                    newObject.put(key.substring(prefix.length()), bsonObject.get(key));
+                } else {
+                    newObject.put(key, bsonObject.get(key));
+                }
+            }
+        }
+        return newObject.toString();
+    }
+
     private MongoDBRiverDefinition(final Builder builder) {
         // river
         this.riverName = builder.riverName;
@@ -607,7 +666,8 @@ public class MongoDBRiverDefinition {
         this.mongoDb = builder.mongoDb;
         this.mongoCollection = builder.mongoCollection;
         this.mongoGridFS = builder.mongoGridFS;
-        this.mongoFilter = builder.mongoFilter;
+        this.mongoOplogFilter = builder.mongoOplogFilter;
+        this.mongoCollectionFilter = builder.mongoCollectionFilter;
         // mongodb.credentials
         this.mongoAdminUser = builder.mongoAdminUser;
         this.mongoAdminPassword = builder.mongoAdminPassword;
@@ -664,8 +724,12 @@ public class MongoDBRiverDefinition {
         return mongoGridFS;
     }
 
-    public String getMongoFilter() {
-        return mongoFilter;
+    public BasicDBObject getMongoOplogFilter() {
+        return mongoOplogFilter;
+    }
+
+    public BasicDBObject getMongoCollectionFilter() {
+        return mongoCollectionFilter;
     }
 
     public String getMongoAdminUser() {

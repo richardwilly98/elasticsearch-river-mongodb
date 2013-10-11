@@ -1,0 +1,24 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"servers": [{ 
+			"host": "localhost",
+			"port": %s
+		},
+		{ 
+			"host": "localhost",
+			"port": %s
+		},
+		{ 
+			"host": "localhost",
+			"port": %s
+		}],
+		"db": "%s",
+		"collection": "%s",
+		"filter": "%s"
+	},
+	"index": {
+		"name": "%s",
+		"throttle_size": 2000
+	}
+}

@@ -30,7 +30,6 @@ import com.mongodb.ServerAddress;
 import com.mongodb.gridfs.GridFS;
 import com.mongodb.gridfs.GridFSDBFile;
 import com.mongodb.gridfs.GridFSFile;
-import com.mongodb.util.JSON;
 
 class Slurper implements Runnable {
 
@@ -130,7 +129,7 @@ class Slurper implements Runnable {
      * Does an initial sync the same way MongoDB does.
      * https://groups.google.com/
      * forum/?fromgroups=#!topic/mongodb-user/sOKlhD_E2ns
-     *
+     * 
      * @return the last oplog timestamp before the import began
      * @throws InterruptedException
      *             if the blocking queue stream is interrupted while waiting
@@ -142,7 +141,7 @@ class Slurper implements Runnable {
         DBCursor cursor = null;
         try {
             if (!definition.isMongoGridFS()) {
-                cursor = slurpedCollection.find();
+                cursor = slurpedCollection.find(definition.getMongoCollectionFilter());
                 while (cursor.hasNext()) {
                     DBObject object = cursor.next();
                     addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, null, applyFieldFilter(object));
@@ -352,7 +351,7 @@ class Slurper implements Runnable {
                     + MongoDBRiver.OPLOG_NAMESPACE_COMMAND));
             filter.put(MongoDBRiver.MONGODB_OR_OPERATOR, values2);
         }
-        if (!definition.getMongoFilter().isEmpty()) {
+        if (definition.getMongoOplogFilter().size() > 0) {
             filter.putAll(getMongoFilter());
         }
         if (logger.isDebugEnabled()) {
@@ -376,7 +375,7 @@ class Slurper implements Runnable {
         filters2.add(new BasicDBObject(MongoDBRiver.MONGODB_OR_OPERATOR, filters3));
 
         // include custom filter in filters2
-        filters2.add((DBObject) JSON.parse(definition.getMongoFilter()));
+        filters2.add(definition.getMongoOplogFilter());
 
         filters.add(new BasicDBObject(MongoDBRiver.MONGODB_AND_OPERATOR, filters2));
 

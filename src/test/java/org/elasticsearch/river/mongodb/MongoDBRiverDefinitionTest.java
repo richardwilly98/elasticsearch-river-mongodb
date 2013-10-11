@@ -11,7 +11,9 @@ import org.elasticsearch.script.ScriptService;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.ServerAddress;
+import com.mongodb.util.JSON;
 
 public class MongoDBRiverDefinitionTest {
 
@@ -67,4 +69,28 @@ public class MongoDBRiverDefinitionTest {
             Assert.fail("testLoadMongoDBRiverDefinitionIssue159 failed", t);
         }
     }
+
+    @Test
+    public void parseFilter() {
+        String filter = "{\"o.lang\":\"de\"}";
+        BasicDBObject bsonFilter = (BasicDBObject) JSON.parse(filter);
+        String filterNoPrefix = MongoDBRiverDefinition.removePrefix("o.", filter);
+        Assert.assertNotNull(filterNoPrefix);
+
+        BasicDBObject bsonFilterNoPrefix = (BasicDBObject) JSON.parse(filterNoPrefix);
+        Assert.assertNotNull(bsonFilterNoPrefix);
+
+        // call a second time trimPrefix has no effect
+        String filterNoPrefix2 = MongoDBRiverDefinition.removePrefix("o.", bsonFilterNoPrefix.toString());
+        Assert.assertNotNull(filterNoPrefix2);
+        BasicDBObject bsonFilterNoPrefix2 = (BasicDBObject) JSON.parse(filterNoPrefix2);
+        Assert.assertEquals(bsonFilterNoPrefix, bsonFilterNoPrefix2);
+        
+        String filterWithPrefix = MongoDBRiverDefinition.addPrefix("o.", filterNoPrefix);
+        BasicDBObject bsonFilterWithPrefix = (BasicDBObject) JSON.parse(filterWithPrefix);
+        Assert.assertNotNull(bsonFilterWithPrefix);
+        // trimPrefix + addPrefix returns the original bson
+        Assert.assertEquals(bsonFilter, bsonFilterWithPrefix);
+    }
+
 }
