@@ -1,0 +1,28 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"servers": [
+			{host: "127.0.0.1"},
+			{host: "localhost"}
+		],
+		"options": {
+			"connect_timeout": 11000,
+			"secondary_read_preference": true,
+			"include_collection": "mycollection",
+			"advanced_transformation": true,
+			"parent_types": ["parent1", "parent2"]
+		},
+		"credentials": [{
+			db: "admin",
+			user: "admin",
+			password: "secret"
+		}],
+		db: "mydatabase",
+		collection: "mycollection",
+		gridfs: "false"
+	},
+	index: {
+		name: "myindex",
+		throttle_size: 2000
+	}
+}

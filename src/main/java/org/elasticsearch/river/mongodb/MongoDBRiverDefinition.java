@@ -344,7 +344,7 @@ public class MongoDBRiverDefinition {
                     ArrayList<Map<String, Object>> feeds = (ArrayList<Map<String, Object>>) mongoServersSettings;
                     for (Map<String, Object> feed : feeds) {
                         mongoHost = XContentMapValues.nodeStringValue(feed.get(HOST_FIELD), null);
-                        mongoPort = XContentMapValues.nodeIntegerValue(feed.get(PORT_FIELD), 0);
+                        mongoPort = XContentMapValues.nodeIntegerValue(feed.get(PORT_FIELD), DEFAULT_DB_PORT);
                         logger.info("Server: " + mongoHost + " - " + mongoPort);
                         try {
                             mongoServers.add(new ServerAddress(mongoHost, mongoPort));
