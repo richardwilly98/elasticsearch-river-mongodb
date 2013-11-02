@@ -39,6 +39,7 @@ public class MongoDBRiverDefinitionTest {
             Assert.assertEquals(0, definition.getSocketTimeout());
             Assert.assertEquals(11000, definition.getConnectTimeout());
             Assert.assertEquals(riverName.getName(), definition.getRiverName());
+            Assert.assertEquals(500, definition.getBulkSize());
 
         } catch (Throwable t) {
             Assert.fail("testLoadMongoDBRiverDefinition failed", t);

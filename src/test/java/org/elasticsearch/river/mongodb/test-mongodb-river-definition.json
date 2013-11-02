@@ -23,6 +23,7 @@
 	},
 	index: {
 		name: "myindex",
-		throttle_size: 2000
+		throttle_size: 2000,
+		bulk_size:500
 	}
 }
