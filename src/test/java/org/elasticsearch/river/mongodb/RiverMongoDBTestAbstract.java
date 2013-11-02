@@ -273,7 +273,6 @@ public abstract class RiverMongoDBTestAbstract {
         if (args != null) {
             setting = String.format(setting, args);
         }
-        logger.debug("River setting: {}", setting);
         return setting;
     }
 
