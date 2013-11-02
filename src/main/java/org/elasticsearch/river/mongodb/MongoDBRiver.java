@@ -159,7 +159,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
         // Create the index if it does not exist
         try {
-            client.admin().indices().prepareCreate(definition.getIndexName()).execute().actionGet();
+            if (!client.admin().indices().prepareExists(definition.getIndexName()).execute().actionGet().isExists()) {
+                client.admin().indices().prepareCreate(definition.getIndexName()).execute().actionGet();
+            }
         } catch (Exception e) {
             if (ExceptionsHelper.unwrapCause(e) instanceof IndexAlreadyExistsException) {
                 // that's fine
@@ -229,8 +231,17 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             return false;
         }
         CommandResult cr = adminDb.command(new BasicDBObject("serverStatus", 1));
-        if (cr == null || cr.get("process") == null) {
-            logger.warn("serverStatus return null.");
+        if (logger.isTraceEnabled()) {
+            logger.trace("serverStatus: {}", cr);
+        }
+
+        if (!cr.ok()) {
+            logger.warn("serverStatus returns error: {}", cr.getErrorMessage());
+            return false;
+        }
+
+        if (cr.get("process") == null) {
+            logger.warn("serverStatus.process return null.");
             return false;
         }
         String process = cr.get("process").toString().toLowerCase();
@@ -245,6 +256,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     private DB getAdminDb() {
         if (adminDb == null) {
             adminDb = getMongoClient().getDB(MONGODB_ADMIN_DATABASE);
+            logger.info("MongoAdminUser: {} - isAuthenticated: {}", definition.getMongoAdminUser(), adminDb.isAuthenticated());
             if (!definition.getMongoAdminUser().isEmpty() && !definition.getMongoAdminPassword().isEmpty() && !adminDb.isAuthenticated()) {
                 logger.info("Authenticate {} with {}", MONGODB_ADMIN_DATABASE, definition.getMongoAdminUser());
 
@@ -352,8 +364,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     public static BSONTimestamp getLastTimestamp(Client client, MongoDBRiverDefinition definition) {
 
         GetResponse lastTimestampResponse = client
-                .prepareGet(definition.getRiverIndexName(), definition.getRiverName(), definition.getMongoOplogNamespace())
-                .execute().actionGet();
+                .prepareGet(definition.getRiverIndexName(), definition.getRiverName(), definition.getMongoOplogNamespace()).execute()
+                .actionGet();
 
         // API changes since 0.90.0 lastTimestampResponse.exists() replaced by
         // lastTimestampResponse.isExists()
@@ -398,12 +410,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     }
 
     public static long getIndexCount(Client client, MongoDBRiverDefinition definition) {
-        CountResponse countResponse = client
-                .prepareCount(definition.getIndexName())
-                .execute().actionGet();
+        CountResponse countResponse = client.prepareCount(definition.getIndexName()).execute().actionGet();
         return countResponse.getCount();
     }
-
 
     protected static class QueueEntry {
 
