@@ -1,6 +1,7 @@
 package org.elasticsearch.river.mongodb;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -335,7 +336,6 @@ class Slurper implements Runnable {
 
     private DBObject getOplogFilter(final BSONTimestamp time) {
         BasicDBObject filter = new BasicDBObject();
-        List<DBObject> values2 = new ArrayList<DBObject>();
 
         if (time == null) {
             logger.info("No known previous slurping time for this collection");
@@ -346,10 +346,10 @@ class Slurper implements Runnable {
         if (definition.isMongoGridFS()) {
             filter.put(MongoDBRiver.OPLOG_NAMESPACE, definition.getMongoOplogNamespace() + MongoDBRiver.GRIDFS_FILES_SUFFIX);
         } else {
-            values2.add(new BasicDBObject(MongoDBRiver.OPLOG_NAMESPACE, definition.getMongoOplogNamespace()));
-            values2.add(new BasicDBObject(MongoDBRiver.OPLOG_NAMESPACE, definition.getMongoDb() + "."
-                    + MongoDBRiver.OPLOG_NAMESPACE_COMMAND));
-            filter.put(MongoDBRiver.MONGODB_OR_OPERATOR, values2);
+            List<String> namespaceFilter = new ArrayList<String>();
+            namespaceFilter.add(definition.getMongoOplogNamespace());
+            namespaceFilter.add(definition.getMongoDb() + "." + MongoDBRiver.OPLOG_NAMESPACE_COMMAND);
+            filter.put(MongoDBRiver.OPLOG_NAMESPACE, new BasicBSONObject(MongoDBRiver.MONGODB_IN_OPERATOR, namespaceFilter));
         }
         if (definition.getMongoOplogFilter().size() > 0) {
             filter.putAll(getMongoFilter());
@@ -363,20 +363,15 @@ class Slurper implements Runnable {
     private DBObject getMongoFilter() {
         List<DBObject> filters = new ArrayList<DBObject>();
         List<DBObject> filters2 = new ArrayList<DBObject>();
-        List<DBObject> filters3 = new ArrayList<DBObject>();
-        // include delete operation
-        filters.add(new BasicDBObject(MongoDBRiver.OPLOG_OPERATION, MongoDBRiver.OPLOG_DELETE_OPERATION));
 
-        // include update, insert in filters3
-        filters3.add(new BasicDBObject(MongoDBRiver.OPLOG_OPERATION, MongoDBRiver.OPLOG_UPDATE_OPERATION));
-        filters3.add(new BasicDBObject(MongoDBRiver.OPLOG_OPERATION, MongoDBRiver.OPLOG_INSERT_OPERATION));
-
-        // include or operation statement in filter2
-        filters2.add(new BasicDBObject(MongoDBRiver.MONGODB_OR_OPERATOR, filters3));
+        List<String> operationFilter = new ArrayList<String>();
+        operationFilter.add(MongoDBRiver.OPLOG_DELETE_OPERATION);
+        operationFilter.add(MongoDBRiver.OPLOG_UPDATE_OPERATION);
+        operationFilter.add(MongoDBRiver.OPLOG_INSERT_OPERATION);
+        filters.add(new BasicDBObject(MongoDBRiver.OPLOG_OPERATION, new BasicBSONObject(MongoDBRiver.MONGODB_IN_OPERATOR, operationFilter)));
 
         // include custom filter in filters2
         filters2.add(definition.getMongoOplogFilter());
-
         filters.add(new BasicDBObject(MongoDBRiver.MONGODB_AND_OPERATOR, filters2));
 
         return new BasicDBObject(MongoDBRiver.MONGODB_OR_OPERATOR, filters);
@@ -396,7 +391,7 @@ class Slurper implements Runnable {
         if (indexFilter.containsField(MongoDBRiver.OPLOG_TIMESTAMP)) {
             options = options | Bytes.QUERYOPTION_OPLOGREPLAY;
         }
-        return oplogCollection.find(indexFilter).sort(new BasicDBObject(MongoDBRiver.MONGODB_NATURAL_OPERATOR, 1)).setOptions(options);
+        return oplogCollection.find(indexFilter).setOptions(options);
     }
 
     private void addQueryToStream(final String operation, final BSONTimestamp currentTimestamp, final DBObject update)

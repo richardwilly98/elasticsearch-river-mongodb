@@ -83,6 +83,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     public final static String MONGODB_ADMIN_DATABASE = "admin";
     public final static String MONGODB_CONFIG_DATABASE = "config";
     public final static String MONGODB_ID_FIELD = "_id";
+    public final static String MONGODB_IN_OPERATOR = "$in";
     public final static String MONGODB_OR_OPERATOR = "$or";
     public final static String MONGODB_AND_OPERATOR = "$and";
     public final static String MONGODB_NATURAL_OPERATOR = "$natural";
