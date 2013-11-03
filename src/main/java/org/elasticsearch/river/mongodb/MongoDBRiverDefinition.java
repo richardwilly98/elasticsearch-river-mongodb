@@ -22,6 +22,8 @@ import org.elasticsearch.common.Preconditions;
 import org.elasticsearch.common.collect.Maps;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.common.unit.ByteSizeUnit;
+import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.support.XContentMapValues;
 import org.elasticsearch.river.RiverSettings;
@@ -42,6 +44,10 @@ public class MongoDBRiverDefinition {
     // defaults
     public final static String DEFAULT_DB_HOST = "localhost";
     public final static int DEFAULT_DB_PORT = 27017;
+    public final static int DEFAULT_CONCURRENT_REQUESTS = 50;
+    public final static int DEFAULT_BULK_ACTIONS = 500;
+    public final static TimeValue DEFAULT_FLUSH_INTERVAL = TimeValue.timeValueMillis(10);
+    public final static ByteSizeValue DEFAULT_BULK_SIZE = new ByteSizeValue(5, ByteSizeUnit.MB);
 
     // fields
     public final static String DB_FIELD = "db";
@@ -79,6 +85,13 @@ public class MongoDBRiverDefinition {
     public final static String THROTTLE_SIZE_FIELD = "throttle_size";
     public final static String BULK_SIZE_FIELD = "bulk_size";
     public final static String BULK_TIMEOUT_FIELD = "bulk_timeout";
+    public final static String CONCURRENT_BULK_REQUESTS_FIELD = "concurrent_bulk_requests";
+    
+    public final static String BULK_FIELD = "bulk";
+    public final static String ACTIONS_FIELD = "actions";
+    public final static String SIZE_FIELD = "size";
+    public final static String CONCURRENT_REQUESTS_FIELD = "concurrent_requests";
+    public final static String FLUSH_INTERVAL_FIELD = "flush_interval";
 
     // river
     private final String riverName;
@@ -117,9 +130,10 @@ public class MongoDBRiverDefinition {
     // index
     private final String indexName;
     private final String typeName;
-    private final int bulkSize;
-    private final TimeValue bulkTimeout;
     private final int throttleSize;
+    
+    // bulk
+    private final Bulk bulk;
 
     public static class Builder {
         // river
@@ -159,10 +173,10 @@ public class MongoDBRiverDefinition {
         // index
         private String indexName;
         private String typeName;
-        private int bulkSize;
-        private TimeValue bulkTimeout;
         private int throttleSize;
-
+        
+        private Bulk bulk;
+        
         public Builder mongoServers(List<ServerAddress> mongoServers) {
             this.mongoServers = mongoServers;
             return this;
@@ -308,24 +322,86 @@ public class MongoDBRiverDefinition {
             return this;
         }
 
-        public Builder bulkSize(int bulkSize) {
-            this.bulkSize = bulkSize;
-            return this;
-        }
-
-        public Builder bulkTimeout(TimeValue bulkTimeout) {
-            this.bulkTimeout = bulkTimeout;
-            return this;
-        }
-
         public Builder throttleSize(int throttleSize) {
             this.throttleSize = throttleSize;
+            return this;
+        }
+
+        public Builder bulk(Bulk bulk) {
+            this.bulk = bulk;
             return this;
         }
 
         public MongoDBRiverDefinition build() {
             return new MongoDBRiverDefinition(this);
         }
+    }
+
+    static class Bulk {
+        
+        private final int concurrentRequests;
+        private final int bulkActions;
+        private final ByteSizeValue bulkSize;
+        private final TimeValue flushInterval;
+        
+        static class Builder {
+
+            private int concurrentRequests = DEFAULT_CONCURRENT_REQUESTS;
+            private int bulkActions = DEFAULT_BULK_ACTIONS;
+            private ByteSizeValue bulkSize = DEFAULT_BULK_SIZE;
+            private TimeValue flushInterval = DEFAULT_FLUSH_INTERVAL;
+
+            public Builder concurrentRequests(int concurrentRequests) {
+                this.concurrentRequests = concurrentRequests;
+                return this;
+            }
+
+            public Builder bulkActions(int bulkActions) {
+                this.bulkActions = bulkActions;
+                return this;
+            }
+
+            public Builder bulkSize(ByteSizeValue bulkSize) {
+                this.bulkSize = bulkSize;
+                return this;
+            }
+
+            public Builder flushInterval(TimeValue flushInterval) {
+                this.flushInterval = flushInterval;
+                return this;
+            }
+
+            /**
+             * Builds a new bulk processor.
+             */
+            public Bulk build() {
+                return new Bulk(this);
+            }
+        }
+
+        public Bulk(final Builder builder) {
+            this.bulkActions = builder.bulkActions;
+            this.bulkSize = builder.bulkSize;
+            this.concurrentRequests = builder.concurrentRequests;
+            this.flushInterval = builder.flushInterval;
+        }
+
+        public int getConcurrentRequests() {
+            return concurrentRequests;
+        }
+
+        public int getBulkActions() {
+            return bulkActions;
+        }
+
+        public ByteSizeValue getBulkSize() {
+            return bulkSize;
+        }
+
+        public TimeValue getFlushInterval() {
+            return flushInterval;
+        }
+
     }
 
     @SuppressWarnings("unchecked")
@@ -563,21 +639,30 @@ public class MongoDBRiverDefinition {
             Map<String, Object> indexSettings = (Map<String, Object>) settings.settings().get(INDEX_OBJECT);
             builder.indexName(XContentMapValues.nodeStringValue(indexSettings.get(NAME_FIELD), builder.mongoDb));
             builder.typeName(XContentMapValues.nodeStringValue(indexSettings.get(TYPE_FIELD), builder.mongoDb));
-            int bulkSize = XContentMapValues.nodeIntegerValue(indexSettings.get(BULK_SIZE_FIELD), 100);
-            builder.bulkSize(bulkSize);
-            if (indexSettings.containsKey(BULK_TIMEOUT_FIELD)) {
-                builder.bulkTimeout(TimeValue.parseTimeValue(
-                        XContentMapValues.nodeStringValue(indexSettings.get(BULK_TIMEOUT_FIELD), "10ms"), TimeValue.timeValueMillis(10)));
+            
+            Bulk.Builder bulkBuilder = new Bulk.Builder();
+            if (indexSettings.containsKey(BULK_FIELD)) {
+                Map<String, Object> bulkSettings = (Map<String, Object>) indexSettings.get(BULK_FIELD);
+                int bulkActions = XContentMapValues.nodeIntegerValue(bulkSettings.get(ACTIONS_FIELD), DEFAULT_BULK_ACTIONS);
+                bulkBuilder.bulkActions(bulkActions);
+                String size = XContentMapValues.nodeStringValue(bulkSettings.get(SIZE_FIELD), DEFAULT_BULK_SIZE.toString());
+                bulkBuilder.bulkSize(ByteSizeValue.parseBytesSizeValue(size));
+                bulkBuilder.concurrentRequests(XContentMapValues.nodeIntegerValue(bulkSettings.get(CONCURRENT_REQUESTS_FIELD), DEFAULT_CONCURRENT_REQUESTS));
+                bulkBuilder.flushInterval(XContentMapValues.nodeTimeValue(bulkSettings.get(FLUSH_INTERVAL_FIELD), DEFAULT_FLUSH_INTERVAL));
+                builder.throttleSize(XContentMapValues.nodeIntegerValue(indexSettings.get(THROTTLE_SIZE_FIELD), bulkActions * 5));
             } else {
-                builder.bulkTimeout(TimeValue.timeValueMillis(10));
+                int bulkActions = XContentMapValues.nodeIntegerValue(indexSettings.get(BULK_SIZE_FIELD), DEFAULT_BULK_ACTIONS);
+                bulkBuilder.bulkActions(bulkActions);
+                bulkBuilder.bulkSize(DEFAULT_BULK_SIZE);
+                bulkBuilder.flushInterval(XContentMapValues.nodeTimeValue(indexSettings.get(BULK_TIMEOUT_FIELD), DEFAULT_FLUSH_INTERVAL));
+                bulkBuilder.concurrentRequests(XContentMapValues.nodeIntegerValue(indexSettings.get(CONCURRENT_BULK_REQUESTS_FIELD), DEFAULT_CONCURRENT_REQUESTS));
+                builder.throttleSize(XContentMapValues.nodeIntegerValue(indexSettings.get(THROTTLE_SIZE_FIELD), bulkActions * 5));
             }
-            builder.throttleSize(XContentMapValues.nodeIntegerValue(indexSettings.get(THROTTLE_SIZE_FIELD), bulkSize * 5));
+            builder.bulk(bulkBuilder.build());
         } else {
             builder.indexName(builder.mongoDb);
             builder.typeName(builder.mongoDb);
-            builder.bulkSize(100);
-            builder.bulkTimeout(TimeValue.timeValueMillis(10));
-            builder.throttleSize(builder.bulkSize * 5);
+            builder.bulk(new Bulk.Builder().build());
         }
         return builder.build();
     }
@@ -694,10 +779,10 @@ public class MongoDBRiverDefinition {
         // index
         this.indexName = builder.indexName;
         this.typeName = builder.typeName;
-        this.bulkSize = builder.bulkSize;
-        this.bulkTimeout = builder.bulkTimeout;
         this.throttleSize = builder.throttleSize;
 
+        // bulk
+        this.bulk = builder.bulk;
     }
 
     public List<ServerAddress> getMongoServers() {
@@ -816,14 +901,6 @@ public class MongoDBRiverDefinition {
         return typeName;
     }
 
-    public int getBulkSize() {
-        return bulkSize;
-    }
-
-    public TimeValue getBulkTimeout() {
-        return bulkTimeout;
-    }
-
     public int getThrottleSize() {
         return throttleSize;
     }
@@ -832,4 +909,7 @@ public class MongoDBRiverDefinition {
         return getMongoDb() + "." + getMongoCollection();
     }
 
+    public Bulk getBulk() {
+        return bulk;
+    }
 }

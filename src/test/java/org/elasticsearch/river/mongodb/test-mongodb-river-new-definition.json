@@ -24,7 +24,11 @@
 	index: {
 		name: "myindex",
 		throttle_size: 2000,
-		bulk_size:500,
-		concurrent_bulk_requests: 40
+		bulk: {
+			actions: 500,
+			size: "20mb",
+			concurrent_requests: 40,
+			flush_interval: "50ms"
+		}
 	}
 }

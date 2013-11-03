@@ -56,7 +56,6 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAbstract {
         super(river, database, collection, index);
     }
 
-//    @BeforeClass
     @BeforeMethod
     public void createDatabase() {
         logger.debug("createDatabase {}", getDatabase());
@@ -74,12 +73,12 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAbstract {
         }
     }
 
-//    @AfterClass
     @AfterMethod
     public void cleanUp() {
+        logger.info("Call delete river...");
         super.deleteRiver();
-        logger.info("Drop database " + mongoDB.getName());
-//        mongoDB.dropDatabase();
+        logger.info("Call delete index...");
+        super.deleteIndex();
     }
 
     @Test
@@ -194,6 +193,20 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAbstract {
                 countRequest = getNode().client().count(countRequest(getIndex())).actionGet().getCount();
                 assertThat(countRequest, equalTo(0L));
             }
+            mongoDB = getMongo().getDB(getDatabase());
+            mongoCollection = mongoDB.createCollection(getCollection(), null);
+            dbObject = (DBObject) JSON.parse(mongoDocument);
+            String value = String.valueOf(System.currentTimeMillis());
+            dbObject.put("attribute1", value);
+            mongoCollection.insert(dbObject);
+            Thread.sleep(wait);
+            assertThat(getNode().client().admin().indices().exists(new IndicesExistsRequest(getIndex())).actionGet().isExists(),
+                    equalTo(true));
+            assertThat(getNode().client().admin().indices().prepareTypesExists(getIndex()).setTypes(getDatabase()).execute().actionGet()
+                    .isExists(), equalTo(true));
+            CountResponse countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("attribute1", value)))
+                    .actionGet();
+            assertThat(countResponse.getCount(), equalTo(1L));
         } catch (Throwable t) {
             logger.error("testDropDatabaseIssue133 failed.", t);
             t.printStackTrace();
@@ -201,9 +214,9 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAbstract {
         } finally {
         }
     }
-    
+
     private boolean databaseExists(String name) {
-        for(String databaseName :mongo.getDatabaseNames()) {
+        for (String databaseName : mongo.getDatabaseNames()) {
             if (databaseName.equals(name)) {
                 return true;
             }

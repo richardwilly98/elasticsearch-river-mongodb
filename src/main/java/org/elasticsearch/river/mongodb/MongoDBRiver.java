@@ -31,7 +31,7 @@ import java.util.concurrent.BlockingQueue;
 
 import org.bson.types.BSONTimestamp;
 import org.elasticsearch.ExceptionsHelper;
-import org.elasticsearch.action.bulk.BulkRequestBuilder;
+import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.Client;
@@ -399,9 +399,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
      * 
      * @param bulk
      */
-    static void updateLastTimestamp(final MongoDBRiverDefinition definition, final BSONTimestamp time, final BulkRequestBuilder bulk) {
+    static void updateLastTimestamp(final MongoDBRiverDefinition definition, final BSONTimestamp time, final BulkProcessor bulkProcessor) {
         try {
-            bulk.add(indexRequest(definition.getRiverIndexName())
+            bulkProcessor.add(indexRequest(definition.getRiverIndexName())
                     .type(definition.getRiverName())
                     .id(definition.getMongoOplogNamespace())
                     .source(jsonBuilder().startObject().startObject(TYPE).field(LAST_TIMESTAMP_FIELD, JSON.serialize(time)).endObject()
