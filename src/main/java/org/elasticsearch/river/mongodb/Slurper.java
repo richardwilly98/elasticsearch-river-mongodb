@@ -1,7 +1,6 @@
 package org.elasticsearch.river.mongodb;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -10,6 +9,7 @@ import org.bson.BasicBSONObject;
 import org.bson.types.BSONTimestamp;
 import org.bson.types.ObjectId;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.common.collect.ImmutableList;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.river.mongodb.util.MongoDBHelper;
@@ -346,9 +346,8 @@ class Slurper implements Runnable {
         if (definition.isMongoGridFS()) {
             filter.put(MongoDBRiver.OPLOG_NAMESPACE, definition.getMongoOplogNamespace() + MongoDBRiver.GRIDFS_FILES_SUFFIX);
         } else {
-            List<String> namespaceFilter = new ArrayList<String>();
-            namespaceFilter.add(definition.getMongoOplogNamespace());
-            namespaceFilter.add(definition.getMongoDb() + "." + MongoDBRiver.OPLOG_NAMESPACE_COMMAND);
+            List<String> namespaceFilter = ImmutableList.of(definition.getMongoOplogNamespace(), definition.getMongoDb() + "."
+                    + MongoDBRiver.OPLOG_NAMESPACE_COMMAND);
             filter.put(MongoDBRiver.OPLOG_NAMESPACE, new BasicBSONObject(MongoDBRiver.MONGODB_IN_OPERATOR, namespaceFilter));
         }
         if (definition.getMongoOplogFilter().size() > 0) {
@@ -364,11 +363,8 @@ class Slurper implements Runnable {
         List<DBObject> filters = new ArrayList<DBObject>();
         List<DBObject> filters2 = new ArrayList<DBObject>();
 
-        List<String> operationFilter = new ArrayList<String>();
-        operationFilter.add(MongoDBRiver.OPLOG_DELETE_OPERATION);
-        operationFilter.add(MongoDBRiver.OPLOG_UPDATE_OPERATION);
-        operationFilter.add(MongoDBRiver.OPLOG_INSERT_OPERATION);
-        filters.add(new BasicDBObject(MongoDBRiver.OPLOG_OPERATION, new BasicBSONObject(MongoDBRiver.MONGODB_IN_OPERATOR, operationFilter)));
+        filters.add(new BasicDBObject(MongoDBRiver.OPLOG_OPERATION, new BasicBSONObject(MongoDBRiver.MONGODB_IN_OPERATOR, ImmutableList.of(
+                MongoDBRiver.OPLOG_DELETE_OPERATION, MongoDBRiver.OPLOG_UPDATE_OPERATION, MongoDBRiver.OPLOG_INSERT_OPERATION))));
 
         // include custom filter in filters2
         filters2.add(definition.getMongoOplogFilter());

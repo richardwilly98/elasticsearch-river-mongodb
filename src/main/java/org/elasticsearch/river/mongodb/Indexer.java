@@ -258,8 +258,10 @@ class Indexer implements Runnable {
         }
         if (MongoDBRiver.OPLOG_COMMAND_OPERATION.equals(operation)) {
             if (definition.isDropCollection()) {
-                if (data.get(MongoDBRiver.OPLOG_DROP_COMMAND_OPERATION) != null
-                        && data.get(MongoDBRiver.OPLOG_DROP_COMMAND_OPERATION).equals(definition.getMongoCollection())) {
+                if ((data.get(MongoDBRiver.OPLOG_DROP_COMMAND_OPERATION) != null
+                        && data.get(MongoDBRiver.OPLOG_DROP_COMMAND_OPERATION).equals(definition.getMongoCollection()) || (data
+                        .get(MongoDBRiver.OPLOG_DROP_DATABASE_COMMAND_OPERATION) != null && data.get(
+                        MongoDBRiver.OPLOG_DROP_DATABASE_COMMAND_OPERATION).equals(1)))) {
                     logger.info("Drop collection request [{}], [{}]", index, type);
                     bulk.request().requests().clear();
                     client.admin().indices().prepareRefresh(index).execute().actionGet();

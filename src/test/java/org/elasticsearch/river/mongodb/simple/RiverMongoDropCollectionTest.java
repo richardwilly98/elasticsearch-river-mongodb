@@ -29,8 +29,8 @@ import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsReques
 import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import com.mongodb.DB;
@@ -56,7 +56,8 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAbstract {
         super(river, database, collection, index);
     }
 
-    @BeforeClass
+//    @BeforeClass
+    @BeforeMethod
     public void createDatabase() {
         logger.debug("createDatabase {}", getDatabase());
         try {
@@ -73,11 +74,12 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAbstract {
         }
     }
 
-    @AfterClass
+//    @AfterClass
+    @AfterMethod
     public void cleanUp() {
         super.deleteRiver();
         logger.info("Drop database " + mongoDB.getName());
-        mongoDB.dropDatabase();
+//        mongoDB.dropDatabase();
     }
 
     @Test
@@ -112,6 +114,8 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAbstract {
             logger.error("testDropCollection failed.", t);
             t.printStackTrace();
             throw t;
+        } finally {
+            mongoDB.dropDatabase();
         }
     }
 
@@ -158,6 +162,52 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAbstract {
             logger.error("testDropCollectionIssue79 failed.", t);
             t.printStackTrace();
             throw t;
+        } finally {
+            mongoDB.dropDatabase();
         }
+    }
+
+    @Test
+    public void testDropDatabaseIssue133() throws Throwable {
+        logger.debug("Start testDropDatabaseIssue133");
+        try {
+            String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
+            DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
+            mongoCollection.insert(dbObject);
+            Thread.sleep(wait);
+
+            assertThat(getNode().client().admin().indices().exists(new IndicesExistsRequest(getIndex())).actionGet().isExists(),
+                    equalTo(true));
+            assertThat(getNode().client().admin().indices().prepareTypesExists(getIndex()).setTypes(getDatabase()).execute().actionGet()
+                    .isExists(), equalTo(true));
+            long countRequest = getNode().client().count(countRequest(getIndex())).actionGet().getCount();
+            mongoDB.dropDatabase();
+            Thread.sleep(wait);
+            assertThat(databaseExists(database), equalTo(false));
+            Thread.sleep(wait);
+            refreshIndex();
+
+            if (!dropCollectionOption) {
+                countRequest = getNode().client().count(countRequest(getIndex())).actionGet().getCount();
+                assertThat(countRequest, greaterThan(0L));
+            } else {
+                countRequest = getNode().client().count(countRequest(getIndex())).actionGet().getCount();
+                assertThat(countRequest, equalTo(0L));
+            }
+        } catch (Throwable t) {
+            logger.error("testDropDatabaseIssue133 failed.", t);
+            t.printStackTrace();
+            throw t;
+        } finally {
+        }
+    }
+    
+    private boolean databaseExists(String name) {
+        for(String databaseName :mongo.getDatabaseNames()) {
+            if (databaseName.equals(name)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
