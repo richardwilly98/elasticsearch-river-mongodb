@@ -291,13 +291,13 @@ class Indexer implements Runnable {
             if (logger.isDebugEnabled()) {
                 logger.debug("Update operation - id: {} - contains attachment: {}", objectId, isAttachment);
             }
-            deleteBulkRequest(/* bulk, */objectId, index, type, routing, parent);
+            deleteBulkRequest(objectId, index, type, routing, parent);
             bulkProcessor.add(indexRequest(index).type(type).id(objectId).source(build(data, objectId)).routing(routing).parent(parent));
             updatedDocuments++;
         }
         if (MongoDBRiver.OPLOG_DELETE_OPERATION.equals(operation)) {
             logger.info("Delete request [{}], [{}], [{}]", index, type, objectId);
-            deleteBulkRequest(/* bulk, */objectId, index, type, routing, parent);
+            deleteBulkRequest(objectId, index, type, routing, parent);
             deletedDocuments++;
         }
         if (MongoDBRiver.OPLOG_COMMAND_OPERATION.equals(operation)) {
