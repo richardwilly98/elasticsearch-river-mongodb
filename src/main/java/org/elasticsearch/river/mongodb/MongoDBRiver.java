@@ -144,7 +144,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     public void start() {
         if (MongoDBRiverHelper.getRiverStatus(client, riverName.getName()) == Status.STOPPED) {
             logger.debug("Cannot start river {}. It is currently disabled", riverName.getName());
-            startInvoked = true;
+            startInvoked = false;
             return;
         }
         this.context.setStatus(Status.RUNNING);
@@ -412,8 +412,12 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     }
 
     public static long getIndexCount(Client client, MongoDBRiverDefinition definition) {
-        CountResponse countResponse = client.prepareCount(definition.getIndexName()).execute().actionGet();
-        return countResponse.getCount();
+        if (client.admin().indices().prepareExists(definition.getIndexName()).get().isExists()) {
+            CountResponse countResponse = client.prepareCount(definition.getIndexName()).execute().actionGet();
+            return countResponse.getCount();
+        } else {
+            return 0;
+        }
     }
 
     protected static class QueueEntry {
