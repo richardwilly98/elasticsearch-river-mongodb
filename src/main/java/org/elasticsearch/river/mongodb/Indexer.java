@@ -60,9 +60,9 @@ class Indexer implements Runnable {
 
         @Override
         public void beforeBulk(long executionId, BulkRequest request) {
-            logger.info("beforeBulk - new bulk [{}] of [{} items]", executionId, request.numberOfActions());
+            logger.trace("beforeBulk - new bulk [{}] of [{} items]", executionId, request.numberOfActions());
             if (flushBulkProcessor) {
-                logger.debug("About to flush request");
+                logger.info("About to flush bulk request");
                 while (flushBulkProcessor) {
                     if (request.requests().size() == 0) {
                         break;
@@ -70,7 +70,6 @@ class Indexer implements Runnable {
                     ActionRequest<?> action = request.requests().get(0);
                     if (action instanceof IndexRequest) {
                         Map<String, Object> source = ((IndexRequest) action).sourceAsMap();
-                        logger.info("Index request source: {}", source);
                         if (source.equals(DROP_COLLECTION)) {
                             String index = ((IndexRequest) action).index();
                             String type = ((IndexRequest) action).type();
@@ -93,20 +92,19 @@ class Indexer implements Runnable {
 
         @Override
         public void afterBulk(long executionId, BulkRequest request, Throwable failure) {
-            logger.warn("afterBulk - Bulk request failed: {} - {} - {}", executionId, request, failure);
-            logger.warn("afterBulk - failure: {}", failure.getClass());
             if (failure.getClass().equals(ActionRequestValidationException.class)) {
                 if (logger.isTraceEnabled()) {
                     logger.trace("Ignore ActionRequestValidationException : {}", failure);
                 }
             } else {
+                logger.error("afterBulk - Bulk request failed: {} - {} - {}", executionId, request, failure);
                 context.setStatus(Status.IMPORT_FAILED);
             }
         }
 
         @Override
         public void afterBulk(long executionId, BulkRequest request, BulkResponse response) {
-            logger.info("afterBulk - bulk [{}] success [{} items] [{} ms]", executionId, response.getItems().length,
+            logger.trace("afterBulk - bulk [{}] success [{} items] [{} ms]", executionId, response.getItems().length,
                     response.getTookInMillis());
         }
     };
