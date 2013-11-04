@@ -2,7 +2,7 @@
 
 var mongoDBRiverApp = angular.module('mongoDBRiverApp', ['ngResource', 'ui.bootstrap']);
 
-mongoDBRiverApp.controller('MainCtrl', function ($log, $scope, $resource) {
+mongoDBRiverApp.controller('MainCtrl', function ($log, $scope, $resource, $timeout) {
   var riverResource = $resource('/_river/:type/:river/:action' , {type:'@type', river:'@river'},
     {
 	  list: {method:'GET', params: {action: 'list'}, isArray: true},
@@ -11,9 +11,32 @@ mongoDBRiverApp.controller('MainCtrl', function ($log, $scope, $resource) {
       delete: {method:'POST', params: {action: 'delete'}}
     }
   );
+  var timeoutId;
 
   $scope.rivers = [];
   $scope.type = null;
+  $scope.refresh = { label: 'Auto-refresh disabled', enabled: false };
+
+  function autoRefresh() {
+      timeoutId = $timeout(function() {
+        $scope.list();
+        autoRefresh();
+      }, 1000);
+  }
+
+  $scope.updateTimer = function(enabled) {
+    $log.log('updateTimer - ' + enabled)
+    if (!enabled) {
+      autoRefresh();
+      $scope.refresh.label = 'Auto-refresh enabled';
+      $scope.refresh.enabled = true;
+    } else {
+      $timeout.cancel(timeoutId);
+      timeoutId = null;
+      $scope.refresh.label = 'Auto-refresh disabled';
+      $scope.refresh.enabled = false;
+    }
+  }
 
   $scope.list = function(type){
     $log.log('list river type: ' + type);

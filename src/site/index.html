@@ -14,7 +14,11 @@
   <div x-ng-controller="MainCtrl" class="container">
       <div class="row">
       <div class="col-md-12">
+      <div>
         <h3>MongoDB River Administration</h3>
+        <span class="btn btn-small pull-right" x-ng-class="{ 'btn-info': refresh.enabled, 'btn-warning': !refresh.enabled }" 
+          x-ng-click="updateTimer(refresh.enabled)">{{ refresh.label }}</span>
+      </div>
         <tabset>
           <tab heading="Home">
             <div class="content">
@@ -29,7 +33,7 @@
                     </h2>
                   </div>
                   <div class="panel-body">
-                    Last Replicated - {{ river.lastTimestamp }}<br/>
+                    Last Replicated - {{ river.lastTimestamp | date:'yyyy-MM-dd HH:mm:ss Z' }}<br/>
                     Documents Indexed - {{ river.indexCount }}<br/>
                     <br/>
                     <pre>Settings:<br /><br />{{ toString(river.settings) }}</pre>

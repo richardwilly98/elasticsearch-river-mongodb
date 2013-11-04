@@ -74,6 +74,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
         if (client.admin().indices().prepareTypesExists("_river").setTypes(river).get().isExists()) {
             client.admin().indices().prepareDeleteMapping("_river").setType(river).execute().actionGet();
         }
+        respondSuccess(request, channel, RestStatus.OK);
     }
 
     private void start(RestRequest request, RestChannel channel) {
@@ -156,7 +157,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
             source.put("name", riverName);
             source.put("status", MongoDBRiverHelper.getRiverStatus(client, hit.getType()));
             source.put("settings", hit.getSource());
-            source.put("lastTimestamp", MongoDBRiver.getLastTimestamp(client, definition));
+            source.put("lastTimestamp", 1000L * MongoDBRiver.getLastTimestamp(client, definition).getTime());
             source.put("indexCount", MongoDBRiver.getIndexCount(client, definition));
             logger.trace("source: {}", hit.getSourceAsString());
             rivers.add(source);
