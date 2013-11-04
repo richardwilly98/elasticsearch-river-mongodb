@@ -144,7 +144,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     public void start() {
         if (MongoDBRiverHelper.getRiverStatus(client, riverName.getName()) == Status.STOPPED) {
             logger.debug("Cannot start river {}. It is currently disabled", riverName.getName());
-            startInvoked = false;
+            startInvoked = true;
             return;
         }
         this.context.setStatus(Status.RUNNING);

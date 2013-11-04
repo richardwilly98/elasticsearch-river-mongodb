@@ -22,11 +22,11 @@ class StatusChecker implements Runnable {
                     Status status = MongoDBRiverHelper.getRiverStatus(this.mongoDBRiver.client, this.definition.getRiverName());
                     if (status != this.context.getStatus()) {
                         if (status == Status.RUNNING) {
-                            MongoDBRiver.logger.info("About to stop river: {}", this.definition.getRiverName());
-                            this.mongoDBRiver.close();                            
-                        } else if (status == Status.STOPPED) {
                             MongoDBRiver.logger.trace("About to start river: {}", this.definition.getRiverName());
                             this.mongoDBRiver.start();                            
+                        } else if (status == Status.STOPPED) {
+                            MongoDBRiver.logger.info("About to stop river: {}", this.definition.getRiverName());
+                            this.mongoDBRiver.close();                            
                         }
                     }
                 }
