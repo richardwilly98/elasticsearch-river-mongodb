@@ -7,7 +7,8 @@ mongoDBRiverApp.controller('MainCtrl', function ($log, $scope, $resource) {
     {
 	  list: {method:'GET', params: {action: 'list'}, isArray: true},
       start: {method:'POST', params: {action: 'start'}},
-      stop: {method:'POST', params: {action: 'stop'}}
+      stop: {method:'POST', params: {action: 'stop'}},
+      delete: {method:'POST', params: {action: 'delete'}}
     }
   );
 
@@ -33,6 +34,13 @@ mongoDBRiverApp.controller('MainCtrl', function ($log, $scope, $resource) {
   $scope.stop = function(name){
     $log.log('stop: ' + name);
     riverResource.stop({'type': $scope.type, 'river': name}, function() {
+      $scope.list();
+    });
+  };
+
+  $scope.delete = function(name){
+    $log.log('delete: ' + name);
+    riverResource.delete({'type': $scope.type, 'river': name}, function() {
       $scope.list();
     });
   };

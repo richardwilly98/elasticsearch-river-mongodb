@@ -56,9 +56,24 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
         } else if (uri.endsWith("stop")) {
             stop(request, channel);
             return;
+        } else if (uri.endsWith("delete")) {
+            delete(request, channel);
+            return;
         }
 
         respondError(request, channel, "action not found: " + uri, RestStatus.OK);
+    }
+
+    private void delete(RestRequest request, RestChannel channel) {
+        String river = request.param("river");
+        if (river == null || river.isEmpty()) {
+            respondError(request, channel, "Parameter 'river' is required", RestStatus.BAD_REQUEST);
+            return;
+        }
+        logger.info("Delete river: {}", river);
+        if (client.admin().indices().prepareTypesExists("_river").setTypes(river).get().isExists()) {
+            client.admin().indices().prepareDeleteMapping("_river").setType(river).execute().actionGet();
+        }
     }
 
     private void start(RestRequest request, RestChannel channel) {

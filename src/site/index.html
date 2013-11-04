@@ -35,6 +35,7 @@
                     <pre>Settings:<br /><br />{{ toString(river.settings) }}</pre>
                     <span x-ng-if="river.status == 'RUNNING'" class="btn btn-small btn-danger" x-ng-click="stop(river.name)">Stop</span>
                     <span x-ng-if="river.status != 'RUNNING'" class="btn btn-small btn-success" x-ng-click="start(river.name)">Start</span>
+                    <span x-ng-if="river.status != 'RUNNING'" class="btn btn-small btn-danger pull-right" x-ng-click="delete(river.name)">Delete</span>
                   </div>
                 </div>
               </div>
