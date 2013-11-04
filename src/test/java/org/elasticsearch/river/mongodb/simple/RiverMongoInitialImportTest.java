@@ -49,10 +49,8 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
     private DBCollection mongoCollection;
 
     protected RiverMongoInitialImportTest() {
-        super("testmongodb-" + System.currentTimeMillis(),
-              "testriver-" + System.currentTimeMillis(),
-              "person-"  + System.currentTimeMillis(),
-              "personindex-" + System.currentTimeMillis());
+        super("testmongodb-" + System.currentTimeMillis(), "testriver-" + System.currentTimeMillis(), "person-"
+                + System.currentTimeMillis(), "personindex-" + System.currentTimeMillis());
     }
 
     @Test
@@ -67,9 +65,15 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
             Thread.sleep(wait);
 
             // Make sure we're starting out with the river not setup
-            GetResponse statusResponse = getNode().client().prepareGet("_river", river, MongoDBRiver.STATUS_ID).execute().actionGet();
-            Assert.assertFalse(statusResponse.isExists(),
-                    "Expected no river but found one " + XContentMapValues.extractValue(MongoDBRiver.TYPE + "." + MongoDBRiver.STATUS_FIELD, statusResponse.getSourceAsMap()));
+            if (getNode().client().admin().indices().prepareExists("_river").get().isExists()) {
+                GetResponse statusResponse = getNode().client().prepareGet("_river", river, MongoDBRiver.STATUS_ID).execute().actionGet();
+                logger.debug("Exists? {}", statusResponse.isExists());
+                Assert.assertFalse(
+                        statusResponse.isExists(),
+                        "Expected no river but found one "
+                                + XContentMapValues.extractValue(MongoDBRiver.TYPE + "." + MongoDBRiver.STATUS_FIELD,
+                                        statusResponse.getSourceAsMap()));
+            }
 
             // Setup the river
             createRiver();
@@ -79,10 +83,8 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
             ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices()
                     .exists(new IndicesExistsRequest(getIndex()));
             assertThat(response.actionGet().isExists(), equalTo(true));
-            Assert.assertEquals(Status.RUNNING, 
-                    MongoDBRiverHelper.getRiverStatus(getNode().client(), river));
-            assertThat(getNode().client().count(countRequest(getIndex())).actionGet().getCount(),
-                    equalTo(1l));
+            Assert.assertEquals(Status.RUNNING, MongoDBRiverHelper.getRiverStatus(getNode().client(), river));
+            assertThat(getNode().client().count(countRequest(getIndex())).actionGet().getCount(), equalTo(1l));
 
             // Check that it syncs the oplog
             DBObject dbObject2 = new BasicDBObject(ImmutableMap.of("name", "Ben"));
@@ -91,17 +93,14 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
             Thread.sleep(wait);
 
             refreshIndex();
-            Assert.assertEquals(Status.RUNNING, 
-                    MongoDBRiverHelper.getRiverStatus(getNode().client(), river));
-            assertThat(getNode().client().count(countRequest(getIndex())).actionGet().getCount(),
-                    equalTo(2l));
+            Assert.assertEquals(Status.RUNNING, MongoDBRiverHelper.getRiverStatus(getNode().client(), river));
+            assertThat(getNode().client().count(countRequest(getIndex())).actionGet().getCount(), equalTo(2l));
 
             mongoCollection.remove(dbObject1, WriteConcern.REPLICAS_SAFE);
 
             Thread.sleep(wait);
             refreshIndex();
-            assertThat(getNode().client().count(countRequest(getIndex())).actionGet().getCount(),
-                    equalTo(1L));
+            assertThat(getNode().client().count(countRequest(getIndex())).actionGet().getCount(), equalTo(1L));
 
         } catch (Throwable t) {
             logger.error("InitialImport failed.", t);
@@ -134,5 +133,5 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
         logger.info("Drop database " + mongoDB.getName());
         mongoDB.dropDatabase();
     }
-    
+
 }
