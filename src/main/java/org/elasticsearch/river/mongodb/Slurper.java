@@ -145,7 +145,11 @@ class Slurper implements Runnable {
                 cursor = slurpedCollection.find(definition.getMongoCollectionFilter());
                 while (cursor.hasNext()) {
                     DBObject object = cursor.next();
-                    addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, null, applyFieldFilter(object));
+                    if (cursor.hasNext()) {
+                        addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, null, applyFieldFilter(object));
+                    } else {
+                        addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, startTimestamp, applyFieldFilter(object));
+                    }
                 }
             } else {
                 // TODO: To be optimized.
@@ -159,7 +163,11 @@ class Slurper implements Runnable {
                     DBObject object = cursor.next();
                     if (object instanceof GridFSDBFile) {
                         GridFSDBFile file = grid.findOne(new ObjectId(object.get(MongoDBRiver.MONGODB_ID_FIELD).toString()));
-                        addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, null, file);
+                        if (cursor.hasNext()) {
+                            addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, null, file);
+                        } else {
+                            addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, startTimestamp, file);
+                        }
                     }
                 }
             }
