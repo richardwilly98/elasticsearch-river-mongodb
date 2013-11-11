@@ -46,10 +46,8 @@ public class RiverMongoIndexExistsTest extends RiverMongoDBTestAbstract {
     private DBCollection mongoCollection;
 
     protected RiverMongoIndexExistsTest() {
-        super("testmongodb-" + System.currentTimeMillis(),
-              "testriver-" + System.currentTimeMillis(),
-              "person-"  + System.currentTimeMillis(),
-              "personindex-" + System.currentTimeMillis());
+        super("testmongodb-" + System.currentTimeMillis(), "testriver-" + System.currentTimeMillis(), "person-"
+                + System.currentTimeMillis(), "personindex-" + System.currentTimeMillis());
     }
 
     @Test
@@ -70,15 +68,13 @@ public class RiverMongoIndexExistsTest extends RiverMongoDBTestAbstract {
                     .exists(new IndicesExistsRequest(getIndex()));
             assertThat(response.actionGet().isExists(), equalTo(true));
             refreshIndex();
-            assertThat(getNode().client().count(countRequest(getIndex())).actionGet().getCount(),
-                    equalTo(1l));
+            assertThat(getNode().client().count(countRequest(getIndex())).actionGet().getCount(), equalTo(1l));
 
             deleteRiver();
             createRiver();
 
             Thread.sleep(wait);
-            Assert.assertEquals(Status.INITIAL_IMPORT_FAILED, 
-                    MongoDBRiverHelper.getRiverStatus(getNode().client(), river));
+            Assert.assertEquals(Status.INITIAL_IMPORT_FAILED, MongoDBRiverHelper.getRiverStatus(getNode().client(), river));
         } catch (Throwable t) {
             logger.error("InitialImport failed.", t);
             t.printStackTrace();
@@ -101,8 +97,11 @@ public class RiverMongoIndexExistsTest extends RiverMongoDBTestAbstract {
         }
     }
 
-    private void createRiver() throws Exception {
-        super.createRiver(TEST_MONGODB_RIVER_SIMPLE_JSON);
+    private void createRiver() {
+        try {
+            super.createRiver(TEST_MONGODB_RIVER_SIMPLE_JSON);
+        } catch (Exception ex) {
+        }
     }
 
     private void cleanUp() {
@@ -110,5 +109,5 @@ public class RiverMongoIndexExistsTest extends RiverMongoDBTestAbstract {
         logger.info("Drop database " + mongoDB.getName());
         mongoDB.dropDatabase();
     }
-    
+
 }

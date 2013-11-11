@@ -42,6 +42,7 @@ import org.elasticsearch.node.Node;
 import org.elasticsearch.node.internal.InternalSettingsPreparer;
 import org.elasticsearch.plugins.PluginManager;
 import org.elasticsearch.plugins.PluginManager.OutputMode;
+import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 import org.testng.Assert;
 import org.testng.annotations.AfterSuite;
 import org.testng.annotations.BeforeSuite;
@@ -295,7 +296,20 @@ public abstract class RiverMongoDBTestAbstract {
         logger.info("Done Cluster Health, status " + clusterHealth.getStatus());
         GetResponse response = getNode().client().prepareGet("_river", river, "_meta").execute().actionGet();
         assertThat(response.isExists(), equalTo(true));
-        refreshIndex("_river");
+        int count = 0;
+        while (true) {
+            refreshIndex("_river");
+            if (MongoDBRiverHelper.getRiverStatus(node.client(), river) != Status.UNKNOWN) {
+                break;
+            } else {
+                logger.debug("Wait for river %s to start", river);
+            }
+            if (count == 5) {
+                throw new Exception(String.format("Fail to create and start river %s", river));
+            }
+            Thread.sleep(1000);
+            count++;
+        }
     }
 
     protected void createRiver(String jsonDefinition, Object... args) throws Exception {
@@ -314,12 +328,11 @@ public abstract class RiverMongoDBTestAbstract {
     protected void deleteIndex(String name) {
         logger.info("Delete index [{}]", name);
         if (!node.client().admin().indices().prepareDelete(name).execute().actionGet().isAcknowledged()) {
-            logger.error("Counld not delete index: {}. Try waiting 1 sec...", name);
+            logger.error("Could not delete index: {}. Try waiting 1 sec...", name);
         }
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
-            e.printStackTrace();
         }
         logger.debug("Running Cluster Health");
         ClusterHealthResponse clusterHealth = node.client().admin().cluster().health(clusterHealthRequest().waitForGreenStatus())
@@ -337,11 +350,12 @@ public abstract class RiverMongoDBTestAbstract {
 
     protected void deleteRiver(String name) {
         logger.info("Delete river [{}]", name);
-        node.client().admin().indices().prepareDeleteMapping("_river").setType(name).execute().actionGet();
+        if (!node.client().admin().indices().prepareDeleteMapping("_river").setType(name).get().isAcknowledged()) {
+            logger.error("Could not delete river: {}. Try waiting 1 sec...", name);
+        }
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
-            e.printStackTrace();
         }
         logger.debug("Running Cluster Health");
         ClusterHealthResponse clusterHealth = node.client().admin().cluster().health(clusterHealthRequest().waitForGreenStatus())

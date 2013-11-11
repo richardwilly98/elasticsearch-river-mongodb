@@ -27,6 +27,8 @@ import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsReques
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import com.google.common.collect.ImmutableMap;
@@ -51,6 +53,32 @@ public class RiverMongoCollectionFilterTest extends RiverMongoDBTestAbstract {
                 + System.currentTimeMillis(), "personindex-" + System.currentTimeMillis());
     }
 
+    @BeforeMethod
+    private void createDatabase() {
+        logger.debug("createDatabase {}", getDatabase());
+        try {
+            mongoDB = getMongo().getDB(getDatabase());
+            mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
+            logger.info("Start createCollection");
+            mongoCollection = mongoDB.createCollection(getCollection(), null);
+            Assert.assertNotNull(mongoCollection);
+        } catch (Throwable t) {
+            logger.error("createDatabase failed.", t);
+        }
+    }
+
+    @AfterMethod
+    private void cleanUp() {
+        logger.trace("Delete river {}", river);
+        try {
+            deleteRiver();
+            logger.trace("Drop database " + mongoDB.getName());
+            mongoDB.dropDatabase();
+        } catch (Throwable t) {
+            logger.warn("cleanUp failed.", t);
+        }
+    }
+
     @Test
     public void collectionFilterWithPrefixTest() throws Throwable {
         collectionFilterTest(collectionFilterWithPrefix);
@@ -64,8 +92,6 @@ public class RiverMongoCollectionFilterTest extends RiverMongoDBTestAbstract {
     private void collectionFilterTest(Object filter) throws Throwable {
         logger.debug("Start CollectionFilter");
         try {
-            createDatabase();
-
             DBObject dbObject1 = new BasicDBObject(ImmutableMap.of("name", "Bernd", "lang", "de"));
             WriteResult result1 = mongoCollection.insert(dbObject1);
             logger.info("WriteResult: {}", result1.toString());
@@ -82,8 +108,6 @@ public class RiverMongoCollectionFilterTest extends RiverMongoDBTestAbstract {
             assertThat(response.actionGet().isExists(), equalTo(true));
             refreshIndex();
             assertThat(getNode().client().count(countRequest(getIndex())).actionGet().getCount(), equalTo(1l));
-
-            deleteRiver();
         } catch (Throwable t) {
             logger.error("CollectionFilter failed.", t);
             t.printStackTrace();
@@ -93,29 +117,10 @@ public class RiverMongoCollectionFilterTest extends RiverMongoDBTestAbstract {
         }
     }
 
-    private void createDatabase() {
-        logger.debug("createDatabase {}", getDatabase());
-        try {
-            mongoDB = getMongo().getDB(getDatabase());
-            mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
-            logger.info("Start createCollection");
-            mongoCollection = mongoDB.createCollection(getCollection(), null);
-            Assert.assertNotNull(mongoCollection);
-        } catch (Throwable t) {
-            logger.error("createDatabase failed.", t);
-        }
-    }
-
     private void createRiver(Object filter) throws Exception {
         super.createRiver(TEST_SIMPLE_MONGODB_RIVER_COLLECTION_FILTER_JSON, getRiver(), (Object) String.valueOf(getMongoPort1()),
                 (Object) String.valueOf(getMongoPort2()), (Object) String.valueOf(getMongoPort3()), (Object) getDatabase(),
                 (Object) getCollection(), filter, (Object) getIndex(), (Object) getDatabase());
-    }
-
-    private void cleanUp() {
-        super.deleteRiver();
-        logger.info("Drop database " + mongoDB.getName());
-        mongoDB.dropDatabase();
     }
 
 }
