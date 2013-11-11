@@ -350,7 +350,11 @@ public abstract class RiverMongoDBTestAbstract {
 
     protected void deleteRiver(String name) {
         logger.info("Delete river [{}]", name);
-        if (!node.client().admin().indices().prepareDeleteMapping("_river").setType(name).get().isAcknowledged()) {
+        // if
+        // (!node.client().admin().indices().prepareDeleteMapping("_river").setType(name).get().isAcknowledged())
+        // {
+        node.client().admin().indices().prepareDeleteMapping("_river").setType(name).get();
+        if (!node.client().admin().indices().prepareTypesExists("_river").setTypes(name).get().isExists()) {
             logger.error("Could not delete river: {}. Try waiting 1 sec...", name);
         }
         try {
