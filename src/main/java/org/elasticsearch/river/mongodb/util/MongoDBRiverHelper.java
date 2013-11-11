@@ -20,8 +20,7 @@ public abstract class MongoDBRiverHelper {
     public static Status getRiverStatus(Client client, String riverName) {
         GetResponse statusResponse = client.prepareGet("_river", riverName, MongoDBRiver.STATUS_ID).execute().actionGet();
         if (!statusResponse.isExists()) {
-            setRiverStatus(client, riverName, Status.RUNNING);
-            return Status.RUNNING;
+            return Status.UNKNOWN;
         } else {
             Object obj = XContentMapValues.extractValue(MongoDBRiver.TYPE + "." + MongoDBRiver.STATUS_FIELD, statusResponse.getSourceAsMap());
             return Status.valueOf(obj.toString());

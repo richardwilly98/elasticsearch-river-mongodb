@@ -124,7 +124,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             ScriptService scriptService, MongoDBRiverDefinition definition) {
         super(riverName, settings);
         if (logger.isDebugEnabled()) {
-            logger.debug("Prefix: [{}] - name: [{}]", logger.getPrefix(), logger.getName());
+            logger.debug("River : [{} / {}] - Logger name: [{}]", riverName.getName(), riverName.getType(), logger.getName());
         }
         this.scriptService = scriptService;
         this.client = client;
@@ -142,11 +142,14 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
     @Override
     public void start() {
+        logger.trace("Start river {}", riverName.getName());
         if (MongoDBRiverHelper.getRiverStatus(client, riverName.getName()) == Status.STOPPED) {
             logger.debug("Cannot start river {}. It is currently disabled", riverName.getName());
             startInvoked = true;
             return;
-        }
+        } 
+
+        MongoDBRiverHelper.setRiverStatus(client, riverName.getName(), Status.RUNNING);
         this.context.setStatus(Status.RUNNING);
         for (ServerAddress server : definition.getMongoServers()) {
             logger.info("Using mongodb server(s): host [{}], port [{}]", server.getHost(), server.getPort());

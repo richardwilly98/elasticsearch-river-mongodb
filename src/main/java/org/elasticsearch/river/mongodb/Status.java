@@ -2,6 +2,7 @@ package org.elasticsearch.river.mongodb;
 
 public enum Status {
 
+    UNKNOWN,
     RUNNING,
     STOPPED,
     IMPORT_FAILED,
