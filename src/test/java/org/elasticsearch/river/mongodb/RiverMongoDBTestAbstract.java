@@ -30,6 +30,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
+import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
+import org.elasticsearch.action.admin.indices.exists.types.TypesExistsResponse;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.common.collect.Tuple;
@@ -326,9 +328,23 @@ public abstract class RiverMongoDBTestAbstract {
     }
 
     protected void deleteIndex(String name) {
+        int max = 5;
+        int count = 0;
         logger.info("Delete index [{}]", name);
         if (!node.client().admin().indices().prepareDelete(name).execute().actionGet().isAcknowledged()) {
-            logger.error("Could not delete index: {}. Try waiting 1 sec...", name);
+            IndicesExistsResponse response = node.client().admin().indices().prepareExists(name).get();
+            while (response.isExists()) {
+                logger.debug("Index {} not deleted. Try waiting 1 sec...", name);
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                }
+                response = node.client().admin().indices().prepareExists(name).get();
+                count++;
+                if (count == max) {
+                    Assert.fail(String.format("Could not delete index %s", name));
+                }
+            }
         }
         try {
             Thread.sleep(1000);
@@ -349,17 +365,25 @@ public abstract class RiverMongoDBTestAbstract {
     }
 
     protected void deleteRiver(String name) {
+        int max = 5;
+        int count = 0;
         logger.info("Delete river [{}]", name);
         // if
         // (!node.client().admin().indices().prepareDeleteMapping("_river").setType(name).get().isAcknowledged())
         // {
         node.client().admin().indices().prepareDeleteMapping("_river").setType(name).get();
-        if (!node.client().admin().indices().prepareTypesExists("_river").setTypes(name).get().isExists()) {
-            logger.error("Could not delete river: {}. Try waiting 1 sec...", name);
-        }
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
+        TypesExistsResponse response = node.client().admin().indices().prepareTypesExists("_river").setTypes(name).get();
+        while (response.isExists()) {
+            logger.debug("River {} not deleted. Try waiting 1 sec...", name);
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+            }
+            response = node.client().admin().indices().prepareTypesExists("_river").setTypes(name).get();
+            count++;
+            if (count == max) {
+                Assert.fail(String.format("Could not delete river %s", name));
+            }
         }
         logger.debug("Running Cluster Health");
         ClusterHealthResponse clusterHealth = node.client().admin().cluster().health(clusterHealthRequest().waitForGreenStatus())
