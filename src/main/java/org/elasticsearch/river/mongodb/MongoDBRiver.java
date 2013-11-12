@@ -417,7 +417,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
     public static long getIndexCount(Client client, MongoDBRiverDefinition definition) {
         if (client.admin().indices().prepareExists(definition.getIndexName()).get().isExists()) {
-            CountResponse countResponse = client.prepareCount(definition.getIndexName()).execute().actionGet();
+            CountResponse countResponse = client.prepareCount(definition.getIndexName()).setTypes(definition.getTypeName()).execute().actionGet();
             return countResponse.getCount();
         } else {
             return 0;
