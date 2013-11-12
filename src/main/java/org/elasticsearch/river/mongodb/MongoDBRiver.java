@@ -304,6 +304,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     }
 
     private void closeMongoClient() {
+        logger.info("Closing Mongo client");
         if (adminDb != null) {
             adminDb = null;
         }

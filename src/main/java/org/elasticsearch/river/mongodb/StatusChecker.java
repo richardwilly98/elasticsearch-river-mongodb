@@ -23,10 +23,10 @@ class StatusChecker implements Runnable {
                     if (status != this.context.getStatus()) {
                         if (status == Status.RUNNING) {
                             MongoDBRiver.logger.trace("About to start river: {}", this.definition.getRiverName());
-                            this.mongoDBRiver.start();                            
+                            this.mongoDBRiver.start();
                         } else if (status == Status.STOPPED) {
                             MongoDBRiver.logger.info("About to stop river: {}", this.definition.getRiverName());
-                            this.mongoDBRiver.close();                            
+                            this.mongoDBRiver.close();
                         }
                     }
                 }
