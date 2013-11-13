@@ -142,92 +142,100 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
     @Override
     public void start() {
-        logger.trace("Start river {}", riverName.getName());
-        if (MongoDBRiverHelper.getRiverStatus(client, riverName.getName()) == Status.STOPPED) {
-            logger.debug("Cannot start river {}. It is currently disabled", riverName.getName());
-            startInvoked = true;
-            return;
-        }
-
-        MongoDBRiverHelper.setRiverStatus(client, riverName.getName(), Status.RUNNING);
-        this.context.setStatus(Status.RUNNING);
-        for (ServerAddress server : definition.getMongoServers()) {
-            logger.info("Using mongodb server(s): host [{}], port [{}]", server.getHost(), server.getPort());
-        }
-        // http://stackoverflow.com/questions/5270611/read-maven-properties-file-inside-jar-war-file
-        logger.info("{} version: [{}]", DESCRIPTION, MongoDBHelper.getRiverVersion());
-        logger.info(
-                "starting mongodb stream. options: secondaryreadpreference [{}], drop_collection [{}], include_collection [{}], throttlesize [{}], gridfs [{}], filter [{}], db [{}], collection [{}], script [{}], indexing to [{}]/[{}]",
-                definition.isMongoSecondaryReadPreference(), definition.isDropCollection(), definition.getIncludeCollection(),
-                definition.getThrottleSize(), definition.isMongoGridFS(), definition.getMongoOplogFilter(), definition.getMongoDb(),
-                definition.getMongoCollection(), definition.getScript(), definition.getIndexName(), definition.getTypeName());
-
-        // Create the index if it does not exist
         try {
-            if (!client.admin().indices().prepareExists(definition.getIndexName()).execute().actionGet().isExists()) {
-                client.admin().indices().prepareCreate(definition.getIndexName()).execute().actionGet();
-            }
-        } catch (Exception e) {
-            if (ExceptionsHelper.unwrapCause(e) instanceof IndexAlreadyExistsException) {
-                // that's fine
-            } else if (ExceptionsHelper.unwrapCause(e) instanceof ClusterBlockException) {
-                // ok, not recovered yet..., lets start indexing and hope we
-                // recover by the first bulk
-                // TODO: a smarter logic can be to register for cluster event
-                // listener here, and only start sampling when the
-                // block is removed...
-            } else {
-                logger.warn("failed to create index [{}], disabling river...", e, definition.getIndexName());
+            logger.trace("Start river {}", riverName.getName());
+            if (MongoDBRiverHelper.getRiverStatus(client, riverName.getName()) == Status.STOPPED) {
+                logger.debug("Cannot start river {}. It is currently disabled", riverName.getName());
+                startInvoked = true;
                 return;
             }
-        }
 
-        // GridFS
-        if (definition.isMongoGridFS()) {
+            MongoDBRiverHelper.setRiverStatus(client, riverName.getName(), Status.RUNNING);
+            this.context.setStatus(Status.RUNNING);
+            for (ServerAddress server : definition.getMongoServers()) {
+                logger.info("Using mongodb server(s): host [{}], port [{}]", server.getHost(), server.getPort());
+            }
+            // http://stackoverflow.com/questions/5270611/read-maven-properties-file-inside-jar-war-file
+            logger.info("{} version: [{}]", DESCRIPTION, MongoDBHelper.getRiverVersion());
+            logger.info(
+                    "starting mongodb stream. options: secondaryreadpreference [{}], drop_collection [{}], include_collection [{}], throttlesize [{}], gridfs [{}], filter [{}], db [{}], collection [{}], script [{}], indexing to [{}]/[{}]",
+                    definition.isMongoSecondaryReadPreference(), definition.isDropCollection(), definition.getIncludeCollection(),
+                    definition.getThrottleSize(), definition.isMongoGridFS(), definition.getMongoOplogFilter(), definition.getMongoDb(),
+                    definition.getMongoCollection(), definition.getScript(), definition.getIndexName(), definition.getTypeName());
+
+            // Create the index if it does not exist
             try {
-                if (logger.isDebugEnabled()) {
-                    logger.debug("Set explicit attachment mapping.");
+                if (!client.admin().indices().prepareExists(definition.getIndexName()).execute().actionGet().isExists()) {
+                    client.admin().indices().prepareCreate(definition.getIndexName()).execute().actionGet();
                 }
-                client.admin().indices().preparePutMapping(definition.getIndexName()).setType(definition.getTypeName())
-                        .setSource(getGridFSMapping()).execute().actionGet();
             } catch (Exception e) {
-                logger.warn("Failed to set explicit mapping (attachment): {}", e);
-            }
-        }
-
-        // Tail the oplog
-        if (isMongos()) {
-            DBCursor cursor = getConfigDb().getCollection("shards").find();
-            try {
-                while (cursor.hasNext()) {
-                    DBObject item = cursor.next();
-                    logger.debug("shards: {}", item.toString());
-                    List<ServerAddress> servers = getServerAddressForReplica(item);
-                    if (servers != null) {
-                        String replicaName = item.get(MONGODB_ID_FIELD).toString();
-                        Thread tailerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(),
-                                "mongodb_river_slurper-" + replicaName).newThread(new Slurper(servers, definition, context, client));
-                        tailerThreads.add(tailerThread);
-                    }
+                if (ExceptionsHelper.unwrapCause(e) instanceof IndexAlreadyExistsException) {
+                    // that's fine
+                } else if (ExceptionsHelper.unwrapCause(e) instanceof ClusterBlockException) {
+                    // ok, not recovered yet..., lets start indexing and hope we
+                    // recover by the first bulk
+                    // TODO: a smarter logic can be to register for cluster
+                    // event
+                    // listener here, and only start sampling when the
+                    // block is removed...
+                } else {
+                    logger.warn("failed to create index [{}], disabling river...", e, definition.getIndexName());
+                    return;
                 }
-            } finally {
-                cursor.close();
             }
-        } else {
-            Thread tailerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_slurper").newThread(
-                    new Slurper(definition.getMongoServers(), definition, context, client));
-            tailerThreads.add(tailerThread);
+
+            // GridFS
+            if (definition.isMongoGridFS()) {
+                try {
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("Set explicit attachment mapping.");
+                    }
+                    client.admin().indices().preparePutMapping(definition.getIndexName()).setType(definition.getTypeName())
+                            .setSource(getGridFSMapping()).execute().actionGet();
+                } catch (Exception e) {
+                    logger.warn("Failed to set explicit mapping (attachment): {}", e);
+                }
+            }
+
+            // Tail the oplog
+            if (isMongos()) {
+                DBCursor cursor = getConfigDb().getCollection("shards").find();
+                try {
+                    while (cursor.hasNext()) {
+                        DBObject item = cursor.next();
+                        logger.debug("shards: {}", item.toString());
+                        List<ServerAddress> servers = getServerAddressForReplica(item);
+                        if (servers != null) {
+                            String replicaName = item.get(MONGODB_ID_FIELD).toString();
+                            Thread tailerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(),
+                                    "mongodb_river_slurper-" + replicaName).newThread(new Slurper(servers, definition, context, client));
+                            tailerThreads.add(tailerThread);
+                        }
+                    }
+                } finally {
+                    cursor.close();
+                }
+            } else {
+                Thread tailerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_slurper").newThread(
+                        new Slurper(definition.getMongoServers(), definition, context, client));
+                tailerThreads.add(tailerThread);
+            }
+
+            for (Thread thread : tailerThreads) {
+                thread.start();
+            }
+
+            indexerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_indexer").newThread(
+                    new Indexer(definition, context, client, scriptService));
+            indexerThread.start();
+
+        } catch (Throwable t) {
+            logger.warn("Fail to start river {}", t, riverName.getName());
+            MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.START_FAILED);
+            this.context.setStatus(Status.START_FAILED);
+        } finally {
+            startInvoked = true;
         }
-
-        for (Thread thread : tailerThreads) {
-            thread.start();
-        }
-
-        indexerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_indexer").newThread(
-                new Indexer(definition, context, client, scriptService));
-        indexerThread.start();
-
-        startInvoked = true;
     }
 
     private boolean isMongos() {
