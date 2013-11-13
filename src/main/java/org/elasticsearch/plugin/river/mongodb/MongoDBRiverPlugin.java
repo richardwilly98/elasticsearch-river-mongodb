@@ -21,7 +21,7 @@ package org.elasticsearch.plugin.river.mongodb;
 
 import org.elasticsearch.plugins.AbstractPlugin;
 import org.elasticsearch.rest.RestModule;
-import org.elasticsearch.rest.action.RestMongoDBRiverAction;
+import org.elasticsearch.rest.action.mongodb.RestMongoDBRiverAction;
 import org.elasticsearch.river.RiversModule;
 import org.elasticsearch.river.mongodb.MongoDBRiver;
 import org.elasticsearch.river.mongodb.MongoDBRiverModule;

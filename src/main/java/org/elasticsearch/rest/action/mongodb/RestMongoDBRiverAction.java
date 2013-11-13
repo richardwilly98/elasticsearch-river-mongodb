@@ -1,4 +1,4 @@
-package org.elasticsearch.rest.action;
+package org.elasticsearch.rest.action.mongodb;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.bson.types.BSONTimestamp;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
@@ -37,6 +38,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
         super(settings, client);
         this.riverIndexName = riverIndexName;
         String baseUrl = "/" + riverIndexName + "/" + MongoDBRiver.TYPE;
+        logger.trace("RestMongoDBRiverAction - baseUrl: {}", baseUrl);
         controller.registerHandler(RestRequest.Method.GET, baseUrl + "/{action}", this);
         controller.registerHandler(RestRequest.Method.POST, baseUrl + "/{river}/{action}", this);
     }
@@ -44,8 +46,8 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
     @Override
     public void handleRequest(RestRequest request, RestChannel channel) {
         String uri = request.uri();
-        logger.trace("uri: {}", uri);
-        logger.trace("action: {}", request.param("action"));
+        logger.debug("uri: {}", uri);
+        logger.debug("action: {}", request.param("action"));
 
         if (uri.endsWith("list")) {
             list(request, channel);
@@ -98,12 +100,12 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
     }
 
     private void list(RestRequest request, RestChannel channel) {
-        List<Map<String, Object>> rivers = getRivers();
         try {
+            List<Map<String, Object>> rivers = getRivers();
             XContentBuilder builder = RestXContentBuilder.restContentBuilder(request);
             builder.value(rivers);
             channel.sendResponse(new XContentRestResponse(request, RestStatus.OK, builder));
-        } catch (IOException e) {
+        } catch (Throwable e) {
             errorResponse(request, channel, e);
         }
     }
@@ -136,15 +138,15 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
     private void errorResponse(RestRequest request, RestChannel channel, Throwable e) {
         try {
             channel.sendResponse(new XContentThrowableRestResponse(request, e));
+            logger.error("errorResponse", e);
         } catch (IOException ioEx) {
             logger.error("Failed to send failure response", ioEx);
         }
     }
 
     private List<Map<String, Object>> getRivers() {
-        SearchResponse searchResponse = client.prepareSearch(riverIndexName)
-                .setQuery(new FieldQueryBuilder("type", "mongodb"))
-                .execute().actionGet();
+        SearchResponse searchResponse = client.prepareSearch(riverIndexName).setQuery(new FieldQueryBuilder("type", MongoDBRiver.TYPE)).execute()
+                .actionGet();
         long totalHits = searchResponse.getHits().totalHits();
         logger.trace("totalHits: {}", totalHits);
         List<Map<String, Object>> rivers = new ArrayList<Map<String, Object>>();
@@ -154,12 +156,19 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
             RiverSettings riverSettings = new RiverSettings(null, hit.getSource());
             MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName, riverIndexName, riverSettings, null);
 
+            BSONTimestamp ts = MongoDBRiver.getLastTimestamp(client, definition);
+            Long lastTimestamp = null;
+            if (ts != null) {
+                lastTimestamp = 1000L * ts.getTime();
+            }
             source.put("name", riverName);
             source.put("status", MongoDBRiverHelper.getRiverStatus(client, riverName));
             source.put("settings", hit.getSource());
-            source.put("lastTimestamp", 1000L * MongoDBRiver.getLastTimestamp(client, definition).getTime());
+            source.put("lastTimestamp", lastTimestamp);
             source.put("indexCount", MongoDBRiver.getIndexCount(client, definition));
-            logger.trace("source: {}", hit.getSourceAsString());
+            if (logger.isTraceEnabled()) {
+                logger.trace("source: {}", hit.getSourceAsString());
+            }
             rivers.add(source);
         }
         return rivers;
