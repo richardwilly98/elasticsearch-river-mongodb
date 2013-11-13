@@ -2,7 +2,11 @@
 
 var mongoDBRiverApp = angular.module('mongoDBRiverApp', ['ngResource', 'ui.bootstrap']);
 
-mongoDBRiverApp.controller('MainCtrl', function ($log, $scope, $resource, $timeout) {
+mongoDBRiverApp.constant('appSettings', {
+	defaultRefresh: 5000
+});
+
+mongoDBRiverApp.controller('MainCtrl', function ($log, $scope, $resource, $timeout, appSettings) {
   var riverResource = $resource('/_river/:type/:river/:action' , {type:'@type', river:'@river'},
     {
 	  list: {method:'GET', params: {action: 'list'}, isArray: true},
@@ -21,7 +25,7 @@ mongoDBRiverApp.controller('MainCtrl', function ($log, $scope, $resource, $timeo
       timeoutId = $timeout(function() {
         $scope.list();
         autoRefresh();
-      }, 1000);
+      }, appSettings.defaultRefresh);
   }
 
   $scope.updateTimer = function(enabled) {
