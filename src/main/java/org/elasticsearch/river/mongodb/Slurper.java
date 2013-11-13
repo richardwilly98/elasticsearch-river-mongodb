@@ -73,12 +73,16 @@ class Slurper implements Runnable {
                 }
 
                 BSONTimestamp startTimestamp = null;
-                if (!riverHasIndexedFromOplog() && definition.getInitialTimestamp() == null) {
-                    if (!isIndexEmpty()) {
-                        MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.INITIAL_IMPORT_FAILED);
-                        break;
+                if (!definition.isSkipInitialImport()) {
+                    if (!riverHasIndexedFromOplog() && definition.getInitialTimestamp() == null) {
+                        if (!isIndexEmpty()) {
+                            MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.INITIAL_IMPORT_FAILED);
+                            break;
+                        }
+                        startTimestamp = doInitialImport();
                     }
-                    startTimestamp = doInitialImport();
+                } else {
+                    logger.info("Skip initial import from collection {}", definition.getMongoCollection());
                 }
 
                 // Slurp from oplog

@@ -28,6 +28,7 @@ import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRespon
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.common.xcontent.support.XContentMapValues;
 import org.elasticsearch.river.mongodb.MongoDBRiver;
+import org.elasticsearch.river.mongodb.MongoDBRiverDefinition;
 import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.elasticsearch.river.mongodb.Status;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
@@ -45,6 +46,7 @@ import com.mongodb.WriteResult;
 @Test
 public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
 
+    public static final String TEST_MONGODB_RIVER_SIMPLE_SKIP_INITIAL_IMPORT_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-skip-initial-import.json";
     private DB mongoDB;
     private DBCollection mongoCollection;
 
@@ -104,6 +106,158 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
 
         } catch (Throwable t) {
             logger.error("InitialImport failed.", t);
+            t.printStackTrace();
+            throw t;
+        } finally {
+            cleanUp();
+        }
+    }
+
+    /*
+     * Test for issue 167 - test-simple-mongodb-river-skip-initial-import.json
+     */
+    @Test
+    public void initialImportFailWithExistingDataInSameIndexType() throws Throwable {
+        logger.debug("Start ImportFailWithExistingDataInSameIndexType");
+        try {
+            super.deleteIndex();
+            Assert.assertTrue(getIndicesAdminClient().prepareCreate(index).get().isAcknowledged());
+            refreshIndex();
+            MongoDBRiverDefinition definition = getMongoDBRiverDefinition(TEST_MONGODB_RIVER_SIMPLE_JSON, database, collection, index);
+            String id = getNode().client().prepareIndex(index, definition.getTypeName()).setSource("name", "John").get().getId();
+            Assert.assertNotNull(id);
+            
+            createDatabase();
+            DBObject dbObject1 = new BasicDBObject(ImmutableMap.of("name", "Richard"));
+            WriteResult result1 = mongoCollection.insert(dbObject1);
+            logger.info("WriteResult: {}", result1.toString());
+            Thread.sleep(wait);
+
+            // Make sure we're starting out with the river not setup
+            if (getNode().client().admin().indices().prepareExists("_river").get().isExists()) {
+                GetResponse statusResponse = getNode().client().prepareGet("_river", river, MongoDBRiver.STATUS_ID).execute().actionGet();
+                logger.debug("Exists? {}", statusResponse.isExists());
+                Assert.assertFalse(
+                        statusResponse.isExists(),
+                        "Expected no river but found one "
+                                + XContentMapValues.extractValue(MongoDBRiver.TYPE + "." + MongoDBRiver.STATUS_FIELD,
+                                        statusResponse.getSourceAsMap()));
+            }
+
+            // Setup the river
+            createRiver();
+            Thread.sleep(wait);
+
+            Assert.assertEquals(MongoDBRiverHelper.getRiverStatus(getNode().client(), river), Status.INITIAL_IMPORT_FAILED);
+        } catch (Throwable t) {
+            logger.error("ImportFailWithExistingDataInSameIndexType failed.", t);
+            t.printStackTrace();
+            throw t;
+        } finally {
+            cleanUp();
+        }
+    }
+
+    /*
+     * Test for issue 167 - test-simple-mongodb-river-skip-initial-import.json
+     */
+    @Test
+    public void skipInitialImportSuccessWithExistingDataInSameIndexType() throws Throwable {
+        logger.debug("Start skipImportFailWithExistingDataInSameIndexType");
+        try {
+            super.deleteIndex();
+            Assert.assertTrue(getIndicesAdminClient().prepareCreate(index).get().isAcknowledged());
+            refreshIndex();
+            MongoDBRiverDefinition definition = getMongoDBRiverDefinition(TEST_MONGODB_RIVER_SIMPLE_JSON, database, collection, index);
+            String id = getNode().client().prepareIndex(index, definition.getTypeName()).setSource("name", "John").get().getId();
+            Assert.assertNotNull(id);
+            
+            createDatabase();
+            DBObject dbObject1 = new BasicDBObject(ImmutableMap.of("name", "Richard"));
+            WriteResult result1 = mongoCollection.insert(dbObject1);
+            logger.info("WriteResult: {}", result1.toString());
+            Thread.sleep(wait);
+
+            // Make sure we're starting out with the river not setup
+            if (getNode().client().admin().indices().prepareExists("_river").get().isExists()) {
+                GetResponse statusResponse = getNode().client().prepareGet("_river", river, MongoDBRiver.STATUS_ID).execute().actionGet();
+                logger.debug("Exists? {}", statusResponse.isExists());
+                Assert.assertFalse(
+                        statusResponse.isExists(),
+                        "Expected no river but found one "
+                                + XContentMapValues.extractValue(MongoDBRiver.TYPE + "." + MongoDBRiver.STATUS_FIELD,
+                                        statusResponse.getSourceAsMap()));
+            }
+
+            // Setup the river
+            super.createRiver(TEST_MONGODB_RIVER_SIMPLE_SKIP_INITIAL_IMPORT_JSON);
+            Thread.sleep(wait);
+
+            Assert.assertEquals(MongoDBRiverHelper.getRiverStatus(getNode().client(), river), Status.RUNNING);
+        } catch (Throwable t) {
+            logger.error("skipImportFailWithExistingDataInSameIndexType failed.", t);
+            t.printStackTrace();
+            throw t;
+        } finally {
+            cleanUp();
+        }
+    }
+
+    /*
+     * Test for issue 167
+     */
+    @Test
+    public void initialImportWithExistingIndex() throws Throwable {
+        logger.debug("Start InitialImportWithExistingIndex");
+        try {
+            super.deleteIndex();
+            Assert.assertTrue(getIndicesAdminClient().prepareCreate(index).get().isAcknowledged());
+            refreshIndex();
+            String id = getNode().client().prepareIndex(index, "dummy-index-" + System.currentTimeMillis()).setSource("name", "John").get().getId();
+            Assert.assertNotNull(id);
+            
+            createDatabase();
+            DBObject dbObject1 = new BasicDBObject(ImmutableMap.of("name", "Richard"));
+            WriteResult result1 = mongoCollection.insert(dbObject1);
+            logger.info("WriteResult: {}", result1.toString());
+            Thread.sleep(wait);
+
+            // Make sure we're starting out with the river not setup
+            if (getNode().client().admin().indices().prepareExists("_river").get().isExists()) {
+                GetResponse statusResponse = getNode().client().prepareGet("_river", river, MongoDBRiver.STATUS_ID).execute().actionGet();
+                logger.debug("Exists? {}", statusResponse.isExists());
+                Assert.assertFalse(
+                        statusResponse.isExists(),
+                        "Expected no river but found one "
+                                + XContentMapValues.extractValue(MongoDBRiver.TYPE + "." + MongoDBRiver.STATUS_FIELD,
+                                        statusResponse.getSourceAsMap()));
+            }
+
+            // Setup the river
+            createRiver();
+            Thread.sleep(wait);
+
+            Assert.assertEquals(MongoDBRiverHelper.getRiverStatus(getNode().client(), river), Status.RUNNING);
+            assertThat(getNode().client().count(countRequest(getIndex())).actionGet().getCount(), equalTo(2l));
+
+            // Check that it syncs the oplog
+            DBObject dbObject2 = new BasicDBObject(ImmutableMap.of("name", "Ben"));
+            WriteResult result2 = mongoCollection.insert(dbObject2);
+            logger.info("WriteResult: {}", result2.toString());
+            Thread.sleep(wait);
+
+            refreshIndex();
+            Assert.assertEquals(MongoDBRiverHelper.getRiverStatus(getNode().client(), river), Status.RUNNING);
+            assertThat(getNode().client().count(countRequest(getIndex())).actionGet().getCount(), equalTo(3l));
+
+            mongoCollection.remove(dbObject1, WriteConcern.REPLICAS_SAFE);
+
+            Thread.sleep(wait);
+            refreshIndex();
+            assertThat(getNode().client().count(countRequest(getIndex())).actionGet().getCount(), equalTo(2L));
+
+        } catch (Throwable t) {
+            logger.error("InitialImportWithExistingIndex failed.", t);
             t.printStackTrace();
             throw t;
         } finally {

@@ -25,6 +25,8 @@ import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -34,17 +36,25 @@ import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRespon
 import org.elasticsearch.action.admin.indices.exists.types.TypesExistsResponse;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
 import org.elasticsearch.action.get.GetResponse;
+import org.elasticsearch.client.IndicesAdminClient;
 import org.elasticsearch.common.collect.Tuple;
 import org.elasticsearch.common.io.FileSystemUtils;
+import org.elasticsearch.common.io.Streams;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.internal.InternalSettingsPreparer;
 import org.elasticsearch.plugins.PluginManager;
 import org.elasticsearch.plugins.PluginManager.OutputMode;
+import org.elasticsearch.river.RiverIndexName;
+import org.elasticsearch.river.RiverName;
+import org.elasticsearch.river.RiverSettings;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
+import org.elasticsearch.script.ScriptService;
 import org.testng.Assert;
 import org.testng.annotations.AfterSuite;
 import org.testng.annotations.BeforeSuite;
@@ -289,9 +299,9 @@ public abstract class RiverMongoDBTestAbstract {
 
     protected void createRiver(String jsonDefinition, String river, Object... args) throws Exception {
         logger.info("Create river [{}]", river);
-        String setting = getJsonSettings(jsonDefinition, args);
-        logger.info("River setting [{}]", setting);
-        node.client().prepareIndex("_river", river, "_meta").setSource(setting).execute().actionGet();
+        String settings = getJsonSettings(jsonDefinition, args);
+        logger.info("River setting [{}]", settings);
+        node.client().prepareIndex("_river", river, "_meta").setSource(settings).execute().actionGet();
         logger.debug("Running Cluster Health");
         ClusterHealthResponse clusterHealth = node.client().admin().cluster().health(clusterHealthRequest().waitForGreenStatus())
                 .actionGet();
@@ -331,8 +341,13 @@ public abstract class RiverMongoDBTestAbstract {
         int max = 5;
         int count = 0;
         logger.info("Delete index [{}]", name);
+        IndicesExistsResponse response = node.client().admin().indices().prepareExists(name).get();
+        if (!response.isExists()) {
+            logger.info("Index {} does not exist", name);
+            return;
+        }
         if (!node.client().admin().indices().prepareDelete(name).execute().actionGet().isAcknowledged()) {
-            IndicesExistsResponse response = node.client().admin().indices().prepareExists(name).get();
+            response = node.client().admin().indices().prepareExists(name).get();
             while (response.isExists()) {
                 logger.debug("Index {} not deleted. Try waiting 1 sec...", name);
                 try {
@@ -345,10 +360,6 @@ public abstract class RiverMongoDBTestAbstract {
                     Assert.fail(String.format("Could not delete index %s", name));
                 }
             }
-        }
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
         }
         logger.debug("Running Cluster Health");
         ClusterHealthResponse clusterHealth = node.client().admin().cluster().health(clusterHealthRequest().waitForGreenStatus())
@@ -391,6 +402,26 @@ public abstract class RiverMongoDBTestAbstract {
         logger.info("Done Cluster Health, status " + clusterHealth.getStatus());
     }
 
+    protected MongoDBRiverDefinition getMongoDBRiverDefinition(String jsonDefinition, String database, String collection, String index) throws Throwable {
+        try {
+            RiverName riverName = new RiverName("mongodb", river);
+//            InputStream in = getClass().getResourceAsStream("/org/elasticsearch/river/mongodb/test-mongodb-river-simple-definition.json");
+            String settings = getJsonSettings(jsonDefinition, String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
+                    String.valueOf(getMongoPort3()), database, collection, index);
+            InputStream in = new ByteArrayInputStream(settings.getBytes());
+            RiverSettings riverSettings = new RiverSettings(ImmutableSettings.settingsBuilder().build(), XContentHelper.convertToMap(
+                    Streams.copyToByteArray(in), false).v2());
+            ScriptService scriptService = null;
+            MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName.name(), RiverIndexName.Conf.DEFAULT_INDEX_NAME, riverSettings,
+                    scriptService);
+            Assert.assertNotNull(definition);
+            return definition;
+        } catch (Throwable t) {
+            Assert.fail("testLoadMongoDBRiverSimpleDefinition failed", t);
+            throw t;
+        }
+    }
+
     @AfterSuite
     public void afterSuite() {
         logger.debug("*** afterSuite ***");
@@ -429,6 +460,10 @@ public abstract class RiverMongoDBTestAbstract {
 
     protected static Node getNode() {
         return node;
+    }
+
+    protected static IndicesAdminClient getIndicesAdminClient() {
+        return node.client().admin().indices();
     }
 
     protected static int getMongoPort1() {

@@ -7,6 +7,7 @@ import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentHelper;
+import org.elasticsearch.river.RiverIndexName;
 import org.elasticsearch.river.RiverName;
 import org.elasticsearch.river.RiverSettings;
 import org.elasticsearch.script.ScriptService;
@@ -27,8 +28,8 @@ public class MongoDBRiverDefinitionTest {
             RiverSettings riverSettings = new RiverSettings(ImmutableSettings.settingsBuilder().build(), XContentHelper.convertToMap(
                     Streams.copyToByteArray(in), false).v2());
             ScriptService scriptService = null;
-            MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName.name(), "my-river-index", riverSettings,
-                    scriptService);
+            MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName.name(),
+                    RiverIndexName.Conf.DEFAULT_INDEX_NAME, riverSettings, scriptService);
             Assert.assertNotNull(definition);
             Assert.assertEquals("mydb", definition.getMongoDb());
             Assert.assertEquals("mycollection", definition.getMongoCollection());
@@ -39,7 +40,8 @@ public class MongoDBRiverDefinitionTest {
             Assert.assertEquals(MongoDBRiverDefinition.DEFAULT_CONCURRENT_REQUESTS, definition.getBulk().getConcurrentRequests());
             Assert.assertEquals(MongoDBRiverDefinition.DEFAULT_BULK_SIZE, definition.getBulk().getBulkSize());
             Assert.assertEquals(MongoDBRiverDefinition.DEFAULT_FLUSH_INTERVAL, definition.getBulk().getFlushInterval());
-
+            Assert.assertFalse(definition.isSkipInitialImport());
+            
         } catch (Throwable t) {
             Assert.fail("testLoadMongoDBRiverSimpleDefinition failed", t);
         }
@@ -53,8 +55,8 @@ public class MongoDBRiverDefinitionTest {
             RiverSettings riverSettings = new RiverSettings(ImmutableSettings.settingsBuilder().build(), XContentHelper.convertToMap(
                     Streams.copyToByteArray(in), false).v2());
             ScriptService scriptService = null;
-            MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName.name(), "my-river-index", riverSettings,
-                    scriptService);
+            MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName.name(),
+                    RiverIndexName.Conf.DEFAULT_INDEX_NAME, riverSettings, scriptService);
             Assert.assertNotNull(definition);
             Assert.assertEquals("mycollection", definition.getIncludeCollection());
             Assert.assertTrue(definition.getParentTypes().contains("parent1"));
@@ -85,8 +87,8 @@ public class MongoDBRiverDefinitionTest {
             RiverSettings riverSettings = new RiverSettings(ImmutableSettings.settingsBuilder().build(), XContentHelper.convertToMap(
                     Streams.copyToByteArray(in), false).v2());
             ScriptService scriptService = null;
-            MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName.name(), "my-river-index", riverSettings,
-                    scriptService);
+            MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName.name(),
+                    RiverIndexName.Conf.DEFAULT_INDEX_NAME, riverSettings, scriptService);
             Assert.assertNotNull(definition);
             Assert.assertEquals("mycollection", definition.getIncludeCollection());
             Assert.assertTrue(definition.getParentTypes().contains("parent1"));
@@ -100,10 +102,10 @@ public class MongoDBRiverDefinitionTest {
             Assert.assertEquals(11000, definition.getConnectTimeout());
             Assert.assertEquals(riverName.getName(), definition.getRiverName());
 
-//            actions: 500
-//            size: "20mb",
-//            concurrent_requests: 40,
-//            flush_interval: "50ms"
+            // actions: 500
+            // size: "20mb",
+            // concurrent_requests: 40,
+            // flush_interval: "50ms"
 
             // Test bulk
             Assert.assertEquals(500, definition.getBulk().getBulkActions());
@@ -124,8 +126,8 @@ public class MongoDBRiverDefinitionTest {
             RiverSettings riverSettings = new RiverSettings(ImmutableSettings.settingsBuilder().build(), XContentHelper.convertToMap(
                     Streams.copyToByteArray(in), false).v2());
             ScriptService scriptService = null;
-            MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName.name(), "my-river-index", riverSettings,
-                    scriptService);
+            MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName.name(),
+                    RiverIndexName.Conf.DEFAULT_INDEX_NAME, riverSettings, scriptService);
             Assert.assertNotNull(definition);
 
             Assert.assertEquals(2, definition.getMongoServers().size());
@@ -138,6 +140,23 @@ public class MongoDBRiverDefinitionTest {
 
         } catch (Throwable t) {
             Assert.fail("testLoadMongoDBRiverDefinitionIssue159 failed", t);
+        }
+    }
+
+    @Test
+    public void testLoadMongoDBRiverDefinitionIssue167() {
+        try {
+            RiverName riverName = new RiverName("mongodb", "mongodb-" + System.currentTimeMillis());
+            InputStream in = getClass().getResourceAsStream("/org/elasticsearch/river/mongodb/test-mongodb-river-definition-167.json");
+            RiverSettings riverSettings = new RiverSettings(ImmutableSettings.settingsBuilder().build(), XContentHelper.convertToMap(
+                    Streams.copyToByteArray(in), false).v2());
+            ScriptService scriptService = null;
+            MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName.name(),
+                    RiverIndexName.Conf.DEFAULT_INDEX_NAME, riverSettings, scriptService);
+            Assert.assertNotNull(definition);
+            Assert.assertTrue(definition.isSkipInitialImport());
+        } catch (Throwable t) {
+            Assert.fail("testLoadMongoDBRiverDefinitionIssue167 failed", t);
         }
     }
 
@@ -156,7 +175,7 @@ public class MongoDBRiverDefinitionTest {
         Assert.assertNotNull(filterNoPrefix2);
         BasicDBObject bsonFilterNoPrefix2 = (BasicDBObject) JSON.parse(filterNoPrefix2);
         Assert.assertEquals(bsonFilterNoPrefix, bsonFilterNoPrefix2);
-        
+
         String filterWithPrefix = MongoDBRiverDefinition.addPrefix("o.", filterNoPrefix);
         BasicDBObject bsonFilterWithPrefix = (BasicDBObject) JSON.parse(filterWithPrefix);
         Assert.assertNotNull(bsonFilterWithPrefix);

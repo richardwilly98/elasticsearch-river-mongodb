@@ -68,6 +68,7 @@ public class MongoDBRiverDefinition {
     public final static String INITIAL_TIMESTAMP_SCRIPT_TYPE_FIELD = "script_type";
     public final static String INITIAL_TIMESTAMP_SCRIPT_FIELD = "script";
     public final static String ADVANCED_TRANSFORMATION_FIELD = "advanced_transformation";
+    public final static String SKIP_INITIAL_IMPORT_FIELD = "skip_initial_import";
     public final static String PARENT_TYPES_FIELD = "parent_types";
     public final static String FILTER_FIELD = "filter";
     public final static String CREDENTIALS_FIELD = "credentials";
@@ -126,6 +127,7 @@ public class MongoDBRiverDefinition {
     private final String script;
     private final String scriptType;
     private final boolean advancedTransformation;
+    private final boolean skipInitialImport;
     private final Set<String> parentTypes;
     // index
     private final String indexName;
@@ -168,6 +170,7 @@ public class MongoDBRiverDefinition {
         private String script = null;
         private String scriptType = null;
         private boolean advancedTransformation = false;
+        private boolean skipInitialImport;
         private Set<String> parentTypes = null;
 
         // index
@@ -294,6 +297,11 @@ public class MongoDBRiverDefinition {
 
         public Builder advancedTransformation(boolean advancedTransformation) {
             this.advancedTransformation = advancedTransformation;
+            return this;
+        }
+
+        public Builder skipInitialImport(boolean skipInitialImport) {
+            this.skipInitialImport = skipInitialImport;
             return this;
         }
 
@@ -467,7 +475,8 @@ public class MongoDBRiverDefinition {
                 builder.mongoSSLVerifyCertificate(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(SSL_VERIFY_CERT_FIELD), true));
                 builder.advancedTransformation(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(ADVANCED_TRANSFORMATION_FIELD),
                         false));
-
+                builder.skipInitialImport(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(SKIP_INITIAL_IMPORT_FIELD), false));
+                
                 mongoClientOptionsBuilder.connectTimeout(builder.connectTimeout).socketTimeout(builder.socketTimeout);
 
                 if (builder.mongoSecondaryReadPreference) {
@@ -774,6 +783,7 @@ public class MongoDBRiverDefinition {
         this.script = builder.script;
         this.scriptType = builder.scriptType;
         this.advancedTransformation = builder.advancedTransformation;
+        this.skipInitialImport = builder.skipInitialImport;
         this.parentTypes = builder.parentTypes;
 
         // index
@@ -887,6 +897,10 @@ public class MongoDBRiverDefinition {
 
     public boolean isAdvancedTransformation() {
         return advancedTransformation;
+    }
+
+    public boolean isSkipInitialImport() {
+        return skipInitialImport;
     }
 
     public Set<String> getParentTypes() {
