@@ -3,7 +3,8 @@ MongoDB River Plugin for ElasticSearch
 
 | MongoDB River Plugin     | ElasticSearch    | MongoDB |
 |--------------------------|------------------|---------|
-| master                   | 0.90.5           | 2.4.6   |
+| master                   | 0.90.5           | 2.4.8   |
+| 1.7.2                    | 0.90.5           | 2.4.8   |
 | 1.7.1                    | 0.90.5           | 2.4.6   |
 | 1.7.0                    | 0.90.3           | 2.4.5   |
 | 1.6.11                   | 0.90.2           | 2.4.5   |
@@ -121,6 +122,19 @@ License
 
 Changelog
 -------
+
+#### 1.7.2
+- Update versions MongoDB 2.4.8
+- Optimization of oplog.rs filter (see issue [#123](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/123))
+- ```options/drop_collection``` will also track ```dropDatabase``` (see issue [#133](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/133))
+- Add filter in the initial import by @bernd (see issue [#157](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/157))
+- MongoDB default port is 27017 (if not specific in configuration) (see issue [#159](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/159))
+- Allow alias in place of index (see issue [#163](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/163))
+- Initial import supports existing index (see issue [#167](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/167))
+- New parameter ```options/skip_initial_import``` to skip initial import using collection data. Default value is false.
+- Stop properly the river when deleted (see issue [#169](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/169))
+- Administration updates: stopped river can be deleted from the administration, auto-refresh.
+- Switch to BulkProcessor API to provide more flexible configuration during bulk indexing. (see [commit](https://github.com/richardwilly98/elasticsearch-river-mongodb/commit/973dba973f6c1c353a38ed060754967504485769))
 
 #### 1.7.1
 - Update versions ES 0.90.5, MongoDB driver 2.11.3
