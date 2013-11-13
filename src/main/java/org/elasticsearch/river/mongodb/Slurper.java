@@ -112,6 +112,10 @@ class Slurper implements Runnable {
                 break;
             } catch (MongoException e) {
                 logger.error("Mongo gave an exception", e);
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException iEx) {
+                }
             } catch (NoSuchElementException e) {
                 logger.warn("A mongoDB cursor bug ?", e);
             } catch (InterruptedException e) {
