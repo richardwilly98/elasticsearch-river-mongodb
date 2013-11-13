@@ -45,7 +45,7 @@ public class MongoDBRiverDefinition {
     public final static String DEFAULT_DB_HOST = "localhost";
     public final static int DEFAULT_DB_PORT = 27017;
     public final static int DEFAULT_CONCURRENT_REQUESTS = 50;
-    public final static int DEFAULT_BULK_ACTIONS = 500;
+    public final static int DEFAULT_BULK_ACTIONS = 1000;
     public final static TimeValue DEFAULT_FLUSH_INTERVAL = TimeValue.timeValueMillis(10);
     public final static ByteSizeValue DEFAULT_BULK_SIZE = new ByteSizeValue(5, ByteSizeUnit.MB);
 
