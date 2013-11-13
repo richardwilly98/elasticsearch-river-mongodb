@@ -71,8 +71,8 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
             return;
         }
         logger.info("Delete river: {}", river);
-        if (client.admin().indices().prepareTypesExists(RiverIndexName.Conf.DEFAULT_INDEX_NAME).setTypes(river).get().isExists()) {
-            client.admin().indices().prepareDeleteMapping(RiverIndexName.Conf.DEFAULT_INDEX_NAME).setType(river).execute().actionGet();
+        if (client.admin().indices().prepareTypesExists(riverIndexName).setTypes(river).get().isExists()) {
+            client.admin().indices().prepareDeleteMapping(riverIndexName).setType(river).execute().actionGet();
         }
         respondSuccess(request, channel, RestStatus.OK);
     }
@@ -142,7 +142,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
     }
 
     private List<Map<String, Object>> getRivers() {
-        SearchResponse searchResponse = client.prepareSearch(RiverIndexName.Conf.DEFAULT_INDEX_NAME)
+        SearchResponse searchResponse = client.prepareSearch(riverIndexName)
                 .setQuery(new FieldQueryBuilder("type", "mongodb"))
                 .execute().actionGet();
         long totalHits = searchResponse.getHits().totalHits();
