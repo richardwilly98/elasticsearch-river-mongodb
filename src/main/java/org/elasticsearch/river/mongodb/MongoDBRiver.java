@@ -134,10 +134,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 : new ArrayBlockingQueue<QueueEntry>(definition.getThrottleSize());
 
         this.context = new SharedContext(stream, Status.STOPPED);
-
-        this.statusThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_status").newThread(
-                new StatusChecker(this, definition, context));
-        this.statusThread.start();
     }
 
     @Override
@@ -208,7 +204,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                         if (servers != null) {
                             String replicaName = item.get(MONGODB_ID_FIELD).toString();
                             Thread tailerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(),
-                                    "mongodb_river_slurper-" + replicaName).newThread(new Slurper(servers, definition, context, client));
+                                    "mongodb_river_slurper_" + replicaName).newThread(new Slurper(servers, definition, context, client));
                             tailerThreads.add(tailerThread);
                         }
                     }
@@ -216,9 +212,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                     cursor.close();
                 }
             } else {
-                Thread tailerThread = EsExecutors
-                        .daemonThreadFactory(settings.globalSettings(), "mongodb_river_slurper_" + this.hashCode()).newThread(
-                                new Slurper(definition.getMongoServers(), definition, context, client));
+                Thread tailerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_slurper").newThread(
+                        new Slurper(definition.getMongoServers(), definition, context, client));
                 tailerThreads.add(tailerThread);
             }
 
@@ -226,10 +221,13 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 thread.start();
             }
 
-            indexerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_indexer_" + this.hashCode())
-                    .newThread(new Indexer(definition, context, client, scriptService));
+            indexerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_indexer").newThread(
+                    new Indexer(definition, context, client, scriptService));
             indexerThread.start();
 
+            statusThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_status").newThread(
+                    new StatusChecker(this, definition, context));
+            statusThread.start();
         } catch (Throwable t) {
             logger.warn("Fail to start river {}", t, riverName.getName());
             MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.START_FAILED);
@@ -429,7 +427,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     }
 
     public static long getIndexCount(Client client, MongoDBRiverDefinition definition) {
-        if (client.admin().indices().prepareExists(definition.getIndexName()).get().isExists()) {
+        if (client.admin().indices().prepareTypesExists(definition.getIndexName()).setTypes(definition.getTypeName()).get().isExists()) {
             CountResponse countResponse = client.prepareCount(definition.getIndexName()).setTypes(definition.getTypeName()).execute()
                     .actionGet();
             return countResponse.getCount();
