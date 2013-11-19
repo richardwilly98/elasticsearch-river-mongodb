@@ -50,11 +50,6 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
     private DB mongoDB;
     private DBCollection mongoCollection;
 
-    protected RiverMongoInitialImportTest() {
-        super("testmongodb-" + System.currentTimeMillis(), "testriver-" + System.currentTimeMillis(), "person-"
-                + System.currentTimeMillis(), "personindex-" + System.currentTimeMillis());
-    }
-
     @Test
     public void initialImport() throws Throwable {
         logger.debug("Start InitialImport");
@@ -68,7 +63,7 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
 
             // Make sure we're starting out with the river not setup
             if (getNode().client().admin().indices().prepareExists("_river").get().isExists()) {
-                GetResponse statusResponse = getNode().client().prepareGet("_river", river, MongoDBRiver.STATUS_ID).execute().actionGet();
+                GetResponse statusResponse = getNode().client().prepareGet("_river", getRiver(), MongoDBRiver.STATUS_ID).execute().actionGet();
                 logger.debug("Exists? {}", statusResponse.isExists());
                 Assert.assertFalse(
                         statusResponse.isExists(),
@@ -85,7 +80,7 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
             ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices()
                     .exists(new IndicesExistsRequest(getIndex()));
             assertThat(response.actionGet().isExists(), equalTo(true));
-            Assert.assertEquals(Status.RUNNING, MongoDBRiverHelper.getRiverStatus(getNode().client(), river));
+            Assert.assertEquals(Status.RUNNING, MongoDBRiverHelper.getRiverStatus(getNode().client(), getRiver()));
             assertThat(getNode().client().count(countRequest(getIndex())).actionGet().getCount(), equalTo(1l));
 
             // Check that it syncs the oplog
@@ -95,7 +90,7 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
             Thread.sleep(wait);
 
             refreshIndex();
-            Assert.assertEquals(Status.RUNNING, MongoDBRiverHelper.getRiverStatus(getNode().client(), river));
+            Assert.assertEquals(Status.RUNNING, MongoDBRiverHelper.getRiverStatus(getNode().client(), getRiver()));
             assertThat(getNode().client().count(countRequest(getIndex())).actionGet().getCount(), equalTo(2l));
 
             mongoCollection.remove(dbObject1, WriteConcern.REPLICAS_SAFE);
@@ -121,10 +116,10 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
         logger.debug("Start ImportFailWithExistingDataInSameIndexType");
         try {
             super.deleteIndex();
-            Assert.assertTrue(getIndicesAdminClient().prepareCreate(index).get().isAcknowledged());
+            Assert.assertTrue(getIndicesAdminClient().prepareCreate(getIndex()).get().isAcknowledged());
             refreshIndex();
-            MongoDBRiverDefinition definition = getMongoDBRiverDefinition(TEST_MONGODB_RIVER_SIMPLE_JSON, database, collection, index);
-            String id = getNode().client().prepareIndex(index, definition.getTypeName()).setSource("name", "John").get().getId();
+            MongoDBRiverDefinition definition = getMongoDBRiverDefinition(TEST_MONGODB_RIVER_SIMPLE_JSON, getDatabase(), getCollection(), getIndex());
+            String id = getNode().client().prepareIndex(getIndex(), definition.getTypeName()).setSource("name", "John").get().getId();
             Assert.assertNotNull(id);
             
             createDatabase();
@@ -135,7 +130,7 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
 
             // Make sure we're starting out with the river not setup
             if (getNode().client().admin().indices().prepareExists("_river").get().isExists()) {
-                GetResponse statusResponse = getNode().client().prepareGet("_river", river, MongoDBRiver.STATUS_ID).execute().actionGet();
+                GetResponse statusResponse = getNode().client().prepareGet("_river", getRiver(), MongoDBRiver.STATUS_ID).execute().actionGet();
                 logger.debug("Exists? {}", statusResponse.isExists());
                 Assert.assertFalse(
                         statusResponse.isExists(),
@@ -148,7 +143,7 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
             createRiver();
             Thread.sleep(wait);
 
-            Assert.assertEquals(MongoDBRiverHelper.getRiverStatus(getNode().client(), river), Status.INITIAL_IMPORT_FAILED);
+            Assert.assertEquals(MongoDBRiverHelper.getRiverStatus(getNode().client(), getRiver()), Status.INITIAL_IMPORT_FAILED);
         } catch (Throwable t) {
             logger.error("ImportFailWithExistingDataInSameIndexType failed.", t);
             t.printStackTrace();
@@ -166,10 +161,10 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
         logger.debug("Start skipImportFailWithExistingDataInSameIndexType");
         try {
             super.deleteIndex();
-            Assert.assertTrue(getIndicesAdminClient().prepareCreate(index).get().isAcknowledged());
+            Assert.assertTrue(getIndicesAdminClient().prepareCreate(getIndex()).get().isAcknowledged());
             refreshIndex();
-            MongoDBRiverDefinition definition = getMongoDBRiverDefinition(TEST_MONGODB_RIVER_SIMPLE_JSON, database, collection, index);
-            String id = getNode().client().prepareIndex(index, definition.getTypeName()).setSource("name", "John").get().getId();
+            MongoDBRiverDefinition definition = getMongoDBRiverDefinition(TEST_MONGODB_RIVER_SIMPLE_JSON, getDatabase(), getCollection(), getIndex());
+            String id = getNode().client().prepareIndex(getIndex(), definition.getTypeName()).setSource("name", "John").get().getId();
             Assert.assertNotNull(id);
             
             createDatabase();
@@ -180,7 +175,7 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
 
             // Make sure we're starting out with the river not setup
             if (getNode().client().admin().indices().prepareExists("_river").get().isExists()) {
-                GetResponse statusResponse = getNode().client().prepareGet("_river", river, MongoDBRiver.STATUS_ID).execute().actionGet();
+                GetResponse statusResponse = getNode().client().prepareGet("_river", getRiver(), MongoDBRiver.STATUS_ID).execute().actionGet();
                 logger.debug("Exists? {}", statusResponse.isExists());
                 Assert.assertFalse(
                         statusResponse.isExists(),
@@ -193,7 +188,7 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
             super.createRiver(TEST_MONGODB_RIVER_SIMPLE_SKIP_INITIAL_IMPORT_JSON);
             Thread.sleep(wait);
 
-            Assert.assertEquals(MongoDBRiverHelper.getRiverStatus(getNode().client(), river), Status.RUNNING);
+            Assert.assertEquals(MongoDBRiverHelper.getRiverStatus(getNode().client(), getRiver()), Status.RUNNING);
         } catch (Throwable t) {
             logger.error("skipImportFailWithExistingDataInSameIndexType failed.", t);
             t.printStackTrace();
@@ -211,9 +206,9 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
         logger.debug("Start InitialImportWithExistingIndex");
         try {
             super.deleteIndex();
-            Assert.assertTrue(getIndicesAdminClient().prepareCreate(index).get().isAcknowledged());
+            Assert.assertTrue(getIndicesAdminClient().prepareCreate(getIndex()).get().isAcknowledged());
             refreshIndex();
-            String id = getNode().client().prepareIndex(index, "dummy-index-" + System.currentTimeMillis()).setSource("name", "John").get().getId();
+            String id = getNode().client().prepareIndex(getIndex(), "dummy-type-" + System.currentTimeMillis()).setSource("name", "John").get().getId();
             Assert.assertNotNull(id);
             
             createDatabase();
@@ -224,7 +219,7 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
 
             // Make sure we're starting out with the river not setup
             if (getNode().client().admin().indices().prepareExists("_river").get().isExists()) {
-                GetResponse statusResponse = getNode().client().prepareGet("_river", river, MongoDBRiver.STATUS_ID).execute().actionGet();
+                GetResponse statusResponse = getNode().client().prepareGet("_river", getRiver(), MongoDBRiver.STATUS_ID).execute().actionGet();
                 logger.debug("Exists? {}", statusResponse.isExists());
                 Assert.assertFalse(
                         statusResponse.isExists(),
@@ -237,7 +232,7 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
             createRiver();
             Thread.sleep(wait);
 
-            Assert.assertEquals(MongoDBRiverHelper.getRiverStatus(getNode().client(), river), Status.RUNNING);
+            Assert.assertEquals(MongoDBRiverHelper.getRiverStatus(getNode().client(), getRiver()), Status.RUNNING);
             assertThat(getNode().client().count(countRequest(getIndex())).actionGet().getCount(), equalTo(2l));
 
             // Check that it syncs the oplog
@@ -247,7 +242,7 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
             Thread.sleep(wait);
 
             refreshIndex();
-            Assert.assertEquals(MongoDBRiverHelper.getRiverStatus(getNode().client(), river), Status.RUNNING);
+            Assert.assertEquals(MongoDBRiverHelper.getRiverStatus(getNode().client(), getRiver()), Status.RUNNING);
             assertThat(getNode().client().count(countRequest(getIndex())).actionGet().getCount(), equalTo(3l));
 
             mongoCollection.remove(dbObject1, WriteConcern.REPLICAS_SAFE);

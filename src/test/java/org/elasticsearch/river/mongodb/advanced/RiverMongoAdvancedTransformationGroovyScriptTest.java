@@ -48,12 +48,6 @@ public class RiverMongoAdvancedTransformationGroovyScriptTest extends RiverMongo
     private DB mongoDB;
     private DBCollection mongoCollection;
 
-    protected RiverMongoAdvancedTransformationGroovyScriptTest() {
-        super("testadvancedtransformationgroovyriver-" + System.currentTimeMillis(), "testadvancedtransformationgroovydatabase-"
-                + System.currentTimeMillis(), "testadvancedtransformationgroovydocuments-" + System.currentTimeMillis(),
-                "testadvancedtransformationgroovyindex-" + System.currentTimeMillis());
-    }
-
     @BeforeClass
     public void createDatabase() {
         logger.debug("createDatabase {}", getDatabase());

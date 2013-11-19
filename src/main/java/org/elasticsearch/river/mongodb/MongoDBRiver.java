@@ -121,14 +121,14 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
     @Inject
     public MongoDBRiver(RiverName riverName, RiverSettings settings, @RiverIndexName String riverIndexName, Client client,
-            ScriptService scriptService, MongoDBRiverDefinition definition) {
+            ScriptService scriptService) {
         super(riverName, settings);
-        if (logger.isDebugEnabled()) {
-            logger.debug("River : [{} / {}] - Logger name: [{}]", riverName.getName(), riverName.getType(), logger.getName());
+        if (logger.isTraceEnabled()) {
+            logger.trace("Initializing river : [{}]", riverName.getName());
         }
         this.scriptService = scriptService;
         this.client = client;
-        this.definition = definition;
+        this.definition = MongoDBRiverDefinition.parseSettings(riverName.name(), riverIndexName, settings, scriptService);
 
         BlockingQueue<QueueEntry> stream = definition.getThrottleSize() == -1 ? new LinkedTransferQueue<QueueEntry>()
                 : new ArrayBlockingQueue<QueueEntry>(definition.getThrottleSize());
@@ -143,7 +143,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     @Override
     public void start() {
         try {
-            logger.trace("Start river {}", riverName.getName());
+            logger.info("Starting river {}", riverName.getName());
             if (MongoDBRiverHelper.getRiverStatus(client, riverName.getName()) == Status.STOPPED) {
                 logger.debug("Cannot start river {}. It is currently disabled", riverName.getName());
                 startInvoked = true;
@@ -153,7 +153,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             MongoDBRiverHelper.setRiverStatus(client, riverName.getName(), Status.RUNNING);
             this.context.setStatus(Status.RUNNING);
             for (ServerAddress server : definition.getMongoServers()) {
-                logger.info("Using mongodb server(s): host [{}], port [{}]", server.getHost(), server.getPort());
+                logger.debug("Using mongodb server(s): host [{}], port [{}]", server.getHost(), server.getPort());
             }
             // http://stackoverflow.com/questions/5270611/read-maven-properties-file-inside-jar-war-file
             logger.info("{} version: [{}]", DESCRIPTION, MongoDBHelper.getRiverVersion());
@@ -216,8 +216,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                     cursor.close();
                 }
             } else {
-                Thread tailerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_slurper").newThread(
-                        new Slurper(definition.getMongoServers(), definition, context, client));
+                Thread tailerThread = EsExecutors
+                        .daemonThreadFactory(settings.globalSettings(), "mongodb_river_slurper_" + this.hashCode()).newThread(
+                                new Slurper(definition.getMongoServers(), definition, context, client));
                 tailerThreads.add(tailerThread);
             }
 
@@ -225,8 +226,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 thread.start();
             }
 
-            indexerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_indexer").newThread(
-                    new Indexer(definition, context, client, scriptService));
+            indexerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_indexer_" + this.hashCode())
+                    .newThread(new Indexer(definition, context, client, scriptService));
             indexerThread.start();
 
         } catch (Throwable t) {
@@ -244,6 +245,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             return false;
         }
         CommandResult cr = adminDb.command(new BasicDBObject("serverStatus", 1));
+
+        logger.info("MongoDB version - {}", cr.get("version"));
         if (logger.isTraceEnabled()) {
             logger.trace("serverStatus: {}", cr);
         }
@@ -259,7 +262,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         }
         String process = cr.get("process").toString().toLowerCase();
         if (logger.isTraceEnabled()) {
-            logger.trace("serverStatus: {}", cr);
             logger.trace("process: {}", process);
         }
         // Fix for https://jira.mongodb.org/browse/SERVER-9160
@@ -343,10 +345,13 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
     @Override
     public void close() {
-        logger.info("closing mongodb stream river");
+        logger.info("Closing river {}", riverName.getName());
         try {
+            statusThread.interrupt();
+            statusThread = null;
             for (Thread thread : tailerThreads) {
                 thread.interrupt();
+                thread = null;
             }
             tailerThreads.clear();
             if (indexerThread != null) {

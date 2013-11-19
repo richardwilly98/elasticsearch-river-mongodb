@@ -48,11 +48,6 @@ public class RiverMongoCollectionFilterTest extends RiverMongoDBTestAbstract {
     private Object collectionFilterWithPrefix = "{'o.lang':'de'}";
     private Object collectionFilterNoPrefix = "{'lang':'de'}";
 
-    protected RiverMongoCollectionFilterTest() {
-        super("testmongodb-" + System.currentTimeMillis(), "testriver-" + System.currentTimeMillis(), "person-"
-                + System.currentTimeMillis(), "personindex-" + System.currentTimeMillis());
-    }
-
     @BeforeMethod
     private void createDatabase() {
         logger.debug("createDatabase {}", getDatabase());
@@ -69,7 +64,7 @@ public class RiverMongoCollectionFilterTest extends RiverMongoDBTestAbstract {
 
     @AfterMethod
     private void cleanUp() {
-        logger.trace("Delete river {}", river);
+        logger.trace("Delete river {}", getRiver());
         try {
             deleteRiver();
             logger.trace("Drop database " + mongoDB.getName());

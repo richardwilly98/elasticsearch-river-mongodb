@@ -47,15 +47,6 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAbstract {
     private DBCollection mongoCollection;
     protected boolean dropCollectionOption = true;
 
-    protected RiverMongoDropCollectionTest() {
-        super("drop-river-" + System.currentTimeMillis(), "drop-river-" + System.currentTimeMillis(), "drop-collection"
-                + System.currentTimeMillis(), "drop-index-" + System.currentTimeMillis());
-    }
-
-    protected RiverMongoDropCollectionTest(String river, String database, String collection, String index) {
-        super(river, database, collection, index);
-    }
-
     @BeforeMethod
     public void createDatabase() {
         logger.debug("createDatabase {}", getDatabase());
@@ -182,7 +173,7 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAbstract {
             long countRequest = getNode().client().count(countRequest(getIndex())).actionGet().getCount();
             mongoDB.dropDatabase();
             Thread.sleep(wait);
-            assertThat(databaseExists(database), equalTo(false));
+            assertThat(databaseExists(getDatabase()), equalTo(false));
             Thread.sleep(wait);
             refreshIndex();
 

@@ -45,11 +45,6 @@ public class RiverMongoIndexExistsTest extends RiverMongoDBTestAbstract {
     private DB mongoDB;
     private DBCollection mongoCollection;
 
-    protected RiverMongoIndexExistsTest() {
-        super("testmongodb-" + System.currentTimeMillis(), "testriver-" + System.currentTimeMillis(), "person-"
-                + System.currentTimeMillis(), "personindex-" + System.currentTimeMillis());
-    }
-
     @Test
     public void dontDoInitialImportIfCollectionExists() throws Throwable {
         logger.debug("Start InitialImport");
@@ -74,7 +69,7 @@ public class RiverMongoIndexExistsTest extends RiverMongoDBTestAbstract {
             createRiver();
 
             Thread.sleep(wait);
-            Assert.assertEquals(Status.INITIAL_IMPORT_FAILED, MongoDBRiverHelper.getRiverStatus(getNode().client(), river));
+            Assert.assertEquals(Status.INITIAL_IMPORT_FAILED, MongoDBRiverHelper.getRiverStatus(getNode().client(), getRiver()));
         } catch (Throwable t) {
             logger.error("InitialImport failed.", t);
             t.printStackTrace();

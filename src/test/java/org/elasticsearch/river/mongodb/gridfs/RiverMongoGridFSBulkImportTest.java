@@ -30,7 +30,6 @@ import org.bson.types.ObjectId;
 import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -43,7 +42,7 @@ import com.mongodb.gridfs.GridFS;
 import com.mongodb.gridfs.GridFSDBFile;
 import com.mongodb.gridfs.GridFSInputFile;
 
-public class RiverMongoGridFSBulkImportTest extends RiverMongoDBTestAbstract {
+public class RiverMongoGridFSBulkImportTest extends RiverMongoGridFSTestAbstract {
 
     private static final String TEST_ATTACHMENT_HTML = "/org/elasticsearch/river/mongodb/gridfs/test-attachment.html";
     private static final String CRITERIA_ATTACHMENT_HTML = "Aliquam";
@@ -75,15 +74,6 @@ public class RiverMongoGridFSBulkImportTest extends RiverMongoDBTestAbstract {
 
     private DB mongoDB;
     private DBCollection mongoCollection;
-    private static final String timeStamp = String.valueOf(System.currentTimeMillis());
-    private static final String river = "testgridfsbulkimport-" + timeStamp;
-    private static final String database = "testgridfsbulkimport-" + timeStamp;
-    private static final String collection = "fs";
-    private static final String index = "testattachmentindex-" + timeStamp;
-
-    protected RiverMongoGridFSBulkImportTest() {
-        super(river, database, collection, index);
-    }
 
     @BeforeClass
     public void createDatabase() {

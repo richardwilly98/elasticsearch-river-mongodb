@@ -46,15 +46,6 @@ public class RiverMongoIncludeCollectionTest extends RiverMongoDBTestAbstract {
     private DBCollection mongoCollection;
     private String includeCollectionOption = "mycollection";
 
-    protected RiverMongoIncludeCollectionTest() {
-        super("include-river-" + System.currentTimeMillis(), "include-river-" + System.currentTimeMillis(), "include-collection"
-                + System.currentTimeMillis(), "include-index-" + System.currentTimeMillis());
-    }
-
-    protected RiverMongoIncludeCollectionTest(String river, String database, String collection, String index) {
-        super(river, database, collection, index);
-    }
-
     @BeforeClass
     public void createDatabase() {
         logger.debug("createDatabase {}", getDatabase());

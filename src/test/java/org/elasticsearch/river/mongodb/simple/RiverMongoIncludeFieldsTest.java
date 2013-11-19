@@ -46,15 +46,6 @@ public class RiverMongoIncludeFieldsTest extends RiverMongoDBTestAbstract {
     private DBCollection mongoCollection;
     protected boolean dropCollectionOption = true;
 
-    protected RiverMongoIncludeFieldsTest() {
-        super("include-fields-river-" + System.currentTimeMillis(), "include-fields-db-" + System.currentTimeMillis(),
-                "include-fields-collection-" + System.currentTimeMillis(), "include-fields-index-" + System.currentTimeMillis());
-    }
-
-    protected RiverMongoIncludeFieldsTest(String river, String database, String collection, String index) {
-        super(river, database, collection, index);
-    }
-
     @BeforeClass
     public void createDatabase() {
         logger.debug("createDatabase {}", getDatabase());

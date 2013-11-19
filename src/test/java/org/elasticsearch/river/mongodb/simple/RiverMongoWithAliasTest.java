@@ -55,12 +55,10 @@ public class RiverMongoWithAliasTest extends RiverMongoDBTestAbstract {
 
     private DB mongoDB;
     private DBCollection mongoCollection;
-    private static String index = "index-person-" + System.currentTimeMillis();
-    private static String alias = "alias-" + index;
-    private static String collection = "person-" + System.currentTimeMillis();
+    private final String realIndex;
 
     protected RiverMongoWithAliasTest() {
-        super("testmongodb-" + System.currentTimeMillis(), "testriver-" + System.currentTimeMillis(), collection, alias);
+        realIndex = "real-index-" + System.currentTimeMillis();
     }
 
     @BeforeClass
@@ -84,12 +82,12 @@ public class RiverMongoWithAliasTest extends RiverMongoDBTestAbstract {
     }
 
     private void createAlias() throws Throwable {
-        getNode().client().admin().indices().prepareCreate(index).execute().get();
-        getNode().client().admin().indices().prepareAliases().addAlias(index, alias).execute().get();
+        getNode().client().admin().indices().prepareCreate(realIndex).execute().get();
+        getNode().client().admin().indices().prepareAliases().addAlias(realIndex, getIndex()).execute().get();
     }
     
     private void deleteAlias() throws Throwable {
-        getNode().client().admin().indices().prepareDelete(alias).execute().actionGet();
+        getNode().client().admin().indices().prepareDelete(getIndex()).execute().actionGet();
     }
 
     @Test
@@ -139,7 +137,7 @@ public class RiverMongoWithAliasTest extends RiverMongoDBTestAbstract {
             super.createRiver(TEST_MONGODB_RIVER_GRIDFS_JSON);
             byte[] content = copyToBytesFromClasspath(RiverMongoWithGridFSTest.TEST_ATTACHMENT_HTML);
             logger.debug("Content in bytes: {}", content.length);
-            GridFS gridFS = new GridFS(mongoDB, collection);
+            GridFS gridFS = new GridFS(mongoDB, getCollection());
             GridFSInputFile in = gridFS.createFile(content);
             in.setFilename("test-attachment.html");
             in.setContentType("text/html");

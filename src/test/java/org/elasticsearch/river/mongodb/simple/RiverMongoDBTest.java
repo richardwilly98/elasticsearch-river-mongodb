@@ -51,11 +51,6 @@ public class RiverMongoDBTest extends RiverMongoDBTestAbstract {
     private DB mongoDB;
     private DBCollection mongoCollection;
 
-    protected RiverMongoDBTest() {
-        super("testmongodb-" + System.currentTimeMillis(), "testriver-" + System.currentTimeMillis(), "person-"
-                + System.currentTimeMillis(), "personindex-" + System.currentTimeMillis());
-    }
-
     @BeforeClass
     public void createDatabase() {
         logger.debug("createDatabase {}", getDatabase());

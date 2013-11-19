@@ -47,6 +47,7 @@ class Slurper implements Runnable {
     private DBCollection oplogCollection;
 
     public Slurper(List<ServerAddress> mongoServers, MongoDBRiverDefinition definition, SharedContext context, Client client) {
+        logger.trace("*** Initialize Slurper - {}", this.hashCode());
         this.definition = definition;
         this.context = context;
         this.client = client;
@@ -97,6 +98,10 @@ class Slurper implements Runnable {
                         processOplogEntry(item);
                     }
                     Thread.sleep(500);
+                } catch (Exception ex) {
+                    logger.warn("Exception while looping in cursor", ex);
+                    Thread.currentThread().interrupt();
+                    break;
                 } finally {
                     if (cursor != null) {
                         logger.trace("Closing oplog cursor");
@@ -104,11 +109,12 @@ class Slurper implements Runnable {
                     }
                 }
             } catch (MongoInterruptedException mIEx) {
-                logger.warn("Mongo driver has been interrupted");
+                logger.warn("Mongo driver has been interrupted", mIEx);
                 if (mongo != null) {
                     mongo.close();
                     mongo = null;
                 }
+                Thread.currentThread().interrupt();
                 break;
             } catch (MongoException e) {
                 logger.error("Mongo gave an exception", e);
@@ -119,7 +125,7 @@ class Slurper implements Runnable {
             } catch (NoSuchElementException e) {
                 logger.warn("A mongoDB cursor bug ?", e);
             } catch (InterruptedException e) {
-                logger.debug("river-mongodb slurper interrupted");
+                logger.info("river-mongodb slurper interrupted");
                 Thread.currentThread().interrupt();
                 break;
             }

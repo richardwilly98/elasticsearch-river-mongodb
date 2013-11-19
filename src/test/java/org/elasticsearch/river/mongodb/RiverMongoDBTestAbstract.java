@@ -92,7 +92,7 @@ public abstract class RiverMongoDBTestAbstract {
     public static final String TEST_MONGODB_RIVER_INCLUDE_FIELDS_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-include-fields.json";
     public static final String TEST_SIMPLE_MONGODB_DOCUMENT_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-document.json";
 
-    protected final ESLogger logger = Loggers.getLogger(getClass());
+    protected final ESLogger logger = Loggers.getLogger(getClass().getName());
     protected final static long wait = 2000;
 
     public static final String ADMIN_DATABASE_NAME = "admin";
@@ -121,16 +121,33 @@ public abstract class RiverMongoDBTestAbstract {
     private boolean useDynamicPorts;
     private String mongoVersion;
 
-    protected final String river;
-    protected final String database;
-    protected final String collection;
-    protected final String index;
+    private final String river;
+    private final String database;
+    private final String collection;
+    private final String index;
 
-    protected RiverMongoDBTestAbstract(String river, String database, String collection, String index) {
-        this.river = river;
-        this.database = database;
-        this.collection = collection;
-        this.index = index;
+    protected RiverMongoDBTestAbstract(/*String river, String database, String collection, String index*/) {
+        // this.river = river;
+        // this.database = database;
+        // this.collection = collection;
+        // this.index = index;
+        this(false);
+    }
+    
+    protected RiverMongoDBTestAbstract(boolean isGridFS) {
+        String suffix = getClass().getSimpleName().toLowerCase();
+        if (suffix.length() > 35) {
+            suffix = suffix.substring(0, 34);
+        }
+        suffix = suffix + "-" + System.currentTimeMillis();
+        this.river = "r-" + suffix;
+        this.database = "d-" + suffix;
+        if (isGridFS) {
+            this.collection = "fs";
+        } else {
+            this.collection = "c-" + suffix;
+        }
+        this.index = "i-" + suffix;
         loadSettings();
     }
 
@@ -203,14 +220,14 @@ public abstract class RiverMongoDBTestAbstract {
 
         Thread.sleep(5000);
         cr = mongoAdminDB.command(new BasicDBObject("replSetGetStatus", 1));
-        logger.info("replSetGetStatus: " + cr);
+        logger.trace("replSetGetStatus: {}", cr);
 
         // Check replica set status before to proceed
         while (!isReplicaSetStarted(cr)) {
-            logger.debug("Waiting for 3 seconds...");
+            logger.debug("Waiting 3 seconds for replicaset to change status...");
             Thread.sleep(3000);
             cr = mongoAdminDB.command(new BasicDBObject("replSetGetStatus", 1));
-            logger.debug("replSetGetStatus: " + cr);
+//            logger.debug("replSetGetStatus: " + cr);
         }
 
         mongo.close();
@@ -235,9 +252,9 @@ public abstract class RiverMongoDBTestAbstract {
         BasicDBList members = (BasicDBList) setting.get("members");
         for (Object m : members.toArray()) {
             BasicDBObject member = (BasicDBObject) m;
-            logger.info(member.toString());
+            logger.trace("Member: {}", member);
             int state = member.getInt("state");
-            logger.info("state: " + state);
+            logger.info("Member state: " + state);
             // 1 - PRIMARY, 2 - SECONDARY, 7 - ARBITER
             if (state != 1 && state != 2 && state != 7) {
                 return false;
@@ -376,6 +393,7 @@ public abstract class RiverMongoDBTestAbstract {
     }
 
     protected void deleteRiver(String name) {
+        try {
         int max = 5;
         int count = 0;
         logger.info("Delete river [{}]", name);
@@ -383,6 +401,11 @@ public abstract class RiverMongoDBTestAbstract {
         // (!node.client().admin().indices().prepareDeleteMapping("_river").setType(name).get().isAcknowledged())
         // {
         node.client().admin().indices().prepareDeleteMapping("_river").setType(name).get();
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+        }
+        refreshIndex("_river");
         TypesExistsResponse response = node.client().admin().indices().prepareTypesExists("_river").setTypes(name).get();
         while (response.isExists()) {
             logger.debug("River {} not deleted. Try waiting 1 sec...", name);
@@ -390,6 +413,8 @@ public abstract class RiverMongoDBTestAbstract {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
             }
+            node.client().admin().indices().prepareDeleteMapping("_river").setType(name).get();
+            refreshIndex("_river");
             response = node.client().admin().indices().prepareTypesExists("_river").setTypes(name).get();
             count++;
             if (count == max) {
@@ -400,20 +425,25 @@ public abstract class RiverMongoDBTestAbstract {
         ClusterHealthResponse clusterHealth = node.client().admin().cluster().health(clusterHealthRequest().waitForGreenStatus())
                 .actionGet();
         logger.info("Done Cluster Health, status " + clusterHealth.getStatus());
+        } catch (Throwable t) {
+            logger.error("Delete river [{}] failed", t, name);
+        }
     }
 
-    protected MongoDBRiverDefinition getMongoDBRiverDefinition(String jsonDefinition, String database, String collection, String index) throws Throwable {
+    protected MongoDBRiverDefinition getMongoDBRiverDefinition(String jsonDefinition, String database, String collection, String index)
+            throws Throwable {
         try {
             RiverName riverName = new RiverName("mongodb", river);
-//            InputStream in = getClass().getResourceAsStream("/org/elasticsearch/river/mongodb/test-mongodb-river-simple-definition.json");
+            // InputStream in =
+            // getClass().getResourceAsStream("/org/elasticsearch/river/mongodb/test-mongodb-river-simple-definition.json");
             String settings = getJsonSettings(jsonDefinition, String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
                     String.valueOf(getMongoPort3()), database, collection, index);
             InputStream in = new ByteArrayInputStream(settings.getBytes());
             RiverSettings riverSettings = new RiverSettings(ImmutableSettings.settingsBuilder().build(), XContentHelper.convertToMap(
                     Streams.copyToByteArray(in), false).v2());
             ScriptService scriptService = null;
-            MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName.name(), RiverIndexName.Conf.DEFAULT_INDEX_NAME, riverSettings,
-                    scriptService);
+            MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName.name(),
+                    RiverIndexName.Conf.DEFAULT_INDEX_NAME, riverSettings, scriptService);
             Assert.assertNotNull(definition);
             return definition;
         } catch (Throwable t) {

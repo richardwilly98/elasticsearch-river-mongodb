@@ -39,10 +39,10 @@ public class MongoDBRiverModule extends AbstractModule {
         bind(River.class).to(MongoDBRiver.class).asEagerSingleton();
     }
 
-    @Provides
-    protected MongoDBRiverDefinition provideDefinition(
-            RiverName riverName, RiverSettings settings, @RiverIndexName String riverIndexName, ScriptService scriptService) {
-        return MongoDBRiverDefinition.parseSettings(riverName.name(), riverIndexName, settings, scriptService);
-    }
+//    @Provides
+//    protected MongoDBRiverDefinition provideDefinition(
+//            RiverName riverName, RiverSettings settings, @RiverIndexName String riverIndexName, ScriptService scriptService) {
+//        return MongoDBRiverDefinition.parseSettings(riverName.name(), riverIndexName, settings, scriptService);
+//    }
 
 }

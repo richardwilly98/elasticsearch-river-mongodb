@@ -49,11 +49,6 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAbstract {
     private DB mongoDB;
     private DBCollection mongoCollection;
 
-    protected RiverMongoScriptTest() {
-        super("testriver-" + System.currentTimeMillis(), "testdatabase-" + System.currentTimeMillis(), "documents-"
-                + System.currentTimeMillis(), "testindex-" + System.currentTimeMillis());
-    }
-
     @BeforeClass
     public void createDatabase() {
         logger.debug("createDatabase {}", getDatabase());
@@ -83,24 +78,24 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAbstract {
     @Test
     public void testIgnoreScript() throws Throwable {
         logger.debug("Start testIgnoreScript");
-        String river = "testignorescriptriver-" + System.currentTimeMillis();
-        String index = "testignorescriptindex-" + System.currentTimeMillis();
+//        String river = "testignorescriptriver-" + System.currentTimeMillis();
+//        String index = "testignorescriptindex-" + System.currentTimeMillis();
         try {
-            logger.debug("Create river {}", river);
+            logger.debug("Create river {}", getRiver());
             String script = "ctx.ignore = true;";
-            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, river, String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
-                    String.valueOf(getMongoPort3()), getDatabase(), getCollection(), JAVASCRIPT_SCRIPT_TYPE, script, index, getDatabase());
+            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, getRiver(), String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
+                    String.valueOf(getMongoPort3()), getDatabase(), getCollection(), JAVASCRIPT_SCRIPT_TYPE, script, getIndex(), getDatabase());
 
             String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
             DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
             WriteResult result = mongoCollection.insert(dbObject);
             Thread.sleep(wait);
             logger.info("WriteResult: {}", result.toString());
-            refreshIndex(index);
+            refreshIndex(getIndex());
 
-            ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices().exists(new IndicesExistsRequest(index));
+            ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices().exists(new IndicesExistsRequest(getIndex()));
             assertThat(response.actionGet().isExists(), equalTo(true));
-            CountResponse countResponse = getNode().client().count(countRequest(index)).actionGet();
+            CountResponse countResponse = getNode().client().count(countRequest(getIndex())).actionGet();
             logger.info("Document count: {}", countResponse.getCount());
             assertThat(countResponse.getCount(), equalTo(0l));
 
@@ -111,21 +106,21 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAbstract {
             t.printStackTrace();
             throw t;
         } finally {
-            super.deleteRiver(river);
-            super.deleteIndex(index);
+            super.deleteRiver();
+            super.deleteIndex();
         }
     }
 
     @Test
     public void testUpdateAttribute() throws Throwable {
         logger.debug("Start testUpdateAttribute");
-        String river = "testupdateattributescriptriver-" + System.currentTimeMillis();
-        String index = "testupdateattributescriptindex-" + System.currentTimeMillis();
+//        String river = "testupdateattributescriptriver-" + System.currentTimeMillis();
+//        String index = "testupdateattributescriptindex-" + System.currentTimeMillis();
         try {
-            logger.debug("Create river {}", river);
+            logger.debug("Create river {}", getRiver());
             String script = "ctx.document.score = 200;";
-            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, river, String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
-                    String.valueOf(getMongoPort3()), getDatabase(), getCollection(), JAVASCRIPT_SCRIPT_TYPE, script, index, getDatabase());
+            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, getRiver(), String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
+                    String.valueOf(getMongoPort3()), getDatabase(), getCollection(), JAVASCRIPT_SCRIPT_TYPE, script, getIndex(), getDatabase());
 
             String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
             DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
@@ -133,12 +128,12 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAbstract {
             Thread.sleep(wait);
             String id = dbObject.get("_id").toString();
             logger.info("WriteResult: {}", result.toString());
-            refreshIndex(index);
+            refreshIndex(getIndex());
 
-            ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices().exists(new IndicesExistsRequest(index));
+            ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices().exists(new IndicesExistsRequest(getIndex()));
             assertThat(response.actionGet().isExists(), equalTo(true));
 
-            SearchResponse sr = getNode().client().prepareSearch(index).setQuery(fieldQuery("_id", id)).execute().actionGet();
+            SearchResponse sr = getNode().client().prepareSearch(getIndex()).setQuery(fieldQuery("_id", id)).execute().actionGet();
             logger.debug("SearchResponse {}", sr.toString());
             long totalHits = sr.getHits().getTotalHits();
             logger.debug("TotalHits: {}", totalHits);
@@ -157,21 +152,21 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAbstract {
             t.printStackTrace();
             throw t;
         } finally {
-            super.deleteRiver(river);
-            super.deleteIndex(index);
+            super.deleteRiver();
+            super.deleteIndex();
         }
     }
 
     @Test
     public void testRemoveAttribute() throws Throwable {
         logger.debug("Start testRemoveAttribute");
-        String river = "testremoveattributescriptriver-" + System.currentTimeMillis();
-        String index = "testremoveattributescriptindex-" + System.currentTimeMillis();
+//        String river = "testremoveattributescriptriver-" + System.currentTimeMillis();
+//        String index = "testremoveattributescriptindex-" + System.currentTimeMillis();
         try {
-            logger.debug("Create river {}", river);
+            logger.debug("Create river {}", getRiver());
             String script = "delete ctx.document.score;";
-            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, river, String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
-                    String.valueOf(getMongoPort3()), getDatabase(), getCollection(), JAVASCRIPT_SCRIPT_TYPE, script, index, getDatabase());
+            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, getRiver(), String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
+                    String.valueOf(getMongoPort3()), getDatabase(), getCollection(), JAVASCRIPT_SCRIPT_TYPE, script, getIndex(), getDatabase());
 
             String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
             DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
@@ -179,12 +174,12 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAbstract {
             Thread.sleep(wait);
             String id = dbObject.get("_id").toString();
             logger.info("WriteResult: {}", result.toString());
-            refreshIndex(index);
+            refreshIndex(getIndex());
 
-            ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices().exists(new IndicesExistsRequest(index));
+            ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices().exists(new IndicesExistsRequest(getIndex()));
             assertThat(response.actionGet().isExists(), equalTo(true));
 
-            SearchResponse sr = getNode().client().prepareSearch(index).setQuery(fieldQuery("_id", id)).execute().actionGet();
+            SearchResponse sr = getNode().client().prepareSearch(getIndex()).setQuery(fieldQuery("_id", id)).execute().actionGet();
             logger.debug("SearchResponse {}", sr.toString());
             long totalHits = sr.getHits().getTotalHits();
             logger.debug("TotalHits: {}", totalHits);
@@ -197,8 +192,8 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAbstract {
             t.printStackTrace();
             throw t;
         } finally {
-            super.deleteRiver(river);
-            super.deleteIndex(index);
+            super.deleteRiver();
+            super.deleteIndex();
         }
     }
 
@@ -245,13 +240,13 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAbstract {
     @Test
     public void testDeleteDocument() throws Throwable {
         logger.debug("Start testDeleteDocument");
-        String river = "testdeletedocumentscriptriver-" + System.currentTimeMillis();
-        String index = "testdeletedocumentscriptindex-" + System.currentTimeMillis();
+//        String river = "testdeletedocumentscriptriver-" + System.currentTimeMillis();
+//        String index = "testdeletedocumentscriptindex-" + System.currentTimeMillis();
         try {
-            logger.debug("Create river {}", river);
+            logger.debug("Create river {}", getRiver());
             String script = "if (ctx.document.to_be_deleted == true) { ctx.operation = 'd' };";
-            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, river, String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
-                    String.valueOf(getMongoPort3()), getDatabase(), getCollection(), JAVASCRIPT_SCRIPT_TYPE, script, index, getDatabase());
+            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, getRiver(), String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
+                    String.valueOf(getMongoPort3()), getDatabase(), getCollection(), JAVASCRIPT_SCRIPT_TYPE, script, getIndex(), getDatabase());
 
             String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
             DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
@@ -259,12 +254,12 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAbstract {
             Thread.sleep(wait);
             String id = dbObject.get("_id").toString();
             logger.info("WriteResult: {}", result.toString());
-            refreshIndex(index);
+            refreshIndex(getIndex());
 
-            ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices().exists(new IndicesExistsRequest(index));
+            ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices().exists(new IndicesExistsRequest(getIndex()));
             assertThat(response.actionGet().isExists(), equalTo(true));
 
-            SearchResponse sr = getNode().client().prepareSearch(index).setQuery(fieldQuery("_id", id)).execute().actionGet();
+            SearchResponse sr = getNode().client().prepareSearch(getIndex()).setQuery(fieldQuery("_id", id)).execute().actionGet();
             logger.debug("SearchResponse {}", sr.toString());
             long totalHits = sr.getHits().getTotalHits();
             logger.debug("TotalHits: {}", totalHits);
@@ -274,9 +269,9 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAbstract {
             mongoCollection.save(dbObject);
 
             Thread.sleep(wait);
-            refreshIndex(index);
+            refreshIndex(getIndex());
 
-            CountResponse countResponse = getNode().client().count(countRequest(index)).actionGet();
+            CountResponse countResponse = getNode().client().count(countRequest(getIndex())).actionGet();
             logger.info("Document count: {}", countResponse.getCount());
             assertThat(countResponse.getCount(), equalTo(0l));
 
@@ -286,8 +281,8 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAbstract {
             t.printStackTrace();
             throw t;
         } finally {
-            super.deleteRiver(river);
-            super.deleteIndex(index);
+            super.deleteRiver();
+            super.deleteIndex();
         }
     }
 

@@ -47,15 +47,6 @@ public class RiverMongoExcludeFieldsTest extends RiverMongoDBTestAbstract {
     private DBCollection mongoCollection;
     protected boolean dropCollectionOption = true;
 
-    protected RiverMongoExcludeFieldsTest() {
-        super("exclude-fields-river-" + System.currentTimeMillis(), "exclude-fields-db-" + System.currentTimeMillis(),
-                "exclude-fields-collection-" + System.currentTimeMillis(), "exclude-fields-index-" + System.currentTimeMillis());
-    }
-
-    protected RiverMongoExcludeFieldsTest(String river, String database, String collection, String index) {
-        super(river, database, collection, index);
-    }
-
     @BeforeClass
     public void createDatabase() {
         logger.debug("createDatabase {}", getDatabase());

@@ -19,13 +19,6 @@ class RiverMongoDBGroovyTest extends RiverMongoDBTestAbstract {
 	private def db
 	private DBCollection dbCollection
 
-	protected RiverMongoDBGroovyTest() {
-		super("testriver-"     + System.currentTimeMillis(),
-		"testdatabase-"  + System.currentTimeMillis(),
-		"documents-"    + System.currentTimeMillis(),
-		"testindex-"    + System.currentTimeMillis())
-	}
-
 	@BeforeClass
 	public void createDatabase() {
 		db = new GMongo(mongo).getDB(database)

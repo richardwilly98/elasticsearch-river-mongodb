@@ -49,11 +49,6 @@ public class RiverMongoTwoGroovyScriptTest extends RiverMongoDBTestAbstract {
     private DB mongoDB;
     private DBCollection mongoCollection;
 
-    protected RiverMongoTwoGroovyScriptTest() {
-        super("testgroovyriver-" + System.currentTimeMillis(), "testgroovydatabase-" + System.currentTimeMillis(), "groovydocuments-"
-                + System.currentTimeMillis(), "testgroovyindex-" + System.currentTimeMillis());
-    }
-
     @BeforeClass
     public void createDatabase() {
         logger.debug("createDatabase {}", getDatabase());

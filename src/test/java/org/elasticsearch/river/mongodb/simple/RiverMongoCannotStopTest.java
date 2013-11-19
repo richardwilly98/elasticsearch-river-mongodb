@@ -48,12 +48,6 @@ public class RiverMongoCannotStopTest extends RiverMongoDBTestAbstract {
 
     private DB mongoDB;
     private DBCollection mongoCollection;
-    private static String index = "index-" + System.currentTimeMillis();
-    private static String collection = "collection-" + System.currentTimeMillis();
-
-    protected RiverMongoCannotStopTest() {
-        super("testmongodb-" + System.currentTimeMillis(), "testriver-" + System.currentTimeMillis(), collection, index);
-    }
 
     @BeforeClass
     public void createDatabase() {
@@ -98,7 +92,7 @@ public class RiverMongoCannotStopTest extends RiverMongoDBTestAbstract {
             super.deleteRiver();
             Thread.sleep(wait);
             
-            Status status = MongoDBRiverHelper.getRiverStatus(getNode().client(), river);
+            Status status = MongoDBRiverHelper.getRiverStatus(getNode().client(), getRiver());
             Assert.assertTrue(status == Status.UNKNOWN);
         } catch (Throwable t) {
             logger.error("simpleRiver failed.", t);

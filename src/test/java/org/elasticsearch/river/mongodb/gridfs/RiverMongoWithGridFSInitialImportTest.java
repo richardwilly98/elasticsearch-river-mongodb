@@ -28,7 +28,6 @@ import org.bson.types.ObjectId;
 import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -41,15 +40,10 @@ import com.mongodb.gridfs.GridFS;
 import com.mongodb.gridfs.GridFSDBFile;
 import com.mongodb.gridfs.GridFSInputFile;
 
-public class RiverMongoWithGridFSInitialImportTest extends RiverMongoDBTestAbstract {
+public class RiverMongoWithGridFSInitialImportTest extends RiverMongoGridFSTestAbstract {
 
     private DB mongoDB;
     private DBCollection mongoCollection;
-
-    protected RiverMongoWithGridFSInitialImportTest() {
-        super("testgridfs-initialimport-" + System.currentTimeMillis(), "testgridfs-initialimport-" + System.currentTimeMillis(), "fs",
-                "testattachmentindex-initialimport-" + System.currentTimeMillis());
-    }
 
     // @BeforeClass
     public void createDatabase() {

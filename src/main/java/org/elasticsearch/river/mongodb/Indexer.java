@@ -47,7 +47,6 @@ class Indexer implements Runnable {
     private int insertedDocuments = 0;
     private int updatedDocuments = 0;
     private StopWatch sw;
-    private ExecutableScript scriptExecutable;
     private final MongoDBRiverDefinition definition;
     private final SharedContext context;
     private final Client client;
@@ -127,11 +126,6 @@ class Indexer implements Runnable {
             insertedDocuments = 0;
             updatedDocuments = 0;
 
-            if (definition.getScript() != null && definition.getScriptType() != null) {
-                scriptExecutable = this.scriptService.executable(definition.getScriptType(), definition.getScript(),
-                        ImmutableMap.of("logger", logger));
-            }
-
             try {
                 BSONTimestamp lastTimestamp = null;
 
@@ -169,8 +163,7 @@ class Indexer implements Runnable {
         String operation = entry.getOperation();
         if (MongoDBRiver.OPLOG_COMMAND_OPERATION.equals(operation)) {
             try {
-                updateBulkRequest(/* bulk, */entry.getData(), null, operation, definition.getIndexName(), definition.getTypeName(), null,
-                        null);
+                updateBulkRequest(entry.getData(), null, operation, definition.getIndexName(), definition.getTypeName(), null, null);
             } catch (IOException ioEx) {
                 logger.error("Update bulk failed.", ioEx);
             }
@@ -193,7 +186,7 @@ class Indexer implements Runnable {
             return lastTimestamp;
         }
 
-        if (scriptExecutable != null && definition.isAdvancedTransformation()) {
+        if (hasScript() && definition.isAdvancedTransformation()) {
             return applyAdvancedTransformation(entry);
         }
 
@@ -214,7 +207,7 @@ class Indexer implements Runnable {
             logger.warn("failed to parse {}", e);
         }
         Map<String, Object> data = entry.getData().toMap();
-        if (scriptExecutable != null) {
+        if (hasScript()) {
             if (ctx != null) {
                 ctx.put("document", entry.getData());
                 ctx.put("operation", operation);
@@ -222,14 +215,16 @@ class Indexer implements Runnable {
                     ctx.put("id", objectId);
                 }
                 if (logger.isDebugEnabled()) {
-                    logger.debug("Script to be executed: {}", scriptExecutable);
+                    logger.debug("Script to be executed: {} - {}", definition.getScriptType(), definition.getScript());
                     logger.debug("Context before script executed: {}", ctx);
                 }
-                scriptExecutable.setNextVar("ctx", ctx);
                 try {
-                    scriptExecutable.run();
+                    ExecutableScript executableScript = scriptService.executable(definition.getScriptType(), definition.getScript(),
+                            ImmutableMap.of("logger", logger));
+                    executableScript.setNextVar("ctx", ctx);
+                    executableScript.run();
                     // we need to unwrap the context object...
-                    ctx = (Map<String, Object>) scriptExecutable.unwrap(ctx);
+                    ctx = (Map<String, Object>) executableScript.unwrap(ctx);
                 } catch (Exception e) {
                     logger.warn("failed to script process {}, ignoring", e, ctx);
                 }
@@ -364,7 +359,7 @@ class Indexer implements Runnable {
         List<Object> documents = new ArrayList<Object>();
         Map<String, Object> document = new HashMap<String, Object>();
 
-        if (scriptExecutable != null) {
+        if (hasScript()) {
             if (ctx != null && documents != null) {
 
                 document.put("data", entry.getData().toMap());
@@ -378,15 +373,17 @@ class Indexer implements Runnable {
                 documents.add(document);
 
                 ctx.put("documents", documents);
-                if (logger.isDebugEnabled()) {
-                    logger.debug("Script to be executed: {}", scriptExecutable);
-                    logger.debug("Context before script executed: {}", ctx);
-                }
-                scriptExecutable.setNextVar("ctx", ctx);
                 try {
-                    scriptExecutable.run();
+                    ExecutableScript executableScript = scriptService.executable(definition.getScriptType(), definition.getScript(),
+                            ImmutableMap.of("logger", logger));
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("Script to be executed: {} - {}", definition.getScriptType(), definition.getScript());
+                        logger.debug("Context before script executed: {}", ctx);
+                    }
+                    executableScript.setNextVar("ctx", ctx);
+                    executableScript.run();
                     // we need to unwrap the context object...
-                    ctx = (Map<String, Object>) scriptExecutable.unwrap(ctx);
+                    ctx = (Map<String, Object>) executableScript.unwrap(ctx);
                 } catch (Exception e) {
                     logger.warn("failed to script process {}, ignoring", e, ctx);
                 }
@@ -440,6 +437,10 @@ class Indexer implements Runnable {
         } else {
             return XContentFactory.jsonBuilder().map(data.toMap());
         }
+    }
+
+    private boolean hasScript() {
+        return definition.getScriptType() != null && definition.getScript() != null;
     }
 
     private String extractObjectId(Map<String, Object> ctx, String objectId) {

@@ -26,8 +26,6 @@ import org.testng.annotations.Test;
 public class RiverMongoDropCollectionDisabledTest extends RiverMongoDropCollectionTest {
 
     protected RiverMongoDropCollectionDisabledTest() {
-        super("drop-river-" + System.currentTimeMillis(), "drop-river-" + System.currentTimeMillis(), "drop-collection-"
-                + System.currentTimeMillis(), "drop-index-" + System.currentTimeMillis());
         dropCollectionOption = false;
     }
 

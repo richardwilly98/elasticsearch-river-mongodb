@@ -37,7 +37,6 @@ import com.mongodb.DBObject;
 import com.mongodb.WriteConcern;
 import com.mongodb.util.JSON;
 
-@Test
 public class RiverMongoInitialTimestampTest extends RiverMongoDBTestAbstract {
 
     private static final String TEST_SIMPLE_MONGODB_RIVER_INITIAL_TIMESTAMP_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-initial-timestamp.json";
@@ -45,15 +44,6 @@ public class RiverMongoInitialTimestampTest extends RiverMongoDBTestAbstract {
     private static final String JAVASCRIPT_SCRIPT_TYPE = "js";
     private DB mongoDB;
     private DBCollection mongoCollection;
-
-    protected RiverMongoInitialTimestampTest() {
-        super("initial-timestamp-river-" + System.currentTimeMillis(), "initial-timestamp-river-" + System.currentTimeMillis(),
-                "initial-timestamp-collection-" + System.currentTimeMillis(), "initial-timestamp-index-" + System.currentTimeMillis());
-    }
-
-    protected RiverMongoInitialTimestampTest(String river, String database, String collection, String index) {
-        super(river, database, collection, index);
-    }
 
     @BeforeClass
     public void createDatabase() {

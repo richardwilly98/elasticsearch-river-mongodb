@@ -28,14 +28,11 @@ class RiverMongoAdvancedTransformationChildrenTest extends RiverMongoDBTestAbstr
 	private DBCollection dbCollection
 
 	protected RiverMongoAdvancedTransformationChildrenTest() {
-		super("testriver-"     + System.currentTimeMillis(),
-		"testdatabase-"  + System.currentTimeMillis(),
-		"documents-"    + System.currentTimeMillis(),
-		"testindex-"    + System.currentTimeMillis())
 	}
 
 	@BeforeClass
 	public void createDatabase() {
+        logger.debug("Create database {} and collection {}", database, collection)
 		db = new GMongo(mongo).getDB(database)
 		db.setWriteConcern(WriteConcern.REPLICAS_SAFE)
 		dbCollection = db.createCollection(collection, [:])

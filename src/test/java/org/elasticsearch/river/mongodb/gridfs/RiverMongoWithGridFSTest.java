@@ -28,7 +28,6 @@ import org.bson.types.ObjectId;
 import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -42,17 +41,12 @@ import com.mongodb.gridfs.GridFS;
 import com.mongodb.gridfs.GridFSDBFile;
 import com.mongodb.gridfs.GridFSInputFile;
 
-public class RiverMongoWithGridFSTest extends RiverMongoDBTestAbstract {
+public class RiverMongoWithGridFSTest extends RiverMongoGridFSTestAbstract {
 
     public static final String TEST_ATTACHMENT_PDF = "/org/elasticsearch/river/mongodb/gridfs/lorem.pdf";
     public static final String TEST_ATTACHMENT_HTML = "/org/elasticsearch/river/mongodb/gridfs/test-attachment.html";
     private DB mongoDB;
     private DBCollection mongoCollection;
-
-    protected RiverMongoWithGridFSTest() {
-        super("testgridfs-" + System.currentTimeMillis(), "testgridfs-" + System.currentTimeMillis(), "fs", "testattachmentindex-"
-                + System.currentTimeMillis());
-    }
 
     @BeforeClass
     public void createDatabase() {

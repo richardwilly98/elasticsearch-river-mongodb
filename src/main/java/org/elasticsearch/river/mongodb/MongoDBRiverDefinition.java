@@ -416,8 +416,9 @@ public class MongoDBRiverDefinition {
     public synchronized static MongoDBRiverDefinition parseSettings(String riverName, String riverIndexName, RiverSettings settings,
             ScriptService scriptService) {
 
+        logger.info("Parse river settings for {}", riverName);
         Preconditions.checkNotNull(riverName, "No riverName specified");
-        Preconditions.checkNotNull(riverIndexName, "Not riverIndexName specified");
+        Preconditions.checkNotNull(riverIndexName, "No riverIndexName specified");
         Preconditions.checkNotNull(settings, "No settings specified");
 
         Builder builder = new Builder();
@@ -432,7 +433,7 @@ public class MongoDBRiverDefinition {
             Map<String, Object> mongoSettings = (Map<String, Object>) settings.settings().get(MongoDBRiver.TYPE);
             if (mongoSettings.containsKey(SERVERS_FIELD)) {
                 Object mongoServersSettings = mongoSettings.get(SERVERS_FIELD);
-                logger.info("mongoServersSettings: " + mongoServersSettings);
+                logger.trace("mongoServersSettings: " + mongoServersSettings);
                 boolean array = XContentMapValues.isArray(mongoServersSettings);
 
                 if (array) {
