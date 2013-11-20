@@ -7,4 +7,8 @@ PWD="`pwd`"
 
 mvn -Dmaven.test.skip=true package
 sudo /usr/share/elasticsearch/bin/plugin --remove elasticsearch-river-mongodb
-sudo /usr/share/elasticsearch/bin/plugin --url "file://${DIR}/target/releases/elasticsearch-river-mongodb-1.7.1-SNAPSHOT.zip" --install elasticsearch-river-mongodb
+
+VERSION=$(grep -E -m 1 -o "<version>(.*)</version>" pom.xml | sed -e 's,.*<version>\([^<]*\)</version>.*,\1,g' )
+
+sudo /usr/share/elasticsearch/bin/plugin --url "file://${DIR}/target/releases/elasticsearch-river-mongodb-${VERSION}.zip" --install elasticsearch-river-mongodb
+
