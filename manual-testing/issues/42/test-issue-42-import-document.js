@@ -5,7 +5,7 @@ var status = rs.status()
    }
  }
 
-use mydb
+use mydb42
 var o =
 {
 	"firstName": "John42",
@@ -14,4 +14,4 @@ var o =
 	"state": "OPENED"
 }
 
-db.mycollec.save(o)
+db.mycollec42.save(o)

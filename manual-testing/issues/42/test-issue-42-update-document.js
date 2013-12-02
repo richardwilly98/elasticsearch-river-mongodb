@@ -5,7 +5,7 @@ var status = rs.status()
    }
  }
 
-use mydb
-var o = db.mycollec.findOne({"firstName": "John42", "lastName": "Doe42"})
+use mydb42
+var o = db.mycollec42.findOne({"firstName": "John42", "lastName": "Doe42"})
 o.state = 'CLOSED';
-db.mycollec.save(o)
+db.mycollec42.save(o)

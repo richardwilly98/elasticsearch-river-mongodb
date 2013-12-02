@@ -1,12 +1,12 @@
 {
 	"type": "mongodb",
 	"mongodb": {
-		"db": "mydb",
-		"collection": "mycollec",
+		"db": "mydb42",
+		"collection": "mycollec42",
 		"script": "if( ctx.document.state == 'CLOSED' ) { ctx.deleted = true; }"
 	},
 	"index": {
-		"name": "mydb-42",
-		"type": "mycollec-42"
+		"name": "mydb42",
+		"type": "mycollec42"
 	}
 }
