@@ -414,7 +414,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
      * 
      * @param bulk
      */
-    static void updateLastTimestamp(final MongoDBRiverDefinition definition, final BSONTimestamp time, final BulkProcessor bulkProcessor) {
+    static void setLastTimestamp(final MongoDBRiverDefinition definition, final BSONTimestamp time, final BulkProcessor bulkProcessor) {
         try {
             bulkProcessor.add(indexRequest(definition.getRiverIndexName())
                     .type(definition.getRiverName())
@@ -427,7 +427,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     }
 
     public static long getIndexCount(Client client, MongoDBRiverDefinition definition) {
-        if (client.admin().indices().prepareTypesExists(definition.getIndexName()).setTypes(definition.getTypeName()).get().isExists()) {
+        if (client.admin().indices().prepareExists(definition.getIndexName()).get().isExists()
+                && client.admin().indices().prepareTypesExists(definition.getIndexName()).setTypes(definition.getTypeName()).get()
+                        .isExists()) {
             CountResponse countResponse = client.prepareCount(definition.getIndexName()).setTypes(definition.getTypeName()).execute()
                     .actionGet();
             return countResponse.getCount();
