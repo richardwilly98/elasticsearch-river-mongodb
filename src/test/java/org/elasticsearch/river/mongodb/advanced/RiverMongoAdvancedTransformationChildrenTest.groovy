@@ -147,6 +147,7 @@ class RiverMongoAdvancedTransformationChildrenTest extends RiverMongoDBTestAbstr
 			dbCollection.remove([_id: new ObjectId(parentId)])
 			Thread.sleep(WAIT)
 			refreshIndex(index)
+            assert !node.client().prepareGet(index, "author", parentId).get().exists
 			response = node.client().prepareSearch(index).setQuery(fieldQuery("_parent", parentId)).execute().actionGet()
 			logger.debug("SearchResponse $response")
 			// Asserts data
