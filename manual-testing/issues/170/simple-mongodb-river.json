@@ -6,9 +6,6 @@
     },
     "index": {
         "name": "mydb170",
-        "type": "mycollection170",
-        "bulk": {
-          "concurrent_requests": 10
-        }
+        "type": "mycollection170"
     }
 }

@@ -1,0 +1,11 @@
+{ 
+    "type": "mongodb",
+    "mongodb": {
+        "db": "maindb",
+        "collection": "venue"
+    },
+    "index": {
+        "name": "maindb",
+        "type": "venue"
+    }
+}

@@ -5,7 +5,7 @@ var status = rs.status()
    }
  }
 
-var max = 5000000;
+var max = 1000000;
 use mydb170
 for (var i=0; i < max; i++) {
   var o = {
@@ -15,5 +15,5 @@ for (var i=0; i < max; i++) {
     "title": "Developer"
   }
   db.mycollection170.save(o);
-  print("save object " + o["_id"]);
+  //print("save object " + o["_id"]);
 }
