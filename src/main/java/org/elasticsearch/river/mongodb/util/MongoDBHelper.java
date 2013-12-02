@@ -24,9 +24,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Properties;
 import java.util.Set;
 
 import org.elasticsearch.common.Base64;
+import org.elasticsearch.common.io.FastStringReader;
+import org.elasticsearch.common.io.Streams;
+import org.elasticsearch.common.joda.time.DateTimeZone;
+import org.elasticsearch.common.joda.time.format.ISODateTimeFormat;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 
@@ -142,9 +147,24 @@ public abstract class MongoDBHelper {
 
     public static String getRiverVersion() {
         String version = "Undefined";
-        if (MongoDBHelper.class.getPackage() != null && MongoDBHelper.class.getPackage().getImplementationVersion() != null) {
-            version = MongoDBHelper.class.getPackage().getImplementationVersion();
+        try {
+            String properties = Streams.copyToStringFromClasspath("/org/elasticsearch/river/mongodb/es-build.properties");
+            Properties props = new Properties();
+            props.load(new FastStringReader(properties));
+            String ver = props.getProperty("version", "undefined");
+            String hash = props.getProperty("hash", "undefined");
+            if (!"undefined".equals(hash)) {
+                hash = hash.substring(0, 7);
+            }
+            String timestamp = "undefined";
+            String gitTimestampRaw = props.getProperty("timestamp");
+            if (gitTimestampRaw != null) {
+                timestamp = ISODateTimeFormat.dateTimeNoMillis().withZone(DateTimeZone.UTC).print(Long.parseLong(gitTimestampRaw));
+            }
+            version = String.format("version[%s] - hash[%s] - time[%s]", ver, hash, timestamp);
+        } catch (Exception ex) {
         }
         return version;
+
     }
 }

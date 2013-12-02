@@ -152,7 +152,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 logger.debug("Using mongodb server(s): host [{}], port [{}]", server.getHost(), server.getPort());
             }
             // http://stackoverflow.com/questions/5270611/read-maven-properties-file-inside-jar-war-file
-            logger.info("{} version: [{}]", DESCRIPTION, MongoDBHelper.getRiverVersion());
+            logger.info("{} - {}", DESCRIPTION, MongoDBHelper.getRiverVersion());
             logger.info(
                     "starting mongodb stream. options: secondaryreadpreference [{}], drop_collection [{}], include_collection [{}], throttlesize [{}], gridfs [{}], filter [{}], db [{}], collection [{}], script [{}], indexing to [{}]/[{}]",
                     definition.isMongoSecondaryReadPreference(), definition.isDropCollection(), definition.getIncludeCollection(),
