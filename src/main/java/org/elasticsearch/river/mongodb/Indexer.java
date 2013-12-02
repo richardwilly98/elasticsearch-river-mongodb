@@ -6,6 +6,7 @@ import static org.elasticsearch.client.Requests.indexRequest;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -125,6 +126,10 @@ class Indexer implements Runnable {
         this.context = context;
         this.client = client;
         this.scriptService = scriptService;
+        logger.trace(
+                "Create bulk processor with parameters - bulk actions: {} - concurrent request: {} - flush interval: {} - bulk size: {}",
+                definition.getBulk().getBulkActions(), definition.getBulk().getConcurrentRequests(), definition.getBulk()
+                        .getFlushInterval(), definition.getBulk().getBulkSize());
         this.bulkProcessor = BulkProcessor.builder(client, listener).setBulkActions(definition.getBulk().getBulkActions())
                 .setConcurrentRequests(definition.getBulk().getConcurrentRequests())
                 .setFlushInterval(definition.getBulk().getFlushInterval()).setBulkSize(definition.getBulk().getBulkSize()).build();
@@ -520,8 +525,17 @@ class Indexer implements Runnable {
         long totalDocuments = deletedDocuments.get() + insertedDocuments.get();
         long totalTimeInSeconds = sw.stop().totalTime().seconds();
         long totalDocumentsPerSecond = (totalTimeInSeconds == 0) ? totalDocuments : totalDocuments / totalTimeInSeconds;
-        logger.info("Indexed {} documents, {} insertions, {} updates, {} deletions, {} documents per second", totalDocuments,
+        logger.debug("Indexed {} documents, {} insertions, {} updates, {} deletions, {} documents per second", totalDocuments,
                 insertedDocuments.get(), updatedDocuments.get(), deletedDocuments.get(), totalDocumentsPerSecond);
+        if (definition.isStoreStatistics()) {
+            Map<String, Object> source = new HashMap<String, Object>();
+            source.put("date", new Date());
+            source.put("documents.inserted", insertedDocuments.get());
+            source.put("documents.updated", updatedDocuments.get());
+            source.put("documents.deleted", deletedDocuments.get());
+            source.put("duration", sw.totalTime().getMillis());
+            client.prepareIndex(definition.getRiverIndexName(), definition.getRiverName()).setSource(source).get();
+        }
     }
 
     private void dropRecreateMapping(String index, String type) throws IOException {

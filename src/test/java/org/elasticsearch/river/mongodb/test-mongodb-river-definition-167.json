@@ -9,7 +9,8 @@
 			"connect_timeout": 11000,
 			"secondary_read_preference": true,
 			"include_collection": "mycollection",
-			"skip_initial_import": true
+			"skip_initial_import": true,
+			"store_statistics": true
 		},
 		"credentials": [{
 			db: "admin",

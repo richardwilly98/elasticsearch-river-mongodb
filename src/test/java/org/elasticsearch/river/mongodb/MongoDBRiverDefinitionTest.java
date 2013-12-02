@@ -41,6 +41,7 @@ public class MongoDBRiverDefinitionTest {
             Assert.assertEquals(MongoDBRiverDefinition.DEFAULT_BULK_SIZE, definition.getBulk().getBulkSize());
             Assert.assertEquals(MongoDBRiverDefinition.DEFAULT_FLUSH_INTERVAL, definition.getBulk().getFlushInterval());
             Assert.assertFalse(definition.isSkipInitialImport());
+            Assert.assertFalse(definition.isStoreStatistics());
             
         } catch (Throwable t) {
             Assert.fail("testLoadMongoDBRiverSimpleDefinition failed", t);
@@ -155,6 +156,7 @@ public class MongoDBRiverDefinitionTest {
                     RiverIndexName.Conf.DEFAULT_INDEX_NAME, riverSettings, scriptService);
             Assert.assertNotNull(definition);
             Assert.assertTrue(definition.isSkipInitialImport());
+            Assert.assertTrue(definition.isStoreStatistics());
         } catch (Throwable t) {
             Assert.fail("testLoadMongoDBRiverDefinitionIssue167 failed", t);
         }

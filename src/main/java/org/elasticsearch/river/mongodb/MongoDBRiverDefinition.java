@@ -44,7 +44,7 @@ public class MongoDBRiverDefinition {
     // defaults
     public final static String DEFAULT_DB_HOST = "localhost";
     public final static int DEFAULT_DB_PORT = 27017;
-    public final static int DEFAULT_CONCURRENT_REQUESTS = 50;
+    public final static int DEFAULT_CONCURRENT_REQUESTS = Runtime.getRuntime().availableProcessors();
     public final static int DEFAULT_BULK_ACTIONS = 1000;
     public final static TimeValue DEFAULT_FLUSH_INTERVAL = TimeValue.timeValueMillis(10);
     public final static ByteSizeValue DEFAULT_BULK_SIZE = new ByteSizeValue(5, ByteSizeUnit.MB);
@@ -70,6 +70,7 @@ public class MongoDBRiverDefinition {
     public final static String ADVANCED_TRANSFORMATION_FIELD = "advanced_transformation";
     public final static String SKIP_INITIAL_IMPORT_FIELD = "skip_initial_import";
     public final static String PARENT_TYPES_FIELD = "parent_types";
+    public final static String STORE_STATISTICS_FIELD = "store_statistics";
     public final static String FILTER_FIELD = "filter";
     public final static String CREDENTIALS_FIELD = "credentials";
     public final static String USER_FIELD = "user";
@@ -87,7 +88,7 @@ public class MongoDBRiverDefinition {
     public final static String BULK_SIZE_FIELD = "bulk_size";
     public final static String BULK_TIMEOUT_FIELD = "bulk_timeout";
     public final static String CONCURRENT_BULK_REQUESTS_FIELD = "concurrent_bulk_requests";
-    
+
     public final static String BULK_FIELD = "bulk";
     public final static String ACTIONS_FIELD = "actions";
     public final static String SIZE_FIELD = "size";
@@ -129,11 +130,12 @@ public class MongoDBRiverDefinition {
     private final boolean advancedTransformation;
     private final boolean skipInitialImport;
     private final Set<String> parentTypes;
+    private final boolean storeStatistics;
     // index
     private final String indexName;
     private final String typeName;
     private final int throttleSize;
-    
+
     // bulk
     private final Bulk bulk;
 
@@ -172,14 +174,15 @@ public class MongoDBRiverDefinition {
         private boolean advancedTransformation = false;
         private boolean skipInitialImport;
         private Set<String> parentTypes = null;
+        private boolean storeStatistics;
 
         // index
         private String indexName;
         private String typeName;
         private int throttleSize;
-        
+
         private Bulk bulk;
-        
+
         public Builder mongoServers(List<ServerAddress> mongoServers) {
             this.mongoServers = mongoServers;
             return this;
@@ -310,6 +313,11 @@ public class MongoDBRiverDefinition {
             return this;
         }
 
+        public Builder storeStatistics(boolean storeStatistics) {
+            this.storeStatistics = storeStatistics;
+            return this;
+        }
+
         public Builder script(String script) {
             this.script = script;
             return this;
@@ -346,12 +354,12 @@ public class MongoDBRiverDefinition {
     }
 
     static class Bulk {
-        
+
         private final int concurrentRequests;
         private final int bulkActions;
         private final ByteSizeValue bulkSize;
         private final TimeValue flushInterval;
-        
+
         static class Builder {
 
             private int concurrentRequests = DEFAULT_CONCURRENT_REQUESTS;
@@ -477,7 +485,7 @@ public class MongoDBRiverDefinition {
                 builder.advancedTransformation(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(ADVANCED_TRANSFORMATION_FIELD),
                         false));
                 builder.skipInitialImport(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(SKIP_INITIAL_IMPORT_FIELD), false));
-                
+
                 mongoClientOptionsBuilder.connectTimeout(builder.connectTimeout).socketTimeout(builder.socketTimeout);
 
                 if (builder.mongoSecondaryReadPreference) {
@@ -505,6 +513,7 @@ public class MongoDBRiverDefinition {
                     builder.parentTypes(parentTypes);
                 }
 
+                builder.storeStatistics(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(STORE_STATISTICS_FIELD), false));
                 builder.includeCollection(XContentMapValues.nodeStringValue(mongoOptionsSettings.get(INCLUDE_COLLECTION_FIELD), ""));
 
                 if (mongoOptionsSettings.containsKey(INCLUDE_FIELDS_FIELD)) {
@@ -616,11 +625,12 @@ public class MongoDBRiverDefinition {
                 String filter = XContentMapValues.nodeStringValue(mongoSettings.get(FILTER_FIELD), "");
                 filter = removePrefix("o.", filter);
                 builder.mongoCollectionFilter(convertToBasicDBObject(filter));
-//                DBObject bsonObject = (DBObject) JSON.parse(filter);
-//                builder.mongoOplogFilter(convertToBasicDBObject(addPrefix("o.", filter)));
+                // DBObject bsonObject = (DBObject) JSON.parse(filter);
+                // builder.mongoOplogFilter(convertToBasicDBObject(addPrefix("o.",
+                // filter)));
                 builder.mongoOplogFilter(convertToBasicDBObject(removePrefix("o.", filter)));
-//            } else {
-//                builder.mongoOplogFilter("");
+                // } else {
+                // builder.mongoOplogFilter("");
             }
 
             if (mongoSettings.containsKey(SCRIPT_FIELD)) {
@@ -650,7 +660,7 @@ public class MongoDBRiverDefinition {
             Map<String, Object> indexSettings = (Map<String, Object>) settings.settings().get(INDEX_OBJECT);
             builder.indexName(XContentMapValues.nodeStringValue(indexSettings.get(NAME_FIELD), builder.mongoDb));
             builder.typeName(XContentMapValues.nodeStringValue(indexSettings.get(TYPE_FIELD), builder.mongoDb));
-            
+
             Bulk.Builder bulkBuilder = new Bulk.Builder();
             if (indexSettings.containsKey(BULK_FIELD)) {
                 Map<String, Object> bulkSettings = (Map<String, Object>) indexSettings.get(BULK_FIELD);
@@ -658,7 +668,8 @@ public class MongoDBRiverDefinition {
                 bulkBuilder.bulkActions(bulkActions);
                 String size = XContentMapValues.nodeStringValue(bulkSettings.get(SIZE_FIELD), DEFAULT_BULK_SIZE.toString());
                 bulkBuilder.bulkSize(ByteSizeValue.parseBytesSizeValue(size));
-                bulkBuilder.concurrentRequests(XContentMapValues.nodeIntegerValue(bulkSettings.get(CONCURRENT_REQUESTS_FIELD), DEFAULT_CONCURRENT_REQUESTS));
+                bulkBuilder.concurrentRequests(XContentMapValues.nodeIntegerValue(bulkSettings.get(CONCURRENT_REQUESTS_FIELD),
+                        DEFAULT_CONCURRENT_REQUESTS));
                 bulkBuilder.flushInterval(XContentMapValues.nodeTimeValue(bulkSettings.get(FLUSH_INTERVAL_FIELD), DEFAULT_FLUSH_INTERVAL));
                 builder.throttleSize(XContentMapValues.nodeIntegerValue(indexSettings.get(THROTTLE_SIZE_FIELD), bulkActions * 5));
             } else {
@@ -666,7 +677,8 @@ public class MongoDBRiverDefinition {
                 bulkBuilder.bulkActions(bulkActions);
                 bulkBuilder.bulkSize(DEFAULT_BULK_SIZE);
                 bulkBuilder.flushInterval(XContentMapValues.nodeTimeValue(indexSettings.get(BULK_TIMEOUT_FIELD), DEFAULT_FLUSH_INTERVAL));
-                bulkBuilder.concurrentRequests(XContentMapValues.nodeIntegerValue(indexSettings.get(CONCURRENT_BULK_REQUESTS_FIELD), DEFAULT_CONCURRENT_REQUESTS));
+                bulkBuilder.concurrentRequests(XContentMapValues.nodeIntegerValue(indexSettings.get(CONCURRENT_BULK_REQUESTS_FIELD),
+                        DEFAULT_CONCURRENT_REQUESTS));
                 builder.throttleSize(XContentMapValues.nodeIntegerValue(indexSettings.get(THROTTLE_SIZE_FIELD), bulkActions * 5));
             }
             builder.bulk(bulkBuilder.build());
@@ -707,12 +719,11 @@ public class MongoDBRiverDefinition {
         return SSLSocketFactory.getDefault();
     }
 
-    static BasicDBObject convertToBasicDBObject
-    (String object) {
+    static BasicDBObject convertToBasicDBObject(String object) {
         if (object == null || object.length() == 0) {
             return new BasicDBObject();
         } else {
-            return (BasicDBObject)JSON.parse(object);
+            return (BasicDBObject) JSON.parse(object);
         }
     }
 
@@ -735,7 +746,7 @@ public class MongoDBRiverDefinition {
             return "";
         }
         DBObject bsonObject = (DBObject) JSON.parse(object);
-        
+
         BasicBSONObject newObject = new BasicBSONObject();
         for (String key : bsonObject.keySet()) {
             if (add) {
@@ -787,6 +798,7 @@ public class MongoDBRiverDefinition {
         this.advancedTransformation = builder.advancedTransformation;
         this.skipInitialImport = builder.skipInitialImport;
         this.parentTypes = builder.parentTypes;
+        this.storeStatistics = builder.storeStatistics;
 
         // index
         this.indexName = builder.indexName;
@@ -907,6 +919,10 @@ public class MongoDBRiverDefinition {
 
     public Set<String> getParentTypes() {
         return parentTypes;
+    }
+
+    public boolean isStoreStatistics() {
+        return storeStatistics;
     }
 
     public String getIndexName() {
