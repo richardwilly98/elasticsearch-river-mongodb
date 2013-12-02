@@ -1,0 +1,14 @@
+{ 
+    "type": "mongodb",
+    "mongodb": {
+        "db": "mydb170",
+        "collection": "mycollection170"
+    },
+    "index": {
+        "name": "mydb170",
+        "type": "mycollection170",
+        "bulk": {
+          "concurrent_requests": 10
+        }
+    }
+}
