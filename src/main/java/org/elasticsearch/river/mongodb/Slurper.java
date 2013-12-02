@@ -50,7 +50,6 @@ class Slurper implements Runnable {
     private DBCollection oplogCollection;
 
     public Slurper(List<ServerAddress> mongoServers, MongoDBRiverDefinition definition, SharedContext context, Client client) {
-        logger.trace("*** Initialize Slurper - {}", this.hashCode());
         this.definition = definition;
         this.context = context;
         this.client = client;
@@ -170,6 +169,7 @@ class Slurper implements Runnable {
                     if (cursor.hasNext()) {
                         addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, null, applyFieldFilter(object));
                     } else {
+                        logger.debug("Last entry for initial import - add timestamp: {}", startTimestamp);
                         addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, startTimestamp, applyFieldFilter(object));
                     }
                 }
@@ -189,6 +189,7 @@ class Slurper implements Runnable {
                         if (cursor.hasNext()) {
                             addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, null, file);
                         } else {
+                            logger.debug("Last entry for initial import - add timestamp: {}", startTimestamp);
                             addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, startTimestamp, file);
                         }
                     }
@@ -283,18 +284,6 @@ class Slurper implements Runnable {
         if (logger.isTraceEnabled()) {
             logger.trace("MongoDB object deserialized: {}", object.toString());
         }
-
-//        // Initial support for sharded collection -
-//        // https://jira.mongodb.org/browse/SERVER-4333
-//        // Not interested in operation from migration or sharding
-//        if (entry.containsField(MongoDBRiver.OPLOG_FROM_MIGRATE) && ((BasicBSONObject) entry).getBoolean(MongoDBRiver.OPLOG_FROM_MIGRATE)) {
-//            logger.debug("From migration or sharding operation. Can be ignored. {}", entry);
-//            return;
-//        }
-//        // Not interested by chunks - skip all
-//        if (namespace.endsWith(MongoDBRiver.GRIDFS_CHUNKS_SUFFIX)) {
-//            return;
-//        }
 
         if (logger.isDebugEnabled()) {
             logger.debug("oplog entry - namespace [{}], operation [{}]", namespace, operation);
@@ -440,43 +429,8 @@ class Slurper implements Runnable {
             filter.put(MongoDBRiver.OPLOG_TIMESTAMP, new BasicDBObject(QueryOperators.GT, time));
         }
 
-        // if (definition.isMongoGridFS()) {
-        // filter.put(MongoDBRiver.OPLOG_NAMESPACE,
-        // definition.getMongoOplogNamespace() +
-        // MongoDBRiver.GRIDFS_FILES_SUFFIX);
-        // } else {
-        // List<String> namespaceFilter =
-        // ImmutableList.of(definition.getMongoOplogNamespace(),
-        // definition.getMongoDb() + "."
-        // + MongoDBRiver.OPLOG_NAMESPACE_COMMAND);
-        // filter.put(MongoDBRiver.OPLOG_NAMESPACE, new
-        // BasicBSONObject(MongoDBRiver.MONGODB_IN_OPERATOR, namespaceFilter));
-        // }
-        // if (definition.getMongoOplogFilter().size() > 0) {
-        // filter.putAll(getMongoFilter());
-        // }
-        // if (logger.isDebugEnabled()) {
-        // logger.debug("Using filter: {}", filter);
-        // }
         return filter;
     }
-
-    // private DBObject getMongoFilter() {
-    // List<DBObject> filters = new ArrayList<DBObject>();
-    // List<DBObject> filters2 = new ArrayList<DBObject>();
-    //
-    // filters.add(new BasicDBObject(MongoDBRiver.OPLOG_OPERATION, new
-    // BasicBSONObject(MongoDBRiver.MONGODB_IN_OPERATOR, ImmutableList.of(
-    // MongoDBRiver.OPLOG_DELETE_OPERATION, MongoDBRiver.OPLOG_UPDATE_OPERATION,
-    // MongoDBRiver.OPLOG_INSERT_OPERATION))));
-    //
-    // // include custom filter in filters2
-    // filters2.add(definition.getMongoOplogFilter());
-    // filters.add(new BasicDBObject(MongoDBRiver.MONGODB_AND_OPERATOR,
-    // filters2));
-    //
-    // return new BasicDBObject(MongoDBRiver.MONGODB_OR_OPERATOR, filters);
-    // }
 
     private DBCursor oplogCursor(final BSONTimestamp timestampOverride) {
         BSONTimestamp time = timestampOverride == null ? MongoDBRiver.getLastTimestamp(client, definition) : timestampOverride;
