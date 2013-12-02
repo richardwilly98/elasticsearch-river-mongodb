@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.bson.types.BSONTimestamp;
 import org.elasticsearch.action.ActionRequest;
@@ -43,9 +45,9 @@ import com.mongodb.gridfs.GridFSDBFile;
 class Indexer implements Runnable {
 
     private final ESLogger logger = ESLoggerFactory.getLogger(this.getClass().getName());
-    private int deletedDocuments = 0;
-    private int insertedDocuments = 0;
-    private int updatedDocuments = 0;
+    private AtomicInteger deletedDocuments = new AtomicInteger();
+    private AtomicInteger insertedDocuments = new AtomicInteger();
+    private AtomicInteger updatedDocuments = new AtomicInteger();
     private StopWatch sw;
     private final MongoDBRiverDefinition definition;
     private final SharedContext context;
@@ -54,6 +56,8 @@ class Indexer implements Runnable {
     private final BulkProcessor bulkProcessor;
     private final Map<String, Boolean> DROP_COLLECTION = ImmutableMap.of("dropCollection", Boolean.TRUE);
     private volatile boolean flushBulkProcessor;
+
+    private AtomicLong documentCount = new AtomicLong();
 
     private final BulkProcessor.Listener listener = new BulkProcessor.Listener() {
 
@@ -75,9 +79,9 @@ class Indexer implements Runnable {
 
                             try {
                                 dropRecreateMapping(index, type);
-                                deletedDocuments = 0;
-                                updatedDocuments = 0;
-                                insertedDocuments = 0;
+                                deletedDocuments.set(0);
+                                updatedDocuments.set(0);
+                                insertedDocuments.set(0);
                                 flushBulkProcessor = false;
                             } catch (Throwable t) {
                                 logger.error("Drop collection operation failed", t);
@@ -103,8 +107,16 @@ class Indexer implements Runnable {
 
         @Override
         public void afterBulk(long executionId, BulkRequest request, BulkResponse response) {
-            logger.trace("afterBulk - bulk [{}] success [{} items] [{} ms]", executionId, response.getItems().length,
-                    response.getTookInMillis());
+            if (response.hasFailures()) {
+                logger.error("Bulk processor failed. {}", response.buildFailureMessage());
+                context.setStatus(Status.IMPORT_FAILED);
+            } else {
+                documentCount.addAndGet(response.getItems().length);
+                if (logger.isTraceEnabled()) {
+                    logger.trace("afterBulk - bulk [{}] success [{} items] [{} ms] total [{}]", executionId, response.getItems().length,
+                            response.getTookInMillis(), documentCount.get());
+                }
+            }
         }
     };
 
@@ -122,9 +134,9 @@ class Indexer implements Runnable {
     public void run() {
         while (context.getStatus() == Status.RUNNING) {
             sw = new StopWatch().start();
-            deletedDocuments = 0;
-            insertedDocuments = 0;
-            updatedDocuments = 0;
+            deletedDocuments.set(0);
+            insertedDocuments.set(0);
+            updatedDocuments.set(0);
 
             try {
                 BSONTimestamp lastTimestamp = null;
@@ -138,7 +150,7 @@ class Indexer implements Runnable {
 
                 // 2. Update the timestamp
                 if (lastTimestamp != null) {
-                    MongoDBRiver.updateLastTimestamp(definition, lastTimestamp, bulkProcessor);
+                    MongoDBRiver.setLastTimestamp(definition, lastTimestamp, bulkProcessor);
                 }
 
             } catch (InterruptedException e) {
@@ -278,7 +290,7 @@ class Indexer implements Runnable {
                 logger.debug("Insert operation - id: {} - contains attachment: {}", operation, objectId, isAttachment);
             }
             bulkProcessor.add(indexRequest(index).type(type).id(objectId).source(build(data, objectId)).routing(routing).parent(parent));
-            insertedDocuments++;
+            insertedDocuments.incrementAndGet();
         }
         if (MongoDBRiver.OPLOG_UPDATE_OPERATION.equals(operation)) {
             if (logger.isDebugEnabled()) {
@@ -286,12 +298,12 @@ class Indexer implements Runnable {
             }
             deleteBulkRequest(objectId, index, type, routing, parent);
             bulkProcessor.add(indexRequest(index).type(type).id(objectId).source(build(data, objectId)).routing(routing).parent(parent));
-            updatedDocuments++;
+            updatedDocuments.incrementAndGet();
         }
         if (MongoDBRiver.OPLOG_DELETE_OPERATION.equals(operation)) {
             logger.info("Delete request [{}], [{}], [{}]", index, type, objectId);
             deleteBulkRequest(objectId, index, type, routing, parent);
-            deletedDocuments++;
+            deletedDocuments.incrementAndGet();
         }
         if (MongoDBRiver.OPLOG_COMMAND_OPERATION.equals(operation)) {
             if (definition.isDropCollection()) {
@@ -505,11 +517,11 @@ class Indexer implements Runnable {
     }
 
     private void logStatistics() {
-        long totalDocuments = deletedDocuments + insertedDocuments;
+        long totalDocuments = deletedDocuments.get() + insertedDocuments.get();
         long totalTimeInSeconds = sw.stop().totalTime().seconds();
         long totalDocumentsPerSecond = (totalTimeInSeconds == 0) ? totalDocuments : totalDocuments / totalTimeInSeconds;
         logger.info("Indexed {} documents, {} insertions, {} updates, {} deletions, {} documents per second", totalDocuments,
-                insertedDocuments, updatedDocuments, deletedDocuments, totalDocumentsPerSecond);
+                insertedDocuments.get(), updatedDocuments.get(), deletedDocuments.get(), totalDocumentsPerSecond);
     }
 
     private void dropRecreateMapping(String index, String type) throws IOException {
