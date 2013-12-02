@@ -21,6 +21,7 @@ package org.elasticsearch.river.mongodb.simple;
 import static org.elasticsearch.client.Requests.countRequest;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
 
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
@@ -82,6 +83,9 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
             assertThat(response.actionGet().isExists(), equalTo(true));
             Assert.assertEquals(Status.RUNNING, MongoDBRiverHelper.getRiverStatus(getNode().client(), getRiver()));
             assertThat(getNode().client().count(countRequest(getIndex())).actionGet().getCount(), equalTo(1l));
+            
+            MongoDBRiverDefinition definition = getMongoDBRiverDefinition(TEST_MONGODB_RIVER_SIMPLE_JSON, getDatabase(), getCollection(), getIndex());
+            assertThat(MongoDBRiver.getLastTimestamp(getNode().client(), definition), notNullValue());
 
             // Check that it syncs the oplog
             DBObject dbObject2 = new BasicDBObject(ImmutableMap.of("name", "Ben"));
