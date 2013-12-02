@@ -1,6 +1,5 @@
 package org.elasticsearch.river.mongodb;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -39,6 +38,10 @@ class Slurper implements Runnable {
     private final MongoDBRiverDefinition definition;
     private final SharedContext context;
     private final BasicDBObject findKeys;
+    private final String gridfsOplogNamespace;
+    private final String cmdOplogNamespace;
+    private final ImmutableList<String> oplogOperations = ImmutableList.of(MongoDBRiver.OPLOG_DELETE_OPERATION,
+            MongoDBRiver.OPLOG_UPDATE_OPERATION, MongoDBRiver.OPLOG_INSERT_OPERATION, MongoDBRiver.OPLOG_COMMAND_OPERATION);
     private final Client client;
     private Mongo mongo;
     private DB slurpedDb;
@@ -53,6 +56,8 @@ class Slurper implements Runnable {
         this.client = client;
         this.mongo = new MongoClient(mongoServers, definition.getMongoClientOptions());
         this.findKeys = new BasicDBObject();
+        this.gridfsOplogNamespace = definition.getMongoOplogNamespace() + MongoDBRiver.GRIDFS_FILES_SUFFIX;
+        this.cmdOplogNamespace = definition.getMongoDb() + "." + MongoDBRiver.OPLOG_NAMESPACE_COMMAND;
         if (definition.getExcludeFields() != null) {
             for (String key : definition.getExcludeFields()) {
                 findKeys.put(key, 0);
@@ -95,7 +100,7 @@ class Slurper implements Runnable {
                     }
                     while (cursor.hasNext()) {
                         DBObject item = cursor.next();
-                        processOplogEntry(item);
+                        processOplogEntry(item, startTimestamp);
                     }
                     Thread.sleep(500);
                 } catch (Exception ex) {
@@ -156,15 +161,19 @@ class Slurper implements Runnable {
         DBCursor cursor = null;
         try {
             if (!definition.isMongoGridFS()) {
+                logger.info("Collection {} - count: {}", definition.getMongoCollection(), slurpedCollection.count());
+                long count = 0;
                 cursor = slurpedCollection.find(definition.getMongoCollectionFilter());
                 while (cursor.hasNext()) {
                     DBObject object = cursor.next();
+                    count++;
                     if (cursor.hasNext()) {
                         addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, null, applyFieldFilter(object));
                     } else {
                         addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, startTimestamp, applyFieldFilter(object));
                     }
                 }
+                logger.info("Number documents indexed: {}", count);
             } else {
                 // TODO: To be optimized.
                 // https://github.com/mongodb/mongo-java-driver/pull/48#issuecomment-25241988
@@ -262,7 +271,10 @@ class Slurper implements Runnable {
         return oplogCursor(currentTimestamp);
     }
 
-    private void processOplogEntry(final DBObject entry) throws InterruptedException {
+    private void processOplogEntry(final DBObject entry, final BSONTimestamp startTimestamp) throws InterruptedException {
+        if (!isValidOplogEntry(entry, startTimestamp)) {
+            return;
+        }
         String operation = entry.get(MongoDBRiver.OPLOG_OPERATION).toString();
         String namespace = entry.get(MongoDBRiver.OPLOG_NAMESPACE).toString();
         BSONTimestamp oplogTimestamp = (BSONTimestamp) entry.get(MongoDBRiver.OPLOG_TIMESTAMP);
@@ -272,21 +284,21 @@ class Slurper implements Runnable {
             logger.trace("MongoDB object deserialized: {}", object.toString());
         }
 
-        // Initial support for sharded collection -
-        // https://jira.mongodb.org/browse/SERVER-4333
-        // Not interested in operation from migration or sharding
-        if (entry.containsField(MongoDBRiver.OPLOG_FROM_MIGRATE) && ((BasicBSONObject) entry).getBoolean(MongoDBRiver.OPLOG_FROM_MIGRATE)) {
-            logger.debug("From migration or sharding operation. Can be ignored. {}", entry);
-            return;
-        }
-        // Not interested by chunks - skip all
-        if (namespace.endsWith(MongoDBRiver.GRIDFS_CHUNKS_SUFFIX)) {
-            return;
-        }
+//        // Initial support for sharded collection -
+//        // https://jira.mongodb.org/browse/SERVER-4333
+//        // Not interested in operation from migration or sharding
+//        if (entry.containsField(MongoDBRiver.OPLOG_FROM_MIGRATE) && ((BasicBSONObject) entry).getBoolean(MongoDBRiver.OPLOG_FROM_MIGRATE)) {
+//            logger.debug("From migration or sharding operation. Can be ignored. {}", entry);
+//            return;
+//        }
+//        // Not interested by chunks - skip all
+//        if (namespace.endsWith(MongoDBRiver.GRIDFS_CHUNKS_SUFFIX)) {
+//            return;
+//        }
 
-        if (logger.isTraceEnabled()) {
-            logger.trace("oplog entry - namespace [{}], operation [{}]", namespace, operation);
-            logger.trace("oplog processing item {}", entry);
+        if (logger.isDebugEnabled()) {
+            logger.debug("oplog entry - namespace [{}], operation [{}]", namespace, operation);
+            logger.debug("oplog processing item {}", entry);
         }
 
         String objectId = getObjectIdFromOplogEntry(entry);
@@ -320,6 +332,69 @@ class Slurper implements Runnable {
                 addToStream(operation, oplogTimestamp, applyFieldFilter(object));
             }
         }
+    }
+
+    private boolean isValidOplogEntry(final DBObject entry, final BSONTimestamp startTimestamp) {
+        String namespace = (String) entry.get(MongoDBRiver.OPLOG_NAMESPACE);
+        // Initial support for sharded collection -
+        // https://jira.mongodb.org/browse/SERVER-4333
+        // Not interested in operation from migration or sharding
+        if (entry.containsField(MongoDBRiver.OPLOG_FROM_MIGRATE) && ((BasicBSONObject) entry).getBoolean(MongoDBRiver.OPLOG_FROM_MIGRATE)) {
+            logger.trace("From migration or sharding operation. Can be ignored. {}", entry);
+            return false;
+        }
+        // Not interested by chunks - skip all
+        if (namespace.endsWith(MongoDBRiver.GRIDFS_CHUNKS_SUFFIX)) {
+            return false;
+        }
+
+        if (startTimestamp != null) {
+            BSONTimestamp oplogTimestamp = (BSONTimestamp) entry.get(MongoDBRiver.OPLOG_TIMESTAMP);
+            if (oplogTimestamp.compareTo(startTimestamp) < 0) {
+                return false;
+            }
+        }
+
+        boolean validNamespace = false;
+        if (definition.isMongoGridFS()) {
+            validNamespace = gridfsOplogNamespace.equals(namespace);
+        } else {
+            if (definition.getMongoOplogNamespace().equals(namespace)) {
+                validNamespace = true;
+            }
+            if (cmdOplogNamespace.equals(namespace)) {
+                validNamespace = true;
+            }
+        }
+        if (!validNamespace) {
+            return false;
+        }
+        String operation = (String) entry.get(MongoDBRiver.OPLOG_OPERATION);
+        if (!oplogOperations.contains(operation)) {
+            return false;
+        }
+
+        // TODO: implement a better solution
+        if (definition.getMongoOplogFilter() != null) {
+            DBObject object = (DBObject) entry.get(MongoDBRiver.OPLOG_OBJECT);
+            BasicDBObject filter = definition.getMongoOplogFilter();
+            if (!filterMatch(filter, object)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean filterMatch(DBObject filter, DBObject object) {
+        for (String key : filter.keySet()) {
+            if (!object.containsField(key)) {
+                return false;
+            }
+            if (!filter.get(key).equals(object.get(key))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private DBObject applyFieldFilter(DBObject object) {
@@ -365,35 +440,43 @@ class Slurper implements Runnable {
             filter.put(MongoDBRiver.OPLOG_TIMESTAMP, new BasicDBObject(QueryOperators.GT, time));
         }
 
-        if (definition.isMongoGridFS()) {
-            filter.put(MongoDBRiver.OPLOG_NAMESPACE, definition.getMongoOplogNamespace() + MongoDBRiver.GRIDFS_FILES_SUFFIX);
-        } else {
-            List<String> namespaceFilter = ImmutableList.of(definition.getMongoOplogNamespace(), definition.getMongoDb() + "."
-                    + MongoDBRiver.OPLOG_NAMESPACE_COMMAND);
-            filter.put(MongoDBRiver.OPLOG_NAMESPACE, new BasicBSONObject(MongoDBRiver.MONGODB_IN_OPERATOR, namespaceFilter));
-        }
-        if (definition.getMongoOplogFilter().size() > 0) {
-            filter.putAll(getMongoFilter());
-        }
-        if (logger.isDebugEnabled()) {
-            logger.debug("Using filter: {}", filter);
-        }
+        // if (definition.isMongoGridFS()) {
+        // filter.put(MongoDBRiver.OPLOG_NAMESPACE,
+        // definition.getMongoOplogNamespace() +
+        // MongoDBRiver.GRIDFS_FILES_SUFFIX);
+        // } else {
+        // List<String> namespaceFilter =
+        // ImmutableList.of(definition.getMongoOplogNamespace(),
+        // definition.getMongoDb() + "."
+        // + MongoDBRiver.OPLOG_NAMESPACE_COMMAND);
+        // filter.put(MongoDBRiver.OPLOG_NAMESPACE, new
+        // BasicBSONObject(MongoDBRiver.MONGODB_IN_OPERATOR, namespaceFilter));
+        // }
+        // if (definition.getMongoOplogFilter().size() > 0) {
+        // filter.putAll(getMongoFilter());
+        // }
+        // if (logger.isDebugEnabled()) {
+        // logger.debug("Using filter: {}", filter);
+        // }
         return filter;
     }
 
-    private DBObject getMongoFilter() {
-        List<DBObject> filters = new ArrayList<DBObject>();
-        List<DBObject> filters2 = new ArrayList<DBObject>();
-
-        filters.add(new BasicDBObject(MongoDBRiver.OPLOG_OPERATION, new BasicBSONObject(MongoDBRiver.MONGODB_IN_OPERATOR, ImmutableList.of(
-                MongoDBRiver.OPLOG_DELETE_OPERATION, MongoDBRiver.OPLOG_UPDATE_OPERATION, MongoDBRiver.OPLOG_INSERT_OPERATION))));
-
-        // include custom filter in filters2
-        filters2.add(definition.getMongoOplogFilter());
-        filters.add(new BasicDBObject(MongoDBRiver.MONGODB_AND_OPERATOR, filters2));
-
-        return new BasicDBObject(MongoDBRiver.MONGODB_OR_OPERATOR, filters);
-    }
+    // private DBObject getMongoFilter() {
+    // List<DBObject> filters = new ArrayList<DBObject>();
+    // List<DBObject> filters2 = new ArrayList<DBObject>();
+    //
+    // filters.add(new BasicDBObject(MongoDBRiver.OPLOG_OPERATION, new
+    // BasicBSONObject(MongoDBRiver.MONGODB_IN_OPERATOR, ImmutableList.of(
+    // MongoDBRiver.OPLOG_DELETE_OPERATION, MongoDBRiver.OPLOG_UPDATE_OPERATION,
+    // MongoDBRiver.OPLOG_INSERT_OPERATION))));
+    //
+    // // include custom filter in filters2
+    // filters2.add(definition.getMongoOplogFilter());
+    // filters.add(new BasicDBObject(MongoDBRiver.MONGODB_AND_OPERATOR,
+    // filters2));
+    //
+    // return new BasicDBObject(MongoDBRiver.MONGODB_OR_OPERATOR, filters);
+    // }
 
     private DBCursor oplogCursor(final BSONTimestamp timestampOverride) {
         BSONTimestamp time = timestampOverride == null ? MongoDBRiver.getLastTimestamp(client, definition) : timestampOverride;

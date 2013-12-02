@@ -148,7 +148,7 @@ public class MongoDBRiverDefinition {
         private String mongoDb;
         private String mongoCollection;
         private boolean mongoGridFS;
-        private BasicDBObject mongoOplogFilter = new BasicDBObject();
+        private BasicDBObject mongoOplogFilter;// = new BasicDBObject();
         private BasicDBObject mongoCollectionFilter = new BasicDBObject();
         // mongodb.credentials
         private String mongoAdminUser = "";
@@ -617,7 +617,8 @@ public class MongoDBRiverDefinition {
                 filter = removePrefix("o.", filter);
                 builder.mongoCollectionFilter(convertToBasicDBObject(filter));
 //                DBObject bsonObject = (DBObject) JSON.parse(filter);
-                builder.mongoOplogFilter(convertToBasicDBObject(addPrefix("o.", filter)));
+//                builder.mongoOplogFilter(convertToBasicDBObject(addPrefix("o.", filter)));
+                builder.mongoOplogFilter(convertToBasicDBObject(removePrefix("o.", filter)));
 //            } else {
 //                builder.mongoOplogFilter("");
             }
