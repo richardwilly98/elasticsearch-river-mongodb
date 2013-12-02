@@ -1,6 +1,7 @@
 package org.elasticsearch.river.mongodb;
 
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
@@ -9,6 +10,7 @@ import org.bson.types.BSONTimestamp;
 import org.bson.types.ObjectId;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.collect.ImmutableList;
+import org.elasticsearch.common.collect.Maps;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.river.mongodb.util.MongoDBHelper;
@@ -45,7 +47,8 @@ class Slurper implements Runnable {
     private final Client client;
     private Mongo mongo;
     private DB slurpedDb;
-    private DBCollection slurpedCollection;
+    // private DBCollection slurpedCollection;
+    private Map<String, DBCollection> slurpedCollections = Maps.newHashMap();
     private DB oplogDb;
     private DBCollection oplogCollection;
 
@@ -78,7 +81,7 @@ class Slurper implements Runnable {
                 }
 
                 BSONTimestamp startTimestamp = null;
-                if (!definition.isSkipInitialImport()) {
+                if (!definition.isSkipInitialImport() && !definition.isImportAllCollections()) {
                     if (!riverHasIndexedFromOplog() && definition.getInitialTimestamp() == null) {
                         if (!isIndexEmpty()) {
                             MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.INITIAL_IMPORT_FAILED);
@@ -155,6 +158,8 @@ class Slurper implements Runnable {
      */
     protected BSONTimestamp doInitialImport() throws InterruptedException {
         // TODO: ensure the index type is empty
+        DBCollection slurpedCollection = slurpedCollections.get(definition.getMongoCollection());
+
         logger.info("MongoDBRiver is beginning initial import of " + slurpedCollection.getFullName());
         BSONTimestamp startTimestamp = getCurrentOplogTimestamp();
         DBCursor cursor = null;
@@ -167,10 +172,11 @@ class Slurper implements Runnable {
                     DBObject object = cursor.next();
                     count++;
                     if (cursor.hasNext()) {
-                        addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, null, applyFieldFilter(object));
+                        addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, null, applyFieldFilter(object), definition.getMongoCollection());
                     } else {
                         logger.debug("Last entry for initial import - add timestamp: {}", startTimestamp);
-                        addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, startTimestamp, applyFieldFilter(object));
+                        addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, startTimestamp, applyFieldFilter(object),
+                                definition.getMongoCollection());
                     }
                 }
                 logger.info("Number documents indexed: {}", count);
@@ -187,10 +193,10 @@ class Slurper implements Runnable {
                     if (object instanceof GridFSDBFile) {
                         GridFSDBFile file = grid.findOne(new ObjectId(object.get(MongoDBRiver.MONGODB_ID_FIELD).toString()));
                         if (cursor.hasNext()) {
-                            addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, null, file);
+                            addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, null, file, definition.getMongoCollection());
                         } else {
                             logger.debug("Last entry for initial import - add timestamp: {}", startTimestamp);
-                            addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, startTimestamp, file);
+                            addToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, startTimestamp, file, definition.getMongoCollection());
                         }
                     }
                 }
@@ -256,7 +262,15 @@ class Slurper implements Runnable {
         // return false;
         // }
         // }
-        slurpedCollection = slurpedDb.getCollection(definition.getMongoCollection());
+        // slurpedCollection =
+        // slurpedDb.getCollection(definition.getMongoCollection());
+        if (definition.isImportAllCollections()) {
+            for (String collection : slurpedDb.getCollectionNames()) {
+                slurpedCollections.put(collection, slurpedDb.getCollection(collection));
+            }
+        } else {
+            slurpedCollections.put(definition.getMongoCollection(), slurpedDb.getCollection(definition.getMongoCollection()));
+        }
 
         return true;
     }
@@ -268,7 +282,7 @@ class Slurper implements Runnable {
 
     private DBCursor processFullOplog() throws InterruptedException {
         BSONTimestamp currentTimestamp = getCurrentOplogTimestamp();
-        addQueryToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, currentTimestamp, null);
+        addQueryToStream(MongoDBRiver.OPLOG_INSERT_OPERATION, currentTimestamp, null, null);
         return oplogCursor(currentTimestamp);
     }
 
@@ -278,6 +292,15 @@ class Slurper implements Runnable {
         }
         String operation = entry.get(MongoDBRiver.OPLOG_OPERATION).toString();
         String namespace = entry.get(MongoDBRiver.OPLOG_NAMESPACE).toString();
+        String collection = null;
+        if (definition.isImportAllCollections()) {
+            if (!namespace.equals(cmdOplogNamespace)) {
+                collection = namespace.substring(definition.getMongoDb().length() + 1);
+            }
+        } else {
+            collection = definition.getMongoCollection();
+        }
+        logger.info("COLLECTION: {}", collection);
         BSONTimestamp oplogTimestamp = (BSONTimestamp) entry.get(MongoDBRiver.OPLOG_TIMESTAMP);
         DBObject object = (DBObject) entry.get(MongoDBRiver.OPLOG_OBJECT);
 
@@ -296,7 +319,12 @@ class Slurper implements Runnable {
             if (objectId == null) {
                 throw new NullPointerException(MongoDBRiver.MONGODB_ID_FIELD);
             }
-            GridFS grid = new GridFS(mongo.getDB(definition.getMongoDb()), definition.getMongoCollection());
+            GridFS grid = new GridFS(mongo.getDB(definition.getMongoDb()), /*
+                                                                            * definition
+                                                                            * .
+                                                                            * getMongoCollection
+                                                                            * ()
+                                                                            */collection);
             GridFSDBFile file = grid.findOne(new ObjectId(objectId));
             if (file != null) {
                 logger.info("Caught file: {} - {}", file.getId(), file.getFilename());
@@ -311,14 +339,14 @@ class Slurper implements Runnable {
                 throw new NullPointerException(MongoDBRiver.MONGODB_ID_FIELD);
             }
             logger.info("Add attachment: {}", objectId);
-            addToStream(operation, oplogTimestamp, applyFieldFilter(object));
+            addToStream(operation, oplogTimestamp, applyFieldFilter(object), collection);
         } else {
             if (MongoDBRiver.OPLOG_UPDATE_OPERATION.equals(operation)) {
                 DBObject update = (DBObject) entry.get(MongoDBRiver.OPLOG_UPDATE);
                 logger.debug("Updated item: {}", update);
-                addQueryToStream(operation, oplogTimestamp, update);
+                addQueryToStream(operation, oplogTimestamp, update, collection);
             } else {
-                addToStream(operation, oplogTimestamp, applyFieldFilter(object));
+                addToStream(operation, oplogTimestamp, applyFieldFilter(object), collection);
             }
         }
     }
@@ -348,8 +376,14 @@ class Slurper implements Runnable {
         if (definition.isMongoGridFS()) {
             validNamespace = gridfsOplogNamespace.equals(namespace);
         } else {
-            if (definition.getMongoOplogNamespace().equals(namespace)) {
-                validNamespace = true;
+            if (definition.isImportAllCollections()) {
+                if (namespace.startsWith(definition.getMongoDb())) {
+                    validNamespace = true;
+                }
+            } else {
+                if (definition.getMongoOplogNamespace().equals(namespace)) {
+                    validNamespace = true;
+                }
             }
             if (cmdOplogNamespace.equals(namespace)) {
                 validNamespace = true;
@@ -449,23 +483,33 @@ class Slurper implements Runnable {
         return oplogCollection.find(indexFilter).setOptions(options);
     }
 
-    private void addQueryToStream(final String operation, final BSONTimestamp currentTimestamp, final DBObject update)
-            throws InterruptedException {
+    private void addQueryToStream(final String operation, final BSONTimestamp currentTimestamp, final DBObject update,
+            final String collection) throws InterruptedException {
         if (logger.isDebugEnabled()) {
             logger.debug("addQueryToStream - operation [{}], currentTimestamp [{}], update [{}]", operation, currentTimestamp, update);
         }
 
-        for (DBObject item : slurpedCollection.find(update, findKeys)) {
-            addToStream(operation, currentTimestamp, item);
+        if (collection == null) {
+            for (DBCollection slurpedCollection : slurpedCollections.values()) {
+                for (DBObject item : slurpedCollection.find(update, findKeys)) {
+                    addToStream(operation, currentTimestamp, item, collection);
+                }
+            }
+        } else {
+            DBCollection slurpedCollection = slurpedCollections.get(collection);
+            for (DBObject item : slurpedCollection.find(update, findKeys)) {
+                addToStream(operation, currentTimestamp, item, collection);
+            }
         }
     }
 
-    private void addToStream(final String operation, final BSONTimestamp currentTimestamp, final DBObject data) throws InterruptedException {
+    private void addToStream(final String operation, final BSONTimestamp currentTimestamp, final DBObject data, final String collection)
+            throws InterruptedException {
         if (logger.isDebugEnabled()) {
             logger.debug("addToStream - operation [{}], currentTimestamp [{}], data [{}]", operation, currentTimestamp, data);
         }
 
-        context.getStream().put(new MongoDBRiver.QueueEntry(currentTimestamp, operation, data));
+        context.getStream().put(new MongoDBRiver.QueueEntry(currentTimestamp, operation, data, collection));
     }
 
 }

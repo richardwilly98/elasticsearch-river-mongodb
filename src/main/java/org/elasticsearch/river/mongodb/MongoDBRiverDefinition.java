@@ -71,6 +71,7 @@ public class MongoDBRiverDefinition {
     public final static String SKIP_INITIAL_IMPORT_FIELD = "skip_initial_import";
     public final static String PARENT_TYPES_FIELD = "parent_types";
     public final static String STORE_STATISTICS_FIELD = "store_statistics";
+    public final static String IMPORT_ALL_COLLECTIONS_FIELD = "import_all_collections";
     public final static String FILTER_FIELD = "filter";
     public final static String CREDENTIALS_FIELD = "credentials";
     public final static String USER_FIELD = "user";
@@ -131,6 +132,7 @@ public class MongoDBRiverDefinition {
     private final boolean skipInitialImport;
     private final Set<String> parentTypes;
     private final boolean storeStatistics;
+    private final boolean importAllCollections;
     // index
     private final String indexName;
     private final String typeName;
@@ -175,7 +177,8 @@ public class MongoDBRiverDefinition {
         private boolean skipInitialImport;
         private Set<String> parentTypes = null;
         private boolean storeStatistics;
-
+        private boolean importAllCollections;
+        
         // index
         private String indexName;
         private String typeName;
@@ -315,6 +318,11 @@ public class MongoDBRiverDefinition {
 
         public Builder storeStatistics(boolean storeStatistics) {
             this.storeStatistics = storeStatistics;
+            return this;
+        }
+
+        public Builder importAllCollections(boolean importAllCollections) {
+            this.importAllCollections = importAllCollections;
             return this;
         }
 
@@ -514,6 +522,7 @@ public class MongoDBRiverDefinition {
                 }
 
                 builder.storeStatistics(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(STORE_STATISTICS_FIELD), false));
+                builder.importAllCollections(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(IMPORT_ALL_COLLECTIONS_FIELD), false));
                 builder.includeCollection(XContentMapValues.nodeStringValue(mongoOptionsSettings.get(INCLUDE_COLLECTION_FIELD), ""));
 
                 if (mongoOptionsSettings.containsKey(INCLUDE_FIELDS_FIELD)) {
@@ -799,6 +808,7 @@ public class MongoDBRiverDefinition {
         this.skipInitialImport = builder.skipInitialImport;
         this.parentTypes = builder.parentTypes;
         this.storeStatistics = builder.storeStatistics;
+        this.importAllCollections = builder.importAllCollections;
 
         // index
         this.indexName = builder.indexName;
@@ -923,6 +933,10 @@ public class MongoDBRiverDefinition {
 
     public boolean isStoreStatistics() {
         return storeStatistics;
+    }
+
+    public boolean isImportAllCollections() {
+        return importAllCollections;
     }
 
     public String getIndexName() {

@@ -443,15 +443,17 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         private final DBObject data;
         private final String operation;
         private final BSONTimestamp oplogTimestamp;
+        private final String collection;
 
-        public QueueEntry(DBObject data) {
-            this(null, OPLOG_INSERT_OPERATION, data);
+        public QueueEntry(DBObject data, String collection) {
+            this(null, OPLOG_INSERT_OPERATION, data, collection);
         }
 
-        public QueueEntry(BSONTimestamp oplogTimestamp, String oplogOperation, DBObject data) {
+        public QueueEntry(BSONTimestamp oplogTimestamp, String oplogOperation, DBObject data, String collection) {
             this.data = data;
             this.operation = oplogOperation;
             this.oplogTimestamp = oplogTimestamp;
+            this.collection = collection;
         }
 
         public boolean isOplogEntry() {
@@ -474,6 +476,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             return oplogTimestamp;
         }
 
+        public String getCollection() {
+            return collection;
+        }
     }
 
 }

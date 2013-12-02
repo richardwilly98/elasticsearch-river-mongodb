@@ -178,9 +178,15 @@ class Indexer implements Runnable {
 
         BSONTimestamp lastTimestamp = entry.getOplogTimestamp();
         String operation = entry.getOperation();
+        String type;
+        if (definition.isImportAllCollections()) {
+            type = entry.getCollection();
+        } else {
+            type = definition.getTypeName();
+        }
         if (MongoDBRiver.OPLOG_COMMAND_OPERATION.equals(operation)) {
             try {
-                updateBulkRequest(entry.getData(), null, operation, definition.getIndexName(), definition.getTypeName(), null, null);
+                updateBulkRequest(entry.getData(), null, operation, definition.getIndexName(), type, null, null);
             } catch (IOException ioEx) {
                 logger.error("Update bulk failed.", ioEx);
             }
@@ -196,7 +202,7 @@ class Indexer implements Runnable {
         // advanced_transformation, include_collection for GridFS?
         if (entry.isAttachment()) {
             try {
-                updateBulkRequest(entry.getData(), objectId, operation, definition.getIndexName(), definition.getTypeName(), null, null);
+                updateBulkRequest(entry.getData(), objectId, operation, definition.getIndexName(), type, null, null);
             } catch (IOException ioEx) {
                 logger.error("Update bulk failed.", ioEx);
             }
@@ -204,7 +210,7 @@ class Indexer implements Runnable {
         }
 
         if (hasScript() && definition.isAdvancedTransformation()) {
-            return applyAdvancedTransformation(entry);
+            return applyAdvancedTransformation(entry, type);
         }
 
         if (logger.isDebugEnabled()) {
@@ -269,7 +275,7 @@ class Indexer implements Runnable {
 
         try {
             String index = extractIndex(ctx);
-            String type = extractType(ctx);
+            type = extractType(ctx, type);
             String parent = extractParent(ctx);
             String routing = extractRouting(ctx);
             objectId = extractObjectId(ctx, objectId);
@@ -350,7 +356,7 @@ class Indexer implements Runnable {
     }
 
     @SuppressWarnings("unchecked")
-    private BSONTimestamp applyAdvancedTransformation(QueueEntry entry) {
+    private BSONTimestamp applyAdvancedTransformation(QueueEntry entry, String type) {
 
         BSONTimestamp lastTimestamp = entry.getOplogTimestamp();
         String operation = entry.getOperation();
@@ -384,7 +390,7 @@ class Indexer implements Runnable {
                     document.put("id", objectId);
                 }
                 document.put("_index", definition.getIndexName());
-                document.put("_type", definition.getTypeName());
+                document.put("_type", type);
                 document.put("operation", operation);
 
                 documents.add(document);
@@ -418,7 +424,7 @@ class Indexer implements Runnable {
                             }
 
                             String index = extractIndex(item);
-                            String type = extractType(item);
+                            type = extractType(item, type);
                             String parent = extractParent(item);
                             String routing = extractRouting(item);
                             String action = extractOperation(item);
@@ -504,10 +510,10 @@ class Indexer implements Runnable {
         return (ctx.containsKey("ignore") && ctx.get("ignore").equals(Boolean.TRUE));
     }
 
-    private String extractType(Map<String, Object> ctx) {
+    private String extractType(Map<String, Object> ctx, String defaultType) {
         Object type = ctx.get("_type");
         if (type == null) {
-            return definition.getTypeName();
+            return defaultType;
         } else {
             return type.toString();
         }
