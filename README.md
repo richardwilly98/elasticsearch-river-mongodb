@@ -3,7 +3,7 @@ MongoDB River Plugin for ElasticSearch
 
 | MongoDB River Plugin     | ElasticSearch    | MongoDB |
 |--------------------------|------------------|---------|
-| master                   | 0.90.5           | 2.4.8   |
+| master                   | 0.90.7           | 2.4.8   |
 | 1.7.2                    | 0.90.5           | 2.4.8   |
 | 1.7.1                    | 0.90.5           | 2.4.6   |
 | 1.7.0                    | 0.90.3           | 2.4.5   |
