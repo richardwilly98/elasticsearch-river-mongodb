@@ -31,7 +31,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.admin.indices.exists.types.TypesExistsResponse;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
@@ -127,14 +126,17 @@ public abstract class RiverMongoDBTestAbstract {
     private final String collection;
     private final String index;
 
-    protected RiverMongoDBTestAbstract(/*String river, String database, String collection, String index*/) {
+    protected RiverMongoDBTestAbstract(/*
+                                        * String river, String database, String
+                                        * collection, String index
+                                        */) {
         // this.river = river;
         // this.database = database;
         // this.collection = collection;
         // this.index = index;
         this(false);
     }
-    
+
     protected RiverMongoDBTestAbstract(boolean isGridFS) {
         String suffix = getClass().getSimpleName().toLowerCase();
         if (suffix.length() > 35) {
@@ -228,7 +230,7 @@ public abstract class RiverMongoDBTestAbstract {
             logger.debug("Waiting 3 seconds for replicaset to change status...");
             Thread.sleep(3000);
             cr = mongoAdminDB.command(new BasicDBObject("replSetGetStatus", 1));
-//            logger.debug("replSetGetStatus: " + cr);
+            // logger.debug("replSetGetStatus: " + cr);
         }
 
         mongo.close();
@@ -315,15 +317,23 @@ public abstract class RiverMongoDBTestAbstract {
         getNode().client().admin().indices().refresh(new RefreshRequest(index)).actionGet();
     }
 
+    protected void waitForGreenStatus() {
+        try {
+        logger.debug("Running Cluster Health");
+        logger.info("Done Cluster Health, status {}", node.client().admin().cluster().health(clusterHealthRequest().waitForGreenStatus())
+                .get().getStatus());
+        } catch (Exception ex) {
+            Assert.fail("waitForGreenStatus failed", ex);
+        }
+        
+    }
+    
     protected void createRiver(String jsonDefinition, String river, Object... args) throws Exception {
         logger.info("Create river [{}]", river);
         String settings = getJsonSettings(jsonDefinition, args);
         logger.info("River setting [{}]", settings);
         node.client().prepareIndex("_river", river, "_meta").setSource(settings).execute().actionGet();
-        logger.debug("Running Cluster Health");
-        ClusterHealthResponse clusterHealth = node.client().admin().cluster().health(clusterHealthRequest().waitForGreenStatus())
-                .actionGet();
-        logger.info("Done Cluster Health, status " + clusterHealth.getStatus());
+        waitForGreenStatus();
         GetResponse response = getNode().client().prepareGet("_river", river, "_meta").execute().actionGet();
         assertThat(response.isExists(), equalTo(true));
         int count = 0;
@@ -332,7 +342,7 @@ public abstract class RiverMongoDBTestAbstract {
             if (MongoDBRiverHelper.getRiverStatus(node.client(), river) != Status.UNKNOWN) {
                 break;
             } else {
-                logger.debug("Wait for river %s to start", river);
+                logger.debug("Wait for river [{}] to start", river);
             }
             if (count == 5) {
                 throw new Exception(String.format("Fail to create and start river %s", river));
@@ -379,11 +389,7 @@ public abstract class RiverMongoDBTestAbstract {
                 }
             }
         }
-        logger.debug("Running Cluster Health");
-        ClusterHealthResponse clusterHealth = node.client().admin().cluster().health(clusterHealthRequest().waitForGreenStatus())
-                .actionGet();
-        logger.info("Done Cluster Health, status " + clusterHealth.getStatus());
-    }
+        waitForGreenStatus();    }
 
     protected void deleteIndex() {
         deleteIndex(index);
@@ -395,38 +401,35 @@ public abstract class RiverMongoDBTestAbstract {
 
     protected void deleteRiver(String name) {
         try {
-        int max = 5;
-        int count = 0;
-        logger.info("Delete river [{}]", name);
-        // if
-        // (!node.client().admin().indices().prepareDeleteMapping("_river").setType(name).get().isAcknowledged())
-        // {
-        node.client().admin().indices().prepareDeleteMapping("_river").setType(name).get();
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-        }
-        refreshIndex("_river");
-        TypesExistsResponse response = node.client().admin().indices().prepareTypesExists("_river").setTypes(name).get();
-        while (response.isExists()) {
-            logger.debug("River {} not deleted. Try waiting 1 sec...", name);
+            int max = 5;
+            int count = 0;
+            logger.info("Delete river [{}]", name);
+            // if
+            // (!node.client().admin().indices().prepareDeleteMapping("_river").setType(name).get().isAcknowledged())
+            // {
+            node.client().admin().indices().prepareDeleteMapping("_river").setType(name).get();
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
             }
-            node.client().admin().indices().prepareDeleteMapping("_river").setType(name).get();
             refreshIndex("_river");
-            response = node.client().admin().indices().prepareTypesExists("_river").setTypes(name).get();
-            count++;
-            if (count == max) {
-                Assert.fail(String.format("Could not delete river %s", name));
+            TypesExistsResponse response = node.client().admin().indices().prepareTypesExists("_river").setTypes(name).get();
+            while (response.isExists()) {
+                logger.debug("River {} not deleted. Try waiting 1 sec...", name);
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                }
+                node.client().admin().indices().prepareDeleteMapping("_river").setType(name).get();
+                refreshIndex("_river");
+                response = node.client().admin().indices().prepareTypesExists("_river").setTypes(name).get();
+                count++;
+                if (count == max) {
+                    Assert.fail(String.format("Could not delete river %s", name));
+                }
             }
-        }
-        logger.debug("Running Cluster Health");
-        ClusterHealthResponse clusterHealth = node.client().admin().cluster().health(clusterHealthRequest().waitForGreenStatus())
-                .actionGet();
-        logger.info("Done Cluster Health, status " + clusterHealth.getStatus());
-        } catch (Throwable t) {
+            waitForGreenStatus();
+            } catch (Throwable t) {
             logger.error("Delete river [{}] failed", t, name);
         }
     }

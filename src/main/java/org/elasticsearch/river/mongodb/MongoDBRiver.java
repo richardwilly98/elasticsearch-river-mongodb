@@ -32,7 +32,6 @@ import java.util.concurrent.BlockingQueue;
 import org.bson.types.BSONTimestamp;
 import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.action.bulk.BulkProcessor;
-import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.block.ClusterBlockException;
@@ -345,8 +344,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     public void close() {
         logger.info("Closing river {}", riverName.getName());
         try {
-            statusThread.interrupt();
-            statusThread = null;
+            if (statusThread != null) {
+                statusThread.interrupt();
+                statusThread = null;
+            }
             for (Thread thread : tailerThreads) {
                 thread.interrupt();
                 thread = null;
@@ -427,29 +428,32 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     }
 
     public static long getIndexCount(Client client, MongoDBRiverDefinition definition) {
-        if (client.admin().indices().prepareExists(definition.getIndexName()).get().isExists()
-                && client.admin().indices().prepareTypesExists(definition.getIndexName()).setTypes(definition.getTypeName()).get()
+        if (client.admin().indices().prepareExists(definition.getIndexName()).get().isExists()) {
+            if (definition.isImportAllCollections()) {
+                return client.prepareCount(definition.getIndexName()).execute().actionGet().getCount();
+            } else {
+                if (client.admin().indices().prepareTypesExists(definition.getIndexName()).setTypes(definition.getTypeName()).get()
                         .isExists()) {
-            CountResponse countResponse = client.prepareCount(definition.getIndexName()).setTypes(definition.getTypeName()).execute()
-                    .actionGet();
-            return countResponse.getCount();
-        } else {
-            return 0;
+                    return client.prepareCount(definition.getIndexName()).setTypes(definition.getTypeName()).execute().actionGet()
+                            .getCount();
+                }
+            }
         }
+        return 0;
     }
 
     protected static class QueueEntry {
 
         private final DBObject data;
-        private final String operation;
+        private final Operation operation;
         private final BSONTimestamp oplogTimestamp;
         private final String collection;
 
         public QueueEntry(DBObject data, String collection) {
-            this(null, OPLOG_INSERT_OPERATION, data, collection);
+            this(null, Operation.INSERT, data, collection);
         }
 
-        public QueueEntry(BSONTimestamp oplogTimestamp, String oplogOperation, DBObject data, String collection) {
+        public QueueEntry(BSONTimestamp oplogTimestamp, Operation oplogOperation, DBObject data, String collection) {
             this.data = data;
             this.operation = oplogOperation;
             this.oplogTimestamp = oplogTimestamp;
@@ -468,7 +472,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             return data;
         }
 
-        public String getOperation() {
+        public Operation getOperation() {
             return operation;
         }
 

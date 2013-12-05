@@ -1,31 +1,19 @@
 package org.elasticsearch.river.mongodb;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static org.elasticsearch.client.Requests.deleteRequest;
-import static org.elasticsearch.client.Requests.indexRequest;
 
 import java.io.IOException;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.bson.types.BSONTimestamp;
-import org.elasticsearch.action.ActionRequest;
-import org.elasticsearch.action.ActionRequestValidationException;
-import org.elasticsearch.action.admin.indices.mapping.put.PutMappingResponse;
-import org.elasticsearch.action.bulk.BulkProcessor;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.cluster.metadata.MappingMetaData;
-import org.elasticsearch.common.StopWatch;
 import org.elasticsearch.common.collect.ImmutableMap;
+import org.elasticsearch.common.collect.Maps;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -46,80 +34,12 @@ import com.mongodb.gridfs.GridFSDBFile;
 class Indexer implements Runnable {
 
     private final ESLogger logger = ESLoggerFactory.getLogger(this.getClass().getName());
-    private AtomicInteger deletedDocuments = new AtomicInteger();
-    private AtomicInteger insertedDocuments = new AtomicInteger();
-    private AtomicInteger updatedDocuments = new AtomicInteger();
-    private StopWatch sw;
     private final MongoDBRiverDefinition definition;
     private final SharedContext context;
     private final Client client;
     private final ScriptService scriptService;
-    private final BulkProcessor bulkProcessor;
-    private final Map<String, Boolean> DROP_COLLECTION = ImmutableMap.of("dropCollection", Boolean.TRUE);
-    private volatile boolean flushBulkProcessor;
 
-    private AtomicLong documentCount = new AtomicLong();
-
-    private final BulkProcessor.Listener listener = new BulkProcessor.Listener() {
-
-        @Override
-        public void beforeBulk(long executionId, BulkRequest request) {
-            logger.trace("beforeBulk - new bulk [{}] of [{} items]", executionId, request.numberOfActions());
-            if (flushBulkProcessor) {
-                logger.info("About to flush bulk request");
-                while (flushBulkProcessor) {
-                    if (request.requests().size() == 0) {
-                        break;
-                    }
-                    ActionRequest<?> action = request.requests().get(0);
-                    if (action instanceof IndexRequest) {
-                        Map<String, Object> source = ((IndexRequest) action).sourceAsMap();
-                        if (source.equals(DROP_COLLECTION)) {
-                            String index = ((IndexRequest) action).index();
-                            String type = ((IndexRequest) action).type();
-
-                            try {
-                                dropRecreateMapping(index, type);
-                                deletedDocuments.set(0);
-                                updatedDocuments.set(0);
-                                insertedDocuments.set(0);
-                                flushBulkProcessor = false;
-                            } catch (Throwable t) {
-                                logger.error("Drop collection operation failed", t);
-                            }
-                        }
-                    }
-                    request.requests().remove(0);
-                }
-            }
-        }
-
-        @Override
-        public void afterBulk(long executionId, BulkRequest request, Throwable failure) {
-            if (failure.getClass().equals(ActionRequestValidationException.class)) {
-                if (logger.isTraceEnabled()) {
-                    logger.trace("Ignore ActionRequestValidationException : {}", failure);
-                }
-            } else {
-                logger.error("afterBulk - Bulk request failed: {} - {} - {}", executionId, request, failure);
-                context.setStatus(Status.IMPORT_FAILED);
-            }
-        }
-
-        @Override
-        public void afterBulk(long executionId, BulkRequest request, BulkResponse response) {
-            if (response.hasFailures()) {
-                logger.error("Bulk processor failed. {}", response.buildFailureMessage());
-                context.setStatus(Status.IMPORT_FAILED);
-            } else {
-                documentCount.addAndGet(response.getItems().length);
-                if (logger.isTraceEnabled()) {
-                    logger.trace("afterBulk - bulk [{}] success [{} items] [{} ms] total [{}]", executionId, response.getItems().length,
-                            response.getTookInMillis(), documentCount.get());
-                }
-            }
-        }
-    };
+    private final Map<SimpleEntry<String, String>, MongoDBRiverBulkProcessor> processors = Maps.newHashMap();
 
     public Indexer(MongoDBRiverDefinition definition, SharedContext context, Client client, ScriptService scriptService) {
         this.definition = definition;
@@ -130,18 +50,12 @@ class Indexer implements Runnable {
                 "Create bulk processor with parameters - bulk actions: {} - concurrent request: {} - flush interval: {} - bulk size: {}",
                 definition.getBulk().getBulkActions(), definition.getBulk().getConcurrentRequests(), definition.getBulk()
                         .getFlushInterval(), definition.getBulk().getBulkSize());
-        this.bulkProcessor = BulkProcessor.builder(client, listener).setBulkActions(definition.getBulk().getBulkActions())
-                .setConcurrentRequests(definition.getBulk().getConcurrentRequests())
-                .setFlushInterval(definition.getBulk().getFlushInterval()).setBulkSize(definition.getBulk().getBulkSize()).build();
+        getBulkProcessor(definition.getIndexName(), definition.getTypeName());
     }
 
     @Override
     public void run() {
         while (context.getStatus() == Status.RUNNING) {
-            sw = new StopWatch().start();
-            deletedDocuments.set(0);
-            insertedDocuments.set(0);
-            updatedDocuments.set(0);
 
             try {
                 BSONTimestamp lastTimestamp = null;
@@ -155,29 +69,44 @@ class Indexer implements Runnable {
 
                 // 2. Update the timestamp
                 if (lastTimestamp != null) {
-                    MongoDBRiver.setLastTimestamp(definition, lastTimestamp, bulkProcessor);
+                    MongoDBRiver.setLastTimestamp(definition, lastTimestamp, getBulkProcessor(definition.getIndexName(), definition.getTypeName()).getBulkProcessor());
                 }
 
             } catch (InterruptedException e) {
                 logger.info("river-mongodb indexer interrupted");
-                this.bulkProcessor.close();
+                releaseProcessors();
                 Thread.currentThread().interrupt();
                 break;
             }
-            logStatistics();
         }
     }
 
+    private MongoDBRiverBulkProcessor getBulkProcessor(String index, String type) {
+        SimpleEntry<String, String> entry = new SimpleEntry<String, String>(index, type);
+        if (! processors.containsKey(entry)) {
+            processors.put(new SimpleEntry<String, String>(index, type), new MongoDBRiverBulkProcessor.Builder(definition, context, client, index, type).build());
+        }
+        return processors.get(entry);
+    }
+    
+    private void releaseProcessors() {
+        for (MongoDBRiverBulkProcessor processor : processors.values())
+        {
+            processor.getBulkProcessor().close();
+        }
+        processors.clear();
+    }
+    
     @SuppressWarnings({ "unchecked" })
     private BSONTimestamp processBlockingQueue(QueueEntry entry) {
+        Operation operation = entry.getOperation();
         if (entry.getData().get(MongoDBRiver.MONGODB_ID_FIELD) == null
-                && !entry.getOperation().equals(MongoDBRiver.OPLOG_COMMAND_OPERATION)) {
+                && (operation == Operation.INSERT || operation == Operation.UPDATE || operation == Operation.DELETE)) {
             logger.warn("Cannot get object id. Skip the current item: [{}]", entry.getData());
             return null;
         }
 
         BSONTimestamp lastTimestamp = entry.getOplogTimestamp();
-        String operation = entry.getOperation();
         String type;
         if (definition.isImportAllCollections()) {
             type = entry.getCollection();
@@ -233,7 +162,7 @@ class Indexer implements Runnable {
         if (hasScript()) {
             if (ctx != null) {
                 ctx.put("document", entry.getData());
-                ctx.put("operation", operation);
+                ctx.put("operation", operation.getValue());
                 if (!objectId.isEmpty()) {
                     ctx.put("id", objectId);
                 }
@@ -248,6 +177,7 @@ class Indexer implements Runnable {
                     executableScript.run();
                     // we need to unwrap the context object...
                     ctx = (Map<String, Object>) executableScript.unwrap(ctx);
+                    logger.debug("context after script has been executed: {}", ctx);
                 } catch (Exception e) {
                     logger.warn("failed to script process {}, ignoring", e, ctx);
                 }
@@ -267,8 +197,8 @@ class Indexer implements Runnable {
                     logger.debug("From script document: {}", data);
                 }
                 if (ctx.containsKey("operation")) {
-                    operation = ctx.get("operation").toString();
-                    logger.debug("From script operation: {}", operation);
+                    operation = Operation.fromString(ctx.get("operation").toString());
+                    logger.debug("From script operation: {} -> {}", ctx.get("operation").toString(), operation);
                 }
             }
         }
@@ -286,55 +216,49 @@ class Indexer implements Runnable {
         return lastTimestamp;
     }
 
-    private void updateBulkRequest(DBObject data, String objectId, String operation, String index, String type, String routing,
+    private void updateBulkRequest(DBObject data, String objectId, Operation operation, String index, String type, String routing,
             String parent) throws IOException {
         if (logger.isDebugEnabled()) {
             logger.debug("Operation: {} - index: {} - type: {} - routing: {} - parent: {}", operation, index, type, routing, parent);
         }
+        
+        if (operation == Operation.UNKNOWN) {
+            logger.error("Unknown operation for id[{}] - entry [{}] - index[{}] - type[{}]", objectId, data, index, type);
+            context.setStatus(Status.IMPORT_FAILED);
+            return;
+        }
+        
         boolean isAttachment = false;
 
         if (logger.isDebugEnabled()) {
             isAttachment = (data instanceof GridFSDBFile);
         }
-        if (MongoDBRiver.OPLOG_INSERT_OPERATION.equals(operation)) {
+        if (operation == Operation.INSERT) {
             if (logger.isDebugEnabled()) {
-                logger.debug("Insert operation - id: {} - contains attachment: {}", operation, objectId, isAttachment);
+                logger.debug("Insert operation - id: {} - contains attachment: {}", objectId, isAttachment);
             }
-            bulkProcessor.add(indexRequest(index).type(type).id(objectId).source(build(data, objectId)).routing(routing).parent(parent));
-            insertedDocuments.incrementAndGet();
+            getBulkProcessor(index, type).addBulkRequest(objectId, build(data, objectId), routing, parent);
         }
-        if (MongoDBRiver.OPLOG_UPDATE_OPERATION.equals(operation)) {
+        // UPDATE = DELETE + INSERT operation
+        if (operation == Operation.UPDATE) {
             if (logger.isDebugEnabled()) {
                 logger.debug("Update operation - id: {} - contains attachment: {}", objectId, isAttachment);
             }
             deleteBulkRequest(objectId, index, type, routing, parent);
-            bulkProcessor.add(indexRequest(index).type(type).id(objectId).source(build(data, objectId)).routing(routing).parent(parent));
-            updatedDocuments.incrementAndGet();
+            getBulkProcessor(index, type).addBulkRequest(objectId, build(data, objectId), routing, parent);
         }
-        if (MongoDBRiver.OPLOG_DELETE_OPERATION.equals(operation)) {
+        if (operation == Operation.DELETE) {
             logger.info("Delete request [{}], [{}], [{}]", index, type, objectId);
             deleteBulkRequest(objectId, index, type, routing, parent);
-            deletedDocuments.incrementAndGet();
         }
-        if (MongoDBRiver.OPLOG_COMMAND_OPERATION.equals(operation)) {
+        if (operation == Operation.DROP_COLLECTION) {
             if (definition.isDropCollection()) {
-                if ((data.get(MongoDBRiver.OPLOG_DROP_COMMAND_OPERATION) != null
-                        && data.get(MongoDBRiver.OPLOG_DROP_COMMAND_OPERATION).equals(definition.getMongoCollection()) || (data
-                        .get(MongoDBRiver.OPLOG_DROP_DATABASE_COMMAND_OPERATION) != null && data.get(
-                        MongoDBRiver.OPLOG_DROP_DATABASE_COMMAND_OPERATION).equals(1)))) {
-                    logger.info("Drop collection request [{}], [{}]", index, type);
-
-                    // Delete / create type is now done in beforeBulk
-                    bulkProcessor.add(indexRequest(index).type(type).source(DROP_COLLECTION));
-                    flushBulkProcessor = true;
-                } else {
-                    logger.debug("Database command {}", data);
-                }
+                MongoDBRiverBulkProcessor processor = getBulkProcessor(index, type);
+                processor.dropIndex();
             } else {
                 logger.info("Ignore drop collection request [{}], [{}]. The option has been disabled.", index, type);
             }
         }
-
     }
 
     /*
@@ -349,23 +273,23 @@ class Indexer implements Runnable {
             SearchResponse response = client.prepareSearch(index).setQuery(builder).setRouting(routing)
                     .addField(MongoDBRiver.MONGODB_ID_FIELD).execute().actionGet();
             for (SearchHit hit : response.getHits().getHits()) {
-                bulkProcessor.add(deleteRequest(index).type(hit.getType()).id(hit.getId()).routing(routing).parent(objectId));
+                getBulkProcessor(index, hit.getType()).deleteBulkRequest(hit.getId(), routing, objectId);
             }
         }
-        bulkProcessor.add(deleteRequest(index).type(type).id(objectId).routing(routing).parent(parent));
+        getBulkProcessor(index, type).deleteBulkRequest(objectId, routing, parent);
     }
 
     @SuppressWarnings("unchecked")
     private BSONTimestamp applyAdvancedTransformation(QueueEntry entry, String type) {
 
         BSONTimestamp lastTimestamp = entry.getOplogTimestamp();
-        String operation = entry.getOperation();
+        Operation operation = entry.getOperation();
         String objectId = "";
         if (entry.getData().get(MongoDBRiver.MONGODB_ID_FIELD) != null) {
             objectId = entry.getData().get(MongoDBRiver.MONGODB_ID_FIELD).toString();
         }
         if (logger.isDebugEnabled()) {
-            logger.debug("advancedUpdateBulkRequest for id: [{}], operation: [{}]", objectId, operation);
+            logger.debug("applyAdvancedTransformation for id: [{}], operation: [{}]", objectId, operation);
         }
 
         if (!definition.getIncludeCollection().isEmpty()) {
@@ -391,7 +315,7 @@ class Indexer implements Runnable {
                 }
                 document.put("_index", definition.getIndexName());
                 document.put("_type", type);
-                document.put("operation", operation);
+                document.put("operation", operation.getValue());
 
                 documents.add(document);
 
@@ -427,13 +351,13 @@ class Indexer implements Runnable {
                             type = extractType(item, type);
                             String parent = extractParent(item);
                             String routing = extractRouting(item);
-                            String action = extractOperation(item);
+                            operation = extractOperation(item);
                             boolean ignore = isDocumentIgnored(item);
                             Map<String, Object> data = (Map<String, Object>) item.get("data");
                             objectId = extractObjectId(data, objectId);
                             if (logger.isDebugEnabled()) {
-                                logger.debug("Id: {} - operation: {} - ignore: {} - index: {} - type: {} - routing: {} - parent: {}",
-                                        objectId, action, ignore, index, type, routing, parent);
+                                logger.debug("#### - Id: {} - operation: {} - ignore: {} - index: {} - type: {} - routing: {} - parent: {}",
+                                        objectId, operation, ignore, index, type, routing, parent);
                             }
                             if (ignore) {
                                 continue;
@@ -497,12 +421,12 @@ class Indexer implements Runnable {
         }
     }
 
-    private String extractOperation(Map<String, Object> ctx) {
+    private Operation extractOperation(Map<String, Object> ctx) {
         Object operation = ctx.get("operation");
         if (operation == null) {
             return null;
         } else {
-            return operation.toString();
+            return Operation.fromString(ctx.get("operation").toString());
         }
     }
 
@@ -527,43 +451,4 @@ class Indexer implements Runnable {
         return index;
     }
 
-    private void logStatistics() {
-        long totalDocuments = deletedDocuments.get() + insertedDocuments.get();
-        long totalTimeInSeconds = sw.stop().totalTime().seconds();
-        long totalDocumentsPerSecond = (totalTimeInSeconds == 0) ? totalDocuments : totalDocuments / totalTimeInSeconds;
-        logger.debug("Indexed {} documents, {} insertions, {} updates, {} deletions, {} documents per second", totalDocuments,
-                insertedDocuments.get(), updatedDocuments.get(), deletedDocuments.get(), totalDocumentsPerSecond);
-        if (definition.isStoreStatistics()) {
-            Map<String, Object> source = new HashMap<String, Object>();
-            source.put("date", new Date());
-            source.put("documents.inserted", insertedDocuments.get());
-            source.put("documents.updated", updatedDocuments.get());
-            source.put("documents.deleted", deletedDocuments.get());
-            source.put("duration", sw.totalTime().getMillis());
-            client.prepareIndex(definition.getRiverIndexName(), definition.getRiverName()).setSource(source).get();
-        }
-    }
-
-    private void dropRecreateMapping(String index, String type) throws IOException {
-        client.admin().indices().prepareRefresh(index).execute().actionGet();
-        Map<String, MappingMetaData> mappings = client.admin().cluster().prepareState().execute().actionGet().getState().getMetaData()
-                .index(index).mappings();
-        logger.trace("mappings contains type {}: {}", type, mappings.containsKey(type));
-        if (mappings.containsKey(type)) {
-            /*
-             * Issue #105 - Mapping changing from custom mapping to dynamic when
-             * drop_collection = true Should capture the existing mapping
-             * metadata (in case it is has been customized before to delete.
-             */
-            MappingMetaData mapping = mappings.get(type);
-            client.admin().indices().prepareDeleteMapping(index).setType(type).execute().actionGet();
-            PutMappingResponse pmr = client.admin().indices().preparePutMapping(index).setType(type).setSource(mapping.getSourceAsMap())
-                    .execute().actionGet();
-            if (!pmr.isAcknowledged()) {
-                logger.error("Failed to put mapping {} / {} / {}.", index, type, mapping.source());
-            } else {
-                logger.info("Delete and recreate for index / type [{}] [{}] successfully executed.", index, type);
-            }
-        }
-    }
 }
