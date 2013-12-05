@@ -1,0 +1,1 @@
+curl -XPUT "http://localhost:9200/_river/mongodb177/_meta" -d @simple-mongodb-river-import-all-collections.json

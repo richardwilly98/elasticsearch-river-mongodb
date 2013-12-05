@@ -163,6 +163,24 @@ public class MongoDBRiverDefinitionTest {
     }
 
     @Test
+    public void testLoadMongoDBRiverDefinitionIssue177() {
+        try {
+            RiverName riverName = new RiverName("mongodb", "mongodb-" + System.currentTimeMillis());
+            InputStream in = getClass().getResourceAsStream("/org/elasticsearch/river/mongodb/test-mongodb-river-definition-177.json");
+            RiverSettings riverSettings = new RiverSettings(ImmutableSettings.settingsBuilder().build(), XContentHelper.convertToMap(
+                    Streams.copyToByteArray(in), false).v2());
+            ScriptService scriptService = null;
+            MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName.name(),
+                    RiverIndexName.Conf.DEFAULT_INDEX_NAME, riverSettings, scriptService);
+            Assert.assertNotNull(definition);
+            Assert.assertTrue(definition.isImportAllCollections());
+            Assert.assertTrue(definition.isDropCollection());
+        } catch (Throwable t) {
+            Assert.fail("testLoadMongoDBRiverDefinitionIssue177 failed", t);
+        }
+    }
+    
+    @Test
     public void parseFilter() {
         String filter = "{\"o.lang\":\"de\"}";
         BasicDBObject bsonFilter = (BasicDBObject) JSON.parse(filter);

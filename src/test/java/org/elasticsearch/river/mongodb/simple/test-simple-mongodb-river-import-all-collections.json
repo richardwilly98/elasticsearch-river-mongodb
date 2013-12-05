@@ -15,6 +15,7 @@
 		}],
 		"db": "%s",
 		"options": {
+			"drop_collection": true,
 			"import_all_collections": true
 		}
 	},

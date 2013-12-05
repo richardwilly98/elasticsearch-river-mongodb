@@ -1,0 +1,13 @@
+{ 
+    "type": "mongodb",
+    "mongodb": {
+        "db": "mydb177",
+        "options": {
+          "drop_collection": true,
+          "import_all_collections": true
+        }
+    },
+    "index": {
+        "name": "mydb177"
+    }
+}
