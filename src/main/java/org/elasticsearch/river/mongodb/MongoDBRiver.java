@@ -35,6 +35,7 @@ import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.block.ClusterBlockException;
+import org.elasticsearch.common.collect.Lists;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.ESLoggerFactory;
@@ -110,7 +111,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     protected final ScriptService scriptService;
     protected final SharedContext context;
 
-    protected volatile List<Thread> tailerThreads = new ArrayList<Thread>();
+    protected volatile List<Thread> tailerThreads = Lists.newArrayList();
     protected volatile Thread indexerThread;
     protected volatile Thread statusThread;
     protected volatile boolean startInvoked = false;
@@ -268,7 +269,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     private DB getAdminDb() {
         if (adminDb == null) {
             adminDb = getMongoClient().getDB(MONGODB_ADMIN_DATABASE);
-            logger.info("MongoAdminUser: {} - isAuthenticated: {}", definition.getMongoAdminUser(), adminDb.isAuthenticated());
+            if (logger.isTraceEnabled()) {
+                logger.trace("MongoAdminUser: {} - isAuthenticated: {}", definition.getMongoAdminUser(), adminDb.isAuthenticated());
+            }
             if (!definition.getMongoAdminUser().isEmpty() && !definition.getMongoAdminPassword().isEmpty() && !adminDb.isAuthenticated()) {
                 logger.info("Authenticate {} with {}", MONGODB_ADMIN_DATABASE, definition.getMongoAdminUser());
 
