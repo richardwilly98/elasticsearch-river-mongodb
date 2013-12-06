@@ -1,9 +1,15 @@
 MongoDB River Plugin for ElasticSearch
 ==================================
 
+This plugin uses MongoDB as datasource to store data in ElasticSearch. Filtering and transformation are also possible. 
+See the [wiki](https://github.com/richardwilly98/elasticsearch-river-mongodb/wiki) for more details.
+
+In order to install the plugin, simply run: ```bin/plugin --install com.github.richardwilly98.elasticsearch/elasticsearch-river-mongodb/1.7.3```
+
 | MongoDB River Plugin     | ElasticSearch    | MongoDB |
 |--------------------------|------------------|---------|
 | master                   | 0.90.7           | 2.4.8   |
+| 1.7.3                    | 0.90.7           | 2.4.8   |
 | 1.7.2                    | 0.90.5           | 2.4.8   |
 | 1.7.1                    | 0.90.5           | 2.4.6   |
 | 1.7.0                    | 0.90.3           | 2.4.5   |
@@ -122,6 +128,17 @@ License
 
 Changelog
 -------
+
+#### 1.7.3
+- Update versions ES 0.90.7
+- Optimization of oplog.rs query. The current query was too complex and not efficient in MongoDB. oplog.rs query now uses only $ts filter.
+- New ```options/import_all_collections``` parameter can be used to import all collection of a database (see issue [#177](https://github.com/richardwilly98/elasticsearch-river-mongodb/issues/177))
+- Version, commit data and commit id are displayed in the log when the river starts.
+- New ```options/store_statistics``` parameter can be used to store statistic each time bulk processor is flushed. Data are store in _river/{river.name}
+- Default value for ```index/bulk/concurrent_bulk_requests``` has been changed to the number of cores available.
+- Capture failures from bulk processor and set status to IMPORT_FAILED when found.
+- Fix issues in document indexed counter in administration.
+- Refactoring to use 1 bulk processor per index/type.
 
 #### 1.7.2
 - Update versions MongoDB 2.4.8
