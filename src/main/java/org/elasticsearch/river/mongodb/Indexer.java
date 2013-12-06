@@ -180,6 +180,7 @@ class Indexer implements Runnable {
                     logger.debug("context after script has been executed: {}", ctx);
                 } catch (Exception e) {
                     logger.warn("failed to script process {}, ignoring", e, ctx);
+                    context.setStatus(Status.SCRIPT_IMPORT_FAILED);
                 }
                 if (logger.isDebugEnabled()) {
                     logger.debug("Context after script executed: {}", ctx);
@@ -333,6 +334,7 @@ class Indexer implements Runnable {
                     ctx = (Map<String, Object>) executableScript.unwrap(ctx);
                 } catch (Exception e) {
                     logger.warn("failed to script process {}, ignoring", e, ctx);
+                    context.setStatus(Status.SCRIPT_IMPORT_FAILED);
                 }
                 if (logger.isDebugEnabled()) {
                     logger.debug("Context after script executed: {}", ctx);
