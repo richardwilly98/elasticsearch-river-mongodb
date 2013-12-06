@@ -1,0 +1,12 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"db": "mydb180",
+		"collection": "mycollec180",
+		"script": "if( ctx.document.score == undefined ) { ctx.ignore = true; }"
+	},
+	"index": {
+		"name": "mydb180",
+		"type": "mycollec180"
+	}
+}
