@@ -319,15 +319,15 @@ public abstract class RiverMongoDBTestAbstract {
 
     protected void waitForGreenStatus() {
         try {
-        logger.debug("Running Cluster Health");
-        logger.info("Done Cluster Health, status {}", node.client().admin().cluster().health(clusterHealthRequest().waitForGreenStatus())
-                .get().getStatus());
+            logger.debug("Running Cluster Health");
+            logger.info("Done Cluster Health, status {}",
+                    node.client().admin().cluster().health(clusterHealthRequest().waitForGreenStatus()).get().getStatus());
         } catch (Exception ex) {
             Assert.fail("waitForGreenStatus failed", ex);
         }
-        
+
     }
-    
+
     protected void createRiver(String jsonDefinition, String river, Object... args) throws Exception {
         logger.info("Create river [{}]", river);
         String settings = getJsonSettings(jsonDefinition, args);
@@ -389,7 +389,8 @@ public abstract class RiverMongoDBTestAbstract {
                 }
             }
         }
-        waitForGreenStatus();    }
+        waitForGreenStatus();
+    }
 
     protected void deleteIndex() {
         deleteIndex(index);
@@ -429,7 +430,7 @@ public abstract class RiverMongoDBTestAbstract {
                 }
             }
             waitForGreenStatus();
-            } catch (Throwable t) {
+        } catch (Throwable t) {
             logger.error("Delete river [{}] failed", t, name);
         }
     }

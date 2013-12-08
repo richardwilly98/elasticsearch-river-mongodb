@@ -64,7 +64,7 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
 
             // Make sure we're starting out with the river not setup
             if (getNode().client().admin().indices().prepareExists("_river").get().isExists()) {
-                GetResponse statusResponse = getNode().client().prepareGet("_river", getRiver(), MongoDBRiver.STATUS_ID).execute().actionGet();
+                GetResponse statusResponse = getNode().client().prepareGet("_river", getRiver(), MongoDBRiver.STATUS_ID).get();
                 logger.debug("Exists? {}", statusResponse.isExists());
                 Assert.assertFalse(
                         statusResponse.isExists(),
@@ -83,8 +83,9 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
             assertThat(response.actionGet().isExists(), equalTo(true));
             Assert.assertEquals(Status.RUNNING, MongoDBRiverHelper.getRiverStatus(getNode().client(), getRiver()));
             assertThat(getNode().client().count(countRequest(getIndex())).actionGet().getCount(), equalTo(1l));
-            
-            MongoDBRiverDefinition definition = getMongoDBRiverDefinition(TEST_MONGODB_RIVER_SIMPLE_JSON, getDatabase(), getCollection(), getIndex());
+
+            MongoDBRiverDefinition definition = getMongoDBRiverDefinition(TEST_MONGODB_RIVER_SIMPLE_JSON, getDatabase(), getCollection(),
+                    getIndex());
             assertThat(MongoDBRiver.getLastTimestamp(getNode().client(), definition), notNullValue());
 
             // Check that it syncs the oplog
@@ -122,10 +123,11 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
             super.deleteIndex();
             Assert.assertTrue(getIndicesAdminClient().prepareCreate(getIndex()).get().isAcknowledged());
             refreshIndex();
-            MongoDBRiverDefinition definition = getMongoDBRiverDefinition(TEST_MONGODB_RIVER_SIMPLE_JSON, getDatabase(), getCollection(), getIndex());
+            MongoDBRiverDefinition definition = getMongoDBRiverDefinition(TEST_MONGODB_RIVER_SIMPLE_JSON, getDatabase(), getCollection(),
+                    getIndex());
             String id = getNode().client().prepareIndex(getIndex(), definition.getTypeName()).setSource("name", "John").get().getId();
             Assert.assertNotNull(id);
-            
+
             createDatabase();
             DBObject dbObject1 = new BasicDBObject(ImmutableMap.of("name", "Richard"));
             WriteResult result1 = mongoCollection.insert(dbObject1);
@@ -134,7 +136,7 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
 
             // Make sure we're starting out with the river not setup
             if (getNode().client().admin().indices().prepareExists("_river").get().isExists()) {
-                GetResponse statusResponse = getNode().client().prepareGet("_river", getRiver(), MongoDBRiver.STATUS_ID).execute().actionGet();
+                GetResponse statusResponse = getNode().client().prepareGet("_river", getRiver(), MongoDBRiver.STATUS_ID).get();
                 logger.debug("Exists? {}", statusResponse.isExists());
                 Assert.assertFalse(
                         statusResponse.isExists(),
@@ -167,10 +169,11 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
             super.deleteIndex();
             Assert.assertTrue(getIndicesAdminClient().prepareCreate(getIndex()).get().isAcknowledged());
             refreshIndex();
-            MongoDBRiverDefinition definition = getMongoDBRiverDefinition(TEST_MONGODB_RIVER_SIMPLE_JSON, getDatabase(), getCollection(), getIndex());
+            MongoDBRiverDefinition definition = getMongoDBRiverDefinition(TEST_MONGODB_RIVER_SIMPLE_JSON, getDatabase(), getCollection(),
+                    getIndex());
             String id = getNode().client().prepareIndex(getIndex(), definition.getTypeName()).setSource("name", "John").get().getId();
             Assert.assertNotNull(id);
-            
+
             createDatabase();
             DBObject dbObject1 = new BasicDBObject(ImmutableMap.of("name", "Richard"));
             WriteResult result1 = mongoCollection.insert(dbObject1);
@@ -179,7 +182,7 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
 
             // Make sure we're starting out with the river not setup
             if (getNode().client().admin().indices().prepareExists("_river").get().isExists()) {
-                GetResponse statusResponse = getNode().client().prepareGet("_river", getRiver(), MongoDBRiver.STATUS_ID).execute().actionGet();
+                GetResponse statusResponse = getNode().client().prepareGet("_river", getRiver(), MongoDBRiver.STATUS_ID).get();
                 logger.debug("Exists? {}", statusResponse.isExists());
                 Assert.assertFalse(
                         statusResponse.isExists(),
@@ -212,9 +215,10 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
             super.deleteIndex();
             Assert.assertTrue(getIndicesAdminClient().prepareCreate(getIndex()).get().isAcknowledged());
             refreshIndex();
-            String id = getNode().client().prepareIndex(getIndex(), "dummy-type-" + System.currentTimeMillis()).setSource("name", "John").get().getId();
+            String id = getNode().client().prepareIndex(getIndex(), "dummy-type-" + System.currentTimeMillis()).setSource("name", "John")
+                    .get().getId();
             Assert.assertNotNull(id);
-            
+
             createDatabase();
             DBObject dbObject1 = new BasicDBObject(ImmutableMap.of("name", "Richard"));
             WriteResult result1 = mongoCollection.insert(dbObject1);
@@ -223,7 +227,7 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
 
             // Make sure we're starting out with the river not setup
             if (getNode().client().admin().indices().prepareExists("_river").get().isExists()) {
-                GetResponse statusResponse = getNode().client().prepareGet("_river", getRiver(), MongoDBRiver.STATUS_ID).execute().actionGet();
+                GetResponse statusResponse = getNode().client().prepareGet("_river", getRiver(), MongoDBRiver.STATUS_ID).get();
                 logger.debug("Exists? {}", statusResponse.isExists());
                 Assert.assertFalse(
                         statusResponse.isExists(),

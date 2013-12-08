@@ -117,7 +117,7 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAbstract {
         mongoDB.dropDatabase();
     }
 
-    @Test(enabled=false)
+    @Test(enabled = false)
     public void testParentChildScript() throws Throwable {
         logger.debug("Start testParentChildScript");
         try {

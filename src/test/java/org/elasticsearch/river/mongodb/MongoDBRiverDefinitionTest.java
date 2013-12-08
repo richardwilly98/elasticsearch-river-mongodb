@@ -42,7 +42,7 @@ public class MongoDBRiverDefinitionTest {
             Assert.assertEquals(MongoDBRiverDefinition.DEFAULT_FLUSH_INTERVAL, definition.getBulk().getFlushInterval());
             Assert.assertFalse(definition.isSkipInitialImport());
             Assert.assertFalse(definition.isStoreStatistics());
-            
+
         } catch (Throwable t) {
             Assert.fail("testLoadMongoDBRiverSimpleDefinition failed", t);
         }
@@ -179,7 +179,7 @@ public class MongoDBRiverDefinitionTest {
             Assert.fail("testLoadMongoDBRiverDefinitionIssue177 failed", t);
         }
     }
-    
+
     @Test
     public void parseFilter() {
         String filter = "{\"o.lang\":\"de\"}";

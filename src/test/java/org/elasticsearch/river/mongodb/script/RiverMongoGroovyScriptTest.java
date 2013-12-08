@@ -71,7 +71,7 @@ public class RiverMongoGroovyScriptTest extends RiverMongoDBTestAbstract {
         mongoCollection = mongoDB.createCollection(getCollection(), null);
         Assert.assertNotNull(mongoCollection);
     }
-    
+
     @AfterMethod
     public void dropCollection() {
         logger.trace("*** AfterMethod - clean-up");
@@ -79,15 +79,16 @@ public class RiverMongoGroovyScriptTest extends RiverMongoDBTestAbstract {
         super.deleteIndex();
         mongoCollection.drop();
     }
-    
+
     @Test
     public void testIgnoreScript() throws Throwable {
         logger.debug("Start testIgnoreScript");
         try {
             logger.debug("Create river {}", getRiver());
             String script = "ctx.ignore = true";
-            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, getRiver(), String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
-                    String.valueOf(getMongoPort3()), getDatabase(), getCollection(), GROOVY_SCRIPT_TYPE, script, getIndex(), getDatabase());
+            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, getRiver(), String.valueOf(getMongoPort1()),
+                    String.valueOf(getMongoPort2()), String.valueOf(getMongoPort3()), getDatabase(), getCollection(), GROOVY_SCRIPT_TYPE,
+                    script, getIndex(), getDatabase());
 
             String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
             DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
@@ -117,8 +118,9 @@ public class RiverMongoGroovyScriptTest extends RiverMongoDBTestAbstract {
         try {
             logger.debug("Create river {}", getRiver());
             String script = "def now = new Date(); println 'Now: ${now}'; ctx.document.modified = now.clearTime();";
-            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, getRiver(), String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
-                    String.valueOf(getMongoPort3()), getDatabase(), getCollection(), GROOVY_SCRIPT_TYPE, script, getIndex(), getDatabase());
+            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, getRiver(), String.valueOf(getMongoPort1()),
+                    String.valueOf(getMongoPort2()), String.valueOf(getMongoPort3()), getDatabase(), getCollection(), GROOVY_SCRIPT_TYPE,
+                    script, getIndex(), getDatabase());
 
             String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
             DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
@@ -158,8 +160,9 @@ public class RiverMongoGroovyScriptTest extends RiverMongoDBTestAbstract {
         try {
             logger.debug("Create river {}", getIndex());
             String script = "if (ctx.document.to_be_deleted) { ctx.operation = 'd' }";
-            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, getRiver(), String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
-                    String.valueOf(getMongoPort3()), getDatabase(), getCollection(), GROOVY_SCRIPT_TYPE, script, getIndex(), getDatabase());
+            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, getRiver(), String.valueOf(getMongoPort1()),
+                    String.valueOf(getMongoPort2()), String.valueOf(getMongoPort3()), getDatabase(), getCollection(), GROOVY_SCRIPT_TYPE,
+                    script, getIndex(), getDatabase());
 
             String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
             DBObject dbObject = (DBObject) JSON.parse(mongoDocument);

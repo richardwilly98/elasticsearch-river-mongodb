@@ -88,10 +88,10 @@ public class RiverMongoCannotStopTest extends RiverMongoDBTestAbstract {
                     .request();
             SearchResponse searchResponse = getNode().client().search(search).actionGet();
             assertThat(searchResponse.getHits().getTotalHits(), equalTo(1l));
-            
+
             super.deleteRiver();
             Thread.sleep(wait);
-            
+
             Status status = MongoDBRiverHelper.getRiverStatus(getNode().client(), getRiver());
             Assert.assertTrue(status == Status.UNKNOWN);
         } catch (Throwable t) {

@@ -85,7 +85,7 @@ public class RiverMongoWithAliasTest extends RiverMongoDBTestAbstract {
         getNode().client().admin().indices().prepareCreate(realIndex).execute().get();
         getNode().client().admin().indices().prepareAliases().addAlias(realIndex, getIndex()).execute().get();
     }
-    
+
     private void deleteAlias() throws Throwable {
         getNode().client().admin().indices().prepareDelete(getIndex()).execute().actionGet();
     }

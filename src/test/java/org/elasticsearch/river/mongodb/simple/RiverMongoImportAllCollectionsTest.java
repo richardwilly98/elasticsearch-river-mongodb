@@ -54,8 +54,8 @@ public class RiverMongoImportAllCollectionsTest extends RiverMongoDBTestAbstract
             Assert.assertNotNull(mongoCollection);
             mongoCollection2 = mongoDB.createCollection("collection-" + System.currentTimeMillis(), null);
             Assert.assertNotNull(mongoCollection2);
-            createRiver(TEST_MONGODB_RIVER_IMPORT_ALL_COLLECTION_JSON, getRiver(), String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
-                    String.valueOf(getMongoPort3()), getDatabase(), getIndex());
+            createRiver(TEST_MONGODB_RIVER_IMPORT_ALL_COLLECTION_JSON, getRiver(), String.valueOf(getMongoPort1()),
+                    String.valueOf(getMongoPort2()), String.valueOf(getMongoPort3()), getDatabase(), getIndex());
         } catch (Throwable t) {
             logger.error("createDatabase failed.", t);
         }
@@ -80,7 +80,7 @@ public class RiverMongoImportAllCollectionsTest extends RiverMongoDBTestAbstract
             logger.info("WriteResult: {}", result.toString());
             refreshIndex();
             Assert.assertNotNull(getNode().client().prepareGet(getIndex(), mongoCollection.getName(), id).get().getId());
-            
+
             DBObject dbObject2 = (DBObject) JSON.parse(mongoDocument);
             WriteResult result2 = mongoCollection2.insert(dbObject2);
             Thread.sleep(wait);
@@ -92,12 +92,14 @@ public class RiverMongoImportAllCollectionsTest extends RiverMongoDBTestAbstract
             mongoCollection.remove(dbObject);
             Thread.sleep(wait);
             refreshIndex();
-            assertThat(getNode().client().prepareCount(getIndex()).setTypes(mongoCollection.getName()).setQuery(fieldQuery("_id", id)).get().getCount(), equalTo(0L));
+            assertThat(getNode().client().prepareCount(getIndex()).setTypes(mongoCollection.getName()).setQuery(fieldQuery("_id", id))
+                    .get().getCount(), equalTo(0L));
 
             mongoCollection2.remove(dbObject2);
             Thread.sleep(wait);
             refreshIndex();
-            assertThat(getNode().client().prepareCount(getIndex()).setTypes(mongoCollection2.getName()).setQuery(fieldQuery("_id", id2)).get().getCount(), equalTo(0L));
+            assertThat(getNode().client().prepareCount(getIndex()).setTypes(mongoCollection2.getName()).setQuery(fieldQuery("_id", id2))
+                    .get().getCount(), equalTo(0L));
         } catch (Throwable t) {
             logger.error("importAllCollectionsTest failed.", t);
             t.printStackTrace();
