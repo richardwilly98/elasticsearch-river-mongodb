@@ -27,6 +27,7 @@ import org.elasticsearch.common.collect.ImmutableMap;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 
 public class MongoDBRiverBulkProcessor {
 
@@ -112,7 +113,7 @@ public class MongoDBRiverBulkProcessor {
                 }
             } else {
                 logger.error("afterBulk - Bulk request failed: {} - {} - {}", executionId, request, failure);
-                context.setStatus(Status.IMPORT_FAILED);
+                MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.IMPORT_FAILED);
             }
         }
 
@@ -120,7 +121,7 @@ public class MongoDBRiverBulkProcessor {
         public void afterBulk(long executionId, BulkRequest request, BulkResponse response) {
             if (response.hasFailures()) {
                 logger.error("Bulk processor failed. {}", response.buildFailureMessage());
-                context.setStatus(Status.IMPORT_FAILED);
+                MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.IMPORT_FAILED);
             } else {
                 documentCount.addAndGet(response.getItems().length);
                 logStatistics();
