@@ -1,0 +1,19 @@
+{
+  "query": {
+    "has_child": {
+      "type": "chapter",
+      "query": {
+        "filtered": {
+          "query": {
+            "match_all": {}
+          },
+          "filter": {
+            "term": {
+              "title": "introduction"
+            }
+          }
+        }
+      }
+    }
+  }
+}

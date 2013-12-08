@@ -1,0 +1,1 @@
+"%MONGO_HOME%\bin\mongo.exe" --host localhost --port 27017 --shell create-replicaset.js
