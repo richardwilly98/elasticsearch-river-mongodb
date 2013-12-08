@@ -70,7 +70,8 @@ class Indexer implements Runnable {
 
                 // 2. Update the timestamp
                 if (lastTimestamp != null) {
-                    MongoDBRiver.setLastTimestamp(definition, lastTimestamp, getBulkProcessor(definition.getIndexName(), definition.getTypeName()).getBulkProcessor());
+                    MongoDBRiver.setLastTimestamp(definition, lastTimestamp,
+                            getBulkProcessor(definition.getIndexName(), definition.getTypeName()).getBulkProcessor());
                 }
 
             } catch (InterruptedException e) {
@@ -84,20 +85,20 @@ class Indexer implements Runnable {
 
     private MongoDBRiverBulkProcessor getBulkProcessor(String index, String type) {
         SimpleEntry<String, String> entry = new SimpleEntry<String, String>(index, type);
-        if (! processors.containsKey(entry)) {
-            processors.put(new SimpleEntry<String, String>(index, type), new MongoDBRiverBulkProcessor.Builder(definition, context, client, index, type).build());
+        if (!processors.containsKey(entry)) {
+            processors.put(new SimpleEntry<String, String>(index, type), new MongoDBRiverBulkProcessor.Builder(definition, context, client,
+                    index, type).build());
         }
         return processors.get(entry);
     }
-    
+
     private void releaseProcessors() {
-        for (MongoDBRiverBulkProcessor processor : processors.values())
-        {
+        for (MongoDBRiverBulkProcessor processor : processors.values()) {
             processor.getBulkProcessor().close();
         }
         processors.clear();
     }
-    
+
     @SuppressWarnings({ "unchecked" })
     private BSONTimestamp processBlockingQueue(QueueEntry entry) {
         Operation operation = entry.getOperation();
@@ -167,9 +168,9 @@ class Indexer implements Runnable {
                 if (!objectId.isEmpty()) {
                     ctx.put("id", objectId);
                 }
-                if (logger.isDebugEnabled()) {
-                    logger.debug("Script to be executed: {} - {}", definition.getScriptType(), definition.getScript());
-                    logger.debug("Context before script executed: {}", ctx);
+                if (logger.isTraceEnabled()) {
+                    logger.trace("Script to be executed: {} - {}", definition.getScriptType(), definition.getScript());
+                    logger.trace("Context before script executed: {}", ctx);
                 }
                 try {
                     ExecutableScript executableScript = scriptService.executable(definition.getScriptType(), definition.getScript(),
@@ -183,25 +184,23 @@ class Indexer implements Runnable {
                     logger.warn("failed to script process {}, ignoring", e, ctx);
                     MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.SCRIPT_IMPORT_FAILED);
                 }
-                if (logger.isDebugEnabled()) {
-                    logger.debug("Context after script executed: {}", ctx);
+                if (logger.isTraceEnabled()) {
+                    logger.trace("Context after script executed: {}", ctx);
                 }
-                if (ctx.containsKey("ignore") && ctx.get("ignore").equals(Boolean.TRUE)) {
+                if (isDocumentIgnored(ctx)) {
                     logger.debug("From script ignore document id: {}", objectId);
                     // ignore document
                     return lastTimestamp;
                 }
-                if (ctx.containsKey("deleted") && ctx.get("deleted").equals(Boolean.TRUE)) {
+                if (isDocumentDeleted(ctx)) {
                     ctx.put("operation", MongoDBRiver.OPLOG_DELETE_OPERATION);
                 }
                 if (ctx.containsKey("document")) {
                     data = (Map<String, Object>) ctx.get("document");
                     logger.debug("From script document: {}", data);
                 }
-                if (ctx.containsKey("operation")) {
-                    operation = Operation.fromString(ctx.get("operation").toString());
-                    logger.debug("From script operation: {} -> {}", ctx.get("operation").toString(), operation);
-                }
+                operation = extractOperation(ctx);
+                logger.debug("From script operation: {} -> {}", ctx.get("operation").toString(), operation);
             }
         }
 
@@ -223,13 +222,13 @@ class Indexer implements Runnable {
         if (logger.isDebugEnabled()) {
             logger.debug("Operation: {} - index: {} - type: {} - routing: {} - parent: {}", operation, index, type, routing, parent);
         }
-        
+
         if (operation == Operation.UNKNOWN) {
             logger.error("Unknown operation for id[{}] - entry [{}] - index[{}] - type[{}]", objectId, data, index, type);
             context.setStatus(Status.IMPORT_FAILED);
             return;
         }
-        
+
         boolean isAttachment = false;
 
         if (logger.isDebugEnabled()) {
@@ -325,9 +324,9 @@ class Indexer implements Runnable {
                 try {
                     ExecutableScript executableScript = scriptService.executable(definition.getScriptType(), definition.getScript(),
                             ImmutableMap.of("logger", logger));
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("Script to be executed: {} - {}", definition.getScriptType(), definition.getScript());
-                        logger.debug("Context before script executed: {}", ctx);
+                    if (logger.isTraceEnabled()) {
+                        logger.trace("Script to be executed: {} - {}", definition.getScriptType(), definition.getScript());
+                        logger.trace("Context before script executed: {}", ctx);
                     }
                     executableScript.setNextVar("ctx", ctx);
                     executableScript.run();
@@ -337,8 +336,8 @@ class Indexer implements Runnable {
                     logger.warn("failed to script process {}, ignoring", e, ctx);
                     MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.SCRIPT_IMPORT_FAILED);
                 }
-                if (logger.isDebugEnabled()) {
-                    logger.debug("Context after script executed: {}", ctx);
+                if (logger.isTraceEnabled()) {
+                    logger.trace("Context after script executed: {}", ctx);
                 }
                 if (ctx.containsKey("documents") && ctx.get("documents") instanceof List<?>) {
                     documents = (List<Object>) ctx.get("documents");
@@ -346,7 +345,7 @@ class Indexer implements Runnable {
                         if (object instanceof Map<?, ?>) {
                             Map<String, Object> item = (Map<String, Object>) object;
                             logger.trace("item: {}", item);
-                            if (item.containsKey("deleted") && item.get("deleted").equals(Boolean.TRUE)) {
+                            if (isDocumentDeleted(item)) {
                                 item.put("operation", MongoDBRiver.OPLOG_DELETE_OPERATION);
                             }
 
@@ -359,7 +358,8 @@ class Indexer implements Runnable {
                             Map<String, Object> data = (Map<String, Object>) item.get("data");
                             objectId = extractObjectId(data, objectId);
                             if (logger.isDebugEnabled()) {
-                                logger.debug("#### - Id: {} - operation: {} - ignore: {} - index: {} - type: {} - routing: {} - parent: {}",
+                                logger.debug(
+                                        "#### - Id: {} - operation: {} - ignore: {} - index: {} - type: {} - routing: {} - parent: {}",
                                         objectId, operation, ignore, index, type, routing, parent);
                             }
                             if (ignore) {
@@ -435,6 +435,10 @@ class Indexer implements Runnable {
 
     private boolean isDocumentIgnored(Map<String, Object> ctx) {
         return (ctx.containsKey("ignore") && ctx.get("ignore").equals(Boolean.TRUE));
+    }
+
+    private boolean isDocumentDeleted(Map<String, Object> ctx) {
+        return (ctx.containsKey("deleted") && ctx.get("deleted").equals(Boolean.TRUE));
     }
 
     private String extractType(Map<String, Object> ctx, String defaultType) {
