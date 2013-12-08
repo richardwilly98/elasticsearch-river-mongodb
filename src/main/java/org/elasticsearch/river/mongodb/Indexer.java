@@ -23,6 +23,7 @@ import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.river.mongodb.MongoDBRiver.QueueEntry;
 import org.elasticsearch.river.mongodb.util.MongoDBHelper;
+import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 import org.elasticsearch.script.ExecutableScript;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.search.SearchHit;
@@ -180,7 +181,7 @@ class Indexer implements Runnable {
                     logger.debug("context after script has been executed: {}", ctx);
                 } catch (Exception e) {
                     logger.warn("failed to script process {}, ignoring", e, ctx);
-                    context.setStatus(Status.SCRIPT_IMPORT_FAILED);
+                    MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.SCRIPT_IMPORT_FAILED);
                 }
                 if (logger.isDebugEnabled()) {
                     logger.debug("Context after script executed: {}", ctx);
@@ -334,7 +335,7 @@ class Indexer implements Runnable {
                     ctx = (Map<String, Object>) executableScript.unwrap(ctx);
                 } catch (Exception e) {
                     logger.warn("failed to script process {}, ignoring", e, ctx);
-                    context.setStatus(Status.SCRIPT_IMPORT_FAILED);
+                    MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.SCRIPT_IMPORT_FAILED);
                 }
                 if (logger.isDebugEnabled()) {
                     logger.debug("Context after script executed: {}", ctx);
