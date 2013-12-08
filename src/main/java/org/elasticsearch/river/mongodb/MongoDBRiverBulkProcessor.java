@@ -159,11 +159,12 @@ public class MongoDBRiverBulkProcessor {
         insertedDocuments.incrementAndGet();
     }
 
-//    public void updateBulkRequest(String id, XContentBuilder source, String routing, String parent) {
-//        deleteBulkRequest(id, routing, parent);
-//        bulkProcessor.add(indexRequest(index).type(type).id(id).source(source).routing(routing).parent(parent));
-//        updatedDocuments.incrementAndGet();
-//    }
+    // public void updateBulkRequest(String id, XContentBuilder source, String
+    // routing, String parent) {
+    // deleteBulkRequest(id, routing, parent);
+    // bulkProcessor.add(indexRequest(index).type(type).id(id).source(source).routing(routing).parent(parent));
+    // updatedDocuments.incrementAndGet();
+    // }
 
     public void deleteBulkRequest(String id, String routing, String parent) {
         logger.trace("deleteBulkRequest - id: {} - index: {} - type: {} - routing: {} - parent: {}", id, index, type, routing, parent);

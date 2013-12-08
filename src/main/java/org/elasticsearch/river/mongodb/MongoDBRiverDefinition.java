@@ -178,7 +178,7 @@ public class MongoDBRiverDefinition {
         private Set<String> parentTypes = null;
         private boolean storeStatistics;
         private boolean importAllCollections;
-        
+
         // index
         private String indexName;
         private String typeName;
@@ -522,7 +522,8 @@ public class MongoDBRiverDefinition {
                 }
 
                 builder.storeStatistics(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(STORE_STATISTICS_FIELD), false));
-                builder.importAllCollections(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(IMPORT_ALL_COLLECTIONS_FIELD), false));
+                builder.importAllCollections(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(IMPORT_ALL_COLLECTIONS_FIELD),
+                        false));
                 builder.includeCollection(XContentMapValues.nodeStringValue(mongoOptionsSettings.get(INCLUDE_COLLECTION_FIELD), ""));
 
                 if (mongoOptionsSettings.containsKey(INCLUDE_FIELDS_FIELD)) {

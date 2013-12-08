@@ -20,12 +20,7 @@
 package org.elasticsearch.river.mongodb;
 
 import org.elasticsearch.common.inject.AbstractModule;
-import org.elasticsearch.common.inject.Provides;
 import org.elasticsearch.river.River;
-import org.elasticsearch.river.RiverIndexName;
-import org.elasticsearch.river.RiverName;
-import org.elasticsearch.river.RiverSettings;
-import org.elasticsearch.script.ScriptService;
 
 /**
  * @author flaper87 (Flavio Percoco Premoli)
@@ -38,11 +33,5 @@ public class MongoDBRiverModule extends AbstractModule {
     protected void configure() {
         bind(River.class).to(MongoDBRiver.class).asEagerSingleton();
     }
-
-//    @Provides
-//    protected MongoDBRiverDefinition provideDefinition(
-//            RiverName riverName, RiverSettings settings, @RiverIndexName String riverIndexName, ScriptService scriptService) {
-//        return MongoDBRiverDefinition.parseSettings(riverName.name(), riverIndexName, settings, scriptService);
-//    }
 
 }

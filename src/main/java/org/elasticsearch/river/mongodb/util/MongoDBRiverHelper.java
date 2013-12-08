@@ -22,7 +22,8 @@ public abstract class MongoDBRiverHelper {
         if (!statusResponse.isExists()) {
             return Status.UNKNOWN;
         } else {
-            Object obj = XContentMapValues.extractValue(MongoDBRiver.TYPE + "." + MongoDBRiver.STATUS_FIELD, statusResponse.getSourceAsMap());
+            Object obj = XContentMapValues.extractValue(MongoDBRiver.TYPE + "." + MongoDBRiver.STATUS_FIELD,
+                    statusResponse.getSourceAsMap());
             return Status.valueOf(obj.toString());
         }
     }
@@ -31,7 +32,8 @@ public abstract class MongoDBRiverHelper {
         logger.debug("setRiverStatus called with {} - {}", riverName, status);
         XContentBuilder xb;
         try {
-            xb = jsonBuilder().startObject().startObject(MongoDBRiver.TYPE).field(MongoDBRiver.STATUS_FIELD, status).endObject().endObject();
+            xb = jsonBuilder().startObject().startObject(MongoDBRiver.TYPE).field(MongoDBRiver.STATUS_FIELD, status).endObject()
+                    .endObject();
             client.prepareIndex("_river", riverName, MongoDBRiver.STATUS_ID).setSource(xb).execute().actionGet();
         } catch (IOException ioEx) {
             logger.error("setRiverStatus failed for river {}", ioEx, riverName);
