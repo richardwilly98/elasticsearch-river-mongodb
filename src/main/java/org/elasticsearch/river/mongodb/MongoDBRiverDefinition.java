@@ -135,6 +135,8 @@ public class MongoDBRiverDefinition {
     private final boolean skipInitialImport;
     private final Set<String> parentTypes;
     private final boolean storeStatistics;
+    private final String statisticsIndexName;
+    private final String statisticsTypeName;
     private final boolean importAllCollections;
     private final boolean disableIndexRefresh;
     // index
@@ -181,6 +183,8 @@ public class MongoDBRiverDefinition {
         private boolean skipInitialImport;
         private Set<String> parentTypes = null;
         private boolean storeStatistics;
+        private String statisticsIndexName;
+        private String statisticsTypeName = "stats";
         private boolean importAllCollections;
         private boolean disableIndexRefresh;
         
@@ -328,6 +332,16 @@ public class MongoDBRiverDefinition {
 
         public Builder storeStatistics(boolean storeStatistics) {
             this.storeStatistics = storeStatistics;
+            return this;
+        }
+
+        public Builder statisticsIndexName(String statisticsIndexName) {
+            this.statisticsIndexName = statisticsIndexName;
+            return this;
+        }
+
+        public Builder statisticsTypeName(String statisticsTypeName) {
+            this.statisticsTypeName = statisticsTypeName;
             return this;
         }
 
@@ -709,6 +723,7 @@ public class MongoDBRiverDefinition {
             builder.typeName(builder.mongoDb);
             builder.bulk(new Bulk.Builder().build());
         }
+        builder.statisticsIndexName(riverName + "-stats");
         return builder.build();
     }
 
@@ -821,6 +836,8 @@ public class MongoDBRiverDefinition {
         this.skipInitialImport = builder.skipInitialImport;
         this.parentTypes = builder.parentTypes;
         this.storeStatistics = builder.storeStatistics;
+        this.statisticsIndexName = builder.statisticsIndexName;
+        this.statisticsTypeName = builder.statisticsTypeName;
         this.importAllCollections = builder.importAllCollections;
         this.disableIndexRefresh = builder.disableIndexRefresh;
         
@@ -947,6 +964,14 @@ public class MongoDBRiverDefinition {
 
     public boolean isStoreStatistics() {
         return storeStatistics;
+    }
+
+    public String getStatisticsIndexName() {
+        return statisticsIndexName;
+    }
+
+    public String getStatisticsTypeName() {
+        return statisticsTypeName;
     }
 
     public boolean isImportAllCollections() {

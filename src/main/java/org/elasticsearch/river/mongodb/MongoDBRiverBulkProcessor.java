@@ -273,7 +273,7 @@ public class MongoDBRiverBulkProcessor {
             statistics.put("documents.deleted", deletedDocuments.get());
             statistics.put("documents.total", documentCount.get());
             source.put("statistics", statistics);
-            client.prepareIndex(definition.getRiverIndexName(), definition.getRiverName()).setSource(source).get();
+            client.prepareIndex(definition.getStatisticsIndexName(), definition.getStatisticsTypeName()).setSource(source).get();
         }
     }
 }
