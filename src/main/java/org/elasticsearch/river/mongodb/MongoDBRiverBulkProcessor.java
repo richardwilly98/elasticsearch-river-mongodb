@@ -6,6 +6,7 @@ import static org.elasticsearch.client.Requests.indexRequest;
 import java.io.IOException;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
@@ -15,6 +16,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionRequestValidationException;
+import org.elasticsearch.action.admin.cluster.node.stats.NodeStats;
+import org.elasticsearch.action.admin.cluster.node.stats.NodesStatsResponse;
 import org.elasticsearch.action.admin.indices.mapping.put.PutMappingResponse;
 import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.bulk.BulkProcessor.Listener;
@@ -24,10 +27,12 @@ import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.metadata.MappingMetaData;
 import org.elasticsearch.common.collect.ImmutableMap;
+import org.elasticsearch.common.collect.Maps;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
+import org.elasticsearch.threadpool.ThreadPoolStats.Stats;
 
 public class MongoDBRiverBulkProcessor {
 
@@ -72,6 +77,7 @@ public class MongoDBRiverBulkProcessor {
 
         @Override
         public void beforeBulk(long executionId, BulkRequest request) {
+            checkBulkProcessorAvailability();
             logger.trace("beforeBulk - new bulk [{}] of items [{}]", executionId, request.numberOfActions());
             if (flushBulkProcessor.get()) {
                 logger.info("About to flush bulk request index[{}] - type[{}]", index, type);
@@ -124,7 +130,10 @@ public class MongoDBRiverBulkProcessor {
                 MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.IMPORT_FAILED);
             } else {
                 documentCount.addAndGet(response.getItems().length);
-                logStatistics();
+                logStatistics(response.getTookInMillis());
+                deletedDocuments.set(0);
+                updatedDocuments.set(0);
+                insertedDocuments.set(0);
                 if (logger.isTraceEnabled()) {
                     logger.trace("afterBulk - bulk [{}] success [{} items] [{} ms] total [{}]", executionId, response.getItems().length,
                             response.getTookInMillis(), documentCount.get());
@@ -176,6 +185,42 @@ public class MongoDBRiverBulkProcessor {
         return bulkProcessor;
     }
 
+    private void checkBulkProcessorAvailability() {
+        while (!isBulkProcessorAvailable()) {
+            try {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Waiting for bulk processor to be available...");
+                }
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                logger.warn("checkIndexStatistics interrupted", e);
+            }
+        }
+    }
+
+    private boolean isBulkProcessorAvailable() {
+        NodesStatsResponse response = client.admin().cluster().prepareNodesStats().setThreadPool(true).get();
+        for (NodeStats nodeStats : response.getNodes()) {
+            Iterator<Stats> iterator = nodeStats.getThreadPool().iterator();
+            while (iterator.hasNext()) {
+                Stats stats = iterator.next();
+                if ("bulk".equals(stats.getName())) {
+                    int threads = stats.getThreads();
+                    int active = stats.getActive();
+                    if (threads == 0 || threads - active > 0) {
+                        return true;
+                    } else {
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("Bulk processor threads[{}] active[{}]", threads, active);
+                        }
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
     private void dropRecreateMapping() throws IOException, InterruptedException {
         try {
             semaphore.acquire();
@@ -212,18 +257,22 @@ public class MongoDBRiverBulkProcessor {
     }
 
     // TODO: Still interested in timing / duration?
-    private void logStatistics() {
+    private void logStatistics(long duration) {
         long totalDocuments = deletedDocuments.get() + insertedDocuments.get();
         logger.debug("Indexed {} documents, {} insertions, {} updates, {} deletions", totalDocuments, insertedDocuments.get(),
                 updatedDocuments.get(), deletedDocuments.get());
         if (definition.isStoreStatistics()) {
             Map<String, Object> source = new HashMap<String, Object>();
-            source.put("date", new Date());
-            source.put("index", index);
-            source.put("type", type);
-            source.put("documents.inserted", insertedDocuments.get());
-            source.put("documents.updated", updatedDocuments.get());
-            source.put("documents.deleted", deletedDocuments.get());
+            Map<String, Object> statistics = Maps.newHashMap();
+            statistics.put("duration", duration);
+            statistics.put("date", new Date());
+            statistics.put("index", index);
+            statistics.put("type", type);
+            statistics.put("documents.inserted", insertedDocuments.get());
+            statistics.put("documents.updated", updatedDocuments.get());
+            statistics.put("documents.deleted", deletedDocuments.get());
+            statistics.put("documents.total", documentCount.get());
+            source.put("statistics", statistics);
             client.prepareIndex(definition.getRiverIndexName(), definition.getRiverName()).setSource(source).get();
         }
     }

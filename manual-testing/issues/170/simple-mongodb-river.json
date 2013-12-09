@@ -2,7 +2,10 @@
     "type": "mongodb",
     "mongodb": {
         "db": "mydb170",
-        "collection": "mycollection170"
+        "collection": "mycollection170",
+        "options": {
+          "store_statistics": true
+        }
     },
     "index": {
         "name": "mydb170",
