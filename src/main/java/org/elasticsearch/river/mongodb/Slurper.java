@@ -9,8 +9,10 @@ import org.bson.types.BSONTimestamp;
 import org.bson.types.ObjectId;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.collect.ImmutableList;
+import org.elasticsearch.common.collect.ImmutableMap;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.ESLoggerFactory;
+import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.river.mongodb.util.MongoDBHelper;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 
@@ -160,6 +162,9 @@ class Slurper implements Runnable {
         BSONTimestamp startTimestamp = getCurrentOplogTimestamp();
         DBCursor cursor = null;
         try {
+            if (definition.isDisableIndexRefresh()) {
+                updateIndexRefresh(definition.getIndexName(), -1L);
+            }
             if (!definition.isMongoGridFS()) {
                 logger.info("Collection {} - count: {}", definition.getMongoCollection(), slurpedCollection.count());
                 long count = 0;
@@ -200,6 +205,9 @@ class Slurper implements Runnable {
             if (cursor != null) {
                 logger.trace("Closing initial import cursor");
                 cursor.close();
+            }
+            if (definition.isDisableIndexRefresh()) {
+                updateIndexRefresh(definition.getIndexName(), TimeValue.timeValueSeconds(1));
             }
         }
         return startTimestamp;
@@ -270,6 +278,10 @@ class Slurper implements Runnable {
         // }
 
         return true;
+    }
+
+    private void updateIndexRefresh(String name, Object value) {
+        client.admin().indices().prepareUpdateSettings(name).setSettings(ImmutableMap.of("index.refresh_interval", value)).get();
     }
 
     private BSONTimestamp getCurrentOplogTimestamp() {

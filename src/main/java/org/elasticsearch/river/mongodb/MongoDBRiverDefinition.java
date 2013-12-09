@@ -22,9 +22,11 @@ import org.elasticsearch.common.Preconditions;
 import org.elasticsearch.common.collect.Maps;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.common.util.concurrent.EsExecutors;
 import org.elasticsearch.common.xcontent.support.XContentMapValues;
 import org.elasticsearch.river.RiverSettings;
 import org.elasticsearch.script.ExecutableScript;
@@ -72,6 +74,7 @@ public class MongoDBRiverDefinition {
     public final static String PARENT_TYPES_FIELD = "parent_types";
     public final static String STORE_STATISTICS_FIELD = "store_statistics";
     public final static String IMPORT_ALL_COLLECTIONS_FIELD = "import_all_collections";
+    public final static String DISABLE_INDEX_REFRESH_FIELD = "disable_index_refresh";
     public final static String FILTER_FIELD = "filter";
     public final static String CREDENTIALS_FIELD = "credentials";
     public final static String USER_FIELD = "user";
@@ -133,6 +136,7 @@ public class MongoDBRiverDefinition {
     private final Set<String> parentTypes;
     private final boolean storeStatistics;
     private final boolean importAllCollections;
+    private final boolean disableIndexRefresh;
     // index
     private final String indexName;
     private final String typeName;
@@ -178,7 +182,8 @@ public class MongoDBRiverDefinition {
         private Set<String> parentTypes = null;
         private boolean storeStatistics;
         private boolean importAllCollections;
-
+        private boolean disableIndexRefresh;
+        
         // index
         private String indexName;
         private String typeName;
@@ -293,6 +298,11 @@ public class MongoDBRiverDefinition {
 
         public Builder includeCollection(String includeCollection) {
             this.includeCollection = includeCollection;
+            return this;
+        }
+
+        public Builder disableIndexRefresh(boolean disableIndexRefresh) {
+            this.disableIndexRefresh = disableIndexRefresh;
             return this;
         }
 
@@ -524,6 +534,8 @@ public class MongoDBRiverDefinition {
                 builder.storeStatistics(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(STORE_STATISTICS_FIELD), false));
                 builder.importAllCollections(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(IMPORT_ALL_COLLECTIONS_FIELD),
                         false));
+                builder.disableIndexRefresh(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(DISABLE_INDEX_REFRESH_FIELD),
+                        false));
                 builder.includeCollection(XContentMapValues.nodeStringValue(mongoOptionsSettings.get(INCLUDE_COLLECTION_FIELD), ""));
 
                 if (mongoOptionsSettings.containsKey(INCLUDE_FIELDS_FIELD)) {
@@ -679,7 +691,7 @@ public class MongoDBRiverDefinition {
                 String size = XContentMapValues.nodeStringValue(bulkSettings.get(SIZE_FIELD), DEFAULT_BULK_SIZE.toString());
                 bulkBuilder.bulkSize(ByteSizeValue.parseBytesSizeValue(size));
                 bulkBuilder.concurrentRequests(XContentMapValues.nodeIntegerValue(bulkSettings.get(CONCURRENT_REQUESTS_FIELD),
-                        DEFAULT_CONCURRENT_REQUESTS));
+                        EsExecutors.boundedNumberOfProcessors(ImmutableSettings.EMPTY)));
                 bulkBuilder.flushInterval(XContentMapValues.nodeTimeValue(bulkSettings.get(FLUSH_INTERVAL_FIELD), DEFAULT_FLUSH_INTERVAL));
                 builder.throttleSize(XContentMapValues.nodeIntegerValue(indexSettings.get(THROTTLE_SIZE_FIELD), bulkActions * 5));
             } else {
@@ -688,7 +700,7 @@ public class MongoDBRiverDefinition {
                 bulkBuilder.bulkSize(DEFAULT_BULK_SIZE);
                 bulkBuilder.flushInterval(XContentMapValues.nodeTimeValue(indexSettings.get(BULK_TIMEOUT_FIELD), DEFAULT_FLUSH_INTERVAL));
                 bulkBuilder.concurrentRequests(XContentMapValues.nodeIntegerValue(indexSettings.get(CONCURRENT_BULK_REQUESTS_FIELD),
-                        DEFAULT_CONCURRENT_REQUESTS));
+                        EsExecutors.boundedNumberOfProcessors(ImmutableSettings.EMPTY)));
                 builder.throttleSize(XContentMapValues.nodeIntegerValue(indexSettings.get(THROTTLE_SIZE_FIELD), bulkActions * 5));
             }
             builder.bulk(bulkBuilder.build());
@@ -810,7 +822,8 @@ public class MongoDBRiverDefinition {
         this.parentTypes = builder.parentTypes;
         this.storeStatistics = builder.storeStatistics;
         this.importAllCollections = builder.importAllCollections;
-
+        this.disableIndexRefresh = builder.disableIndexRefresh;
+        
         // index
         this.indexName = builder.indexName;
         this.typeName = builder.typeName;
@@ -939,6 +952,10 @@ public class MongoDBRiverDefinition {
     public boolean isImportAllCollections() {
         return importAllCollections;
     }
+    
+    public boolean isDisableIndexRefresh() {
+        return disableIndexRefresh;
+    }
 
     public String getIndexName() {
         return indexName;
@@ -948,6 +965,9 @@ public class MongoDBRiverDefinition {
         return typeName;
     }
 
+    /*
+     * Default throttle size is: 5 * bulk.bulkActions
+     */
     public int getThrottleSize() {
         return throttleSize;
     }
