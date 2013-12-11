@@ -1,0 +1,19 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"servers": [
+			{host: "127.0.0.1"},
+			{host: "localhost"}
+		],
+		db: "mydatabase",
+		"options": {
+          "store_statistics": {
+          	"index": "archive-stats",
+          	"type": "dummy-stats"
+          }
+		}
+	},
+	index: {
+		name: "myindex"
+	}
+}

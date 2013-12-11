@@ -1,0 +1,23 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"servers": [
+			{
+				"host": "localhost",
+				"port": %s
+			}
+		],
+		"options": {
+          "store_statistics": {
+          	"index": "%s",
+          	"type": "%s"
+          }
+		},
+		"db": "%s",
+		"collection": "%s"
+	},
+	index: {
+		"name": "%s",
+		"type": "%s"
+	}
+}

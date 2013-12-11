@@ -184,10 +184,10 @@ public class MongoDBRiverDefinition {
         private Set<String> parentTypes = null;
         private boolean storeStatistics;
         private String statisticsIndexName;
-        private String statisticsTypeName = "stats";
+        private String statisticsTypeName;
         private boolean importAllCollections;
         private boolean disableIndexRefresh;
-        
+
         // index
         private String indexName;
         private String typeName;
@@ -545,11 +545,28 @@ public class MongoDBRiverDefinition {
                     builder.parentTypes(parentTypes);
                 }
 
-                builder.storeStatistics(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(STORE_STATISTICS_FIELD), false));
+                if (mongoOptionsSettings.containsKey(STORE_STATISTICS_FIELD)) {
+                    Object storeStatistics = mongoOptionsSettings.get(STORE_STATISTICS_FIELD);
+                    boolean object = XContentMapValues.isObject(storeStatistics);
+                    if (object) {
+                        Map<String, Object> storeStatisticsSettings = (Map<String, Object>) storeStatistics;
+                        builder.storeStatistics(true);
+                        builder.statisticsIndexName(XContentMapValues.nodeStringValue(storeStatisticsSettings.get(INDEX_OBJECT), riverName
+                                + "-stats"));
+                        builder.statisticsTypeName(XContentMapValues.nodeStringValue(storeStatisticsSettings.get(TYPE_FIELD), "stats"));
+                    } else {
+                        builder.storeStatistics(XContentMapValues.nodeBooleanValue(storeStatistics, false));
+                        if (builder.storeStatistics) {
+                            builder.statisticsIndexName(riverName + "-stats");
+                            builder.statisticsTypeName("stats");
+                        }
+                    }
+                }
+                // builder.storeStatistics(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(STORE_STATISTICS_FIELD),
+                // false));
                 builder.importAllCollections(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(IMPORT_ALL_COLLECTIONS_FIELD),
                         false));
-                builder.disableIndexRefresh(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(DISABLE_INDEX_REFRESH_FIELD),
-                        false));
+                builder.disableIndexRefresh(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(DISABLE_INDEX_REFRESH_FIELD), false));
                 builder.includeCollection(XContentMapValues.nodeStringValue(mongoOptionsSettings.get(INCLUDE_COLLECTION_FIELD), ""));
 
                 if (mongoOptionsSettings.containsKey(INCLUDE_FIELDS_FIELD)) {
@@ -723,7 +740,6 @@ public class MongoDBRiverDefinition {
             builder.typeName(builder.mongoDb);
             builder.bulk(new Bulk.Builder().build());
         }
-        builder.statisticsIndexName(riverName + "-stats");
         return builder.build();
     }
 
@@ -840,7 +856,7 @@ public class MongoDBRiverDefinition {
         this.statisticsTypeName = builder.statisticsTypeName;
         this.importAllCollections = builder.importAllCollections;
         this.disableIndexRefresh = builder.disableIndexRefresh;
-        
+
         // index
         this.indexName = builder.indexName;
         this.typeName = builder.typeName;
@@ -977,7 +993,7 @@ public class MongoDBRiverDefinition {
     public boolean isImportAllCollections() {
         return importAllCollections;
     }
-    
+
     public boolean isDisableIndexRefresh() {
         return disableIndexRefresh;
     }

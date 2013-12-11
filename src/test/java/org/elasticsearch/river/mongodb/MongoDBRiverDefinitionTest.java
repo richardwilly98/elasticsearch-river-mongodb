@@ -70,7 +70,8 @@ public class MongoDBRiverDefinitionTest {
             Assert.assertEquals(0, definition.getSocketTimeout());
             Assert.assertEquals(11000, definition.getConnectTimeout());
             Assert.assertEquals(riverName.getName(), definition.getRiverName());
-
+            Assert.assertFalse(definition.isStoreStatistics());
+            
             // Test bulk
             Assert.assertEquals(500, definition.getBulk().getBulkActions());
             Assert.assertEquals(40, definition.getBulk().getConcurrentRequests());
@@ -177,6 +178,25 @@ public class MongoDBRiverDefinitionTest {
             Assert.assertTrue(definition.isDropCollection());
         } catch (Throwable t) {
             Assert.fail("testLoadMongoDBRiverDefinitionIssue177 failed", t);
+        }
+    }
+
+    @Test
+    public void testLoadMongoDBRiverDefinitionStoreStatistics() {
+        try {
+            RiverName riverName = new RiverName("mongodb", "mongodb-" + System.currentTimeMillis());
+            InputStream in = getClass().getResourceAsStream("/org/elasticsearch/river/mongodb/test-mongodb-river-definition-store-statistics.json");
+            RiverSettings riverSettings = new RiverSettings(ImmutableSettings.settingsBuilder().build(), XContentHelper.convertToMap(
+                    Streams.copyToByteArray(in), false).v2());
+            ScriptService scriptService = null;
+            MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName.name(),
+                    RiverIndexName.Conf.DEFAULT_INDEX_NAME, riverSettings, scriptService);
+            Assert.assertNotNull(definition);
+            Assert.assertTrue(definition.isStoreStatistics());
+            Assert.assertEquals(definition.getStatisticsIndexName(), "archive-stats");
+            Assert.assertEquals(definition.getStatisticsTypeName(), "dummy-stats");
+        } catch (Throwable t) {
+            Assert.fail("testLoadMongoDBRiverDefinitionStoreStatistics failed", t);
         }
     }
 
