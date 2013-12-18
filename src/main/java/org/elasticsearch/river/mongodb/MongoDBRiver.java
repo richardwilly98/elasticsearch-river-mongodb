@@ -240,6 +240,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
     private boolean isMongos() {
         DB adminDb = getAdminDb();
+        if (adminDb == null) {
+            return false;
+        }
         CommandResult cr = adminDb.command(new BasicDBObject("serverStatus", 1));
 
         logger.info("MongoDB version - {}", cr.get("version"));
@@ -303,6 +306,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             // logger.error("Authentication failed for {}: {}",
             // DB_CONFIG, cmd.getErrorMessage());
             // }
+        }
+        if (configDb == null) {
+            throw new ElasticSearchException(String.format("Could not get %s database from MongoDB", MONGODB_CONFIG_DATABASE));
         }
         return configDb;
     }
