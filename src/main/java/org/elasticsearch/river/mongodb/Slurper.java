@@ -79,13 +79,21 @@ class Slurper implements Runnable {
                 }
 
                 BSONTimestamp startTimestamp = null;
-                if (!definition.isSkipInitialImport() && !definition.isImportAllCollections()) {
+                if (!definition.isSkipInitialImport()) {
                     if (!riverHasIndexedFromOplog() && definition.getInitialTimestamp() == null) {
                         if (!isIndexEmpty()) {
                             MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.INITIAL_IMPORT_FAILED);
                             break;
                         }
-                        startTimestamp = doInitialImport();
+                        if (definition.isImportAllCollections()) {
+                            for(String name : slurpedDb.getCollectionNames()) {
+                                DBCollection collection = slurpedDb.getCollection(name);
+                                startTimestamp = doInitialImport(collection);
+                            }
+                        } else {
+                            DBCollection collection = slurpedDb.getCollection(definition.getMongoCollection());
+                            startTimestamp = doInitialImport(collection);
+                        }
                     }
                 } else {
                     logger.info("Skip initial import from collection {}", definition.getMongoCollection());
@@ -154,11 +162,11 @@ class Slurper implements Runnable {
      * @throws InterruptedException
      *             if the blocking queue stream is interrupted while waiting
      */
-    protected BSONTimestamp doInitialImport() throws InterruptedException {
+    protected BSONTimestamp doInitialImport(DBCollection collection) throws InterruptedException {
         // TODO: ensure the index type is empty
-        DBCollection slurpedCollection = slurpedDb.getCollection(definition.getMongoCollection());
+//        DBCollection slurpedCollection = slurpedDb.getCollection(definition.getMongoCollection());
 
-        logger.info("MongoDBRiver is beginning initial import of " + slurpedCollection.getFullName());
+        logger.info("MongoDBRiver is beginning initial import of " + collection.getFullName());
         BSONTimestamp startTimestamp = getCurrentOplogTimestamp();
         DBCursor cursor = null;
         try {
@@ -166,9 +174,9 @@ class Slurper implements Runnable {
                 updateIndexRefresh(definition.getIndexName(), -1L);
             }
             if (!definition.isMongoGridFS()) {
-                logger.info("Collection {} - count: {}", definition.getMongoCollection(), slurpedCollection.count());
+                logger.info("Collection {} - count: {}", definition.getMongoCollection(), collection.count());
                 long count = 0;
-                cursor = slurpedCollection.find(definition.getMongoCollectionFilter());
+                cursor = collection.find(definition.getMongoCollectionFilter());
                 while (cursor.hasNext()) {
                     DBObject object = cursor.next();
                     count++;
