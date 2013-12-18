@@ -30,6 +30,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 import org.bson.types.BSONTimestamp;
+import org.elasticsearch.ElasticSearchException;
 import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.get.GetResponse;
@@ -239,9 +240,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
     private boolean isMongos() {
         DB adminDb = getAdminDb();
-        if (adminDb == null) {
-            return false;
-        }
         CommandResult cr = adminDb.command(new BasicDBObject("serverStatus", 1));
 
         logger.info("MongoDB version - {}", cr.get("version"));
@@ -285,6 +283,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                     logger.warn("getAdminDb() failed", mEx);
                 }
             }
+        }
+        if (adminDb == null) {
+            throw new ElasticSearchException(String.format("Could not get %s database from MongoDB", MONGODB_ADMIN_DATABASE));
         }
         return adminDb;
     }
