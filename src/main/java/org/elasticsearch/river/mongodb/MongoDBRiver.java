@@ -36,6 +36,7 @@ import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.block.ClusterBlockException;
+import org.elasticsearch.common.collect.ImmutableMap;
 import org.elasticsearch.common.collect.Lists;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.logging.ESLogger;
@@ -53,7 +54,7 @@ import org.elasticsearch.river.mongodb.util.MongoDBHelper;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 import org.elasticsearch.script.ScriptService;
 
-import com.mongodb.BasicDBObject;
+import com.mongodb.BasicDBObjectBuilder;
 import com.mongodb.CommandResult;
 import com.mongodb.DB;
 import com.mongodb.DBCursor;
@@ -91,6 +92,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     public final static String OPLOG_COLLECTION = "oplog.rs";
     public final static String OPLOG_NAMESPACE = "ns";
     public final static String OPLOG_NAMESPACE_COMMAND = "$cmd";
+    public final static String OPLOG_ADMIN_COMMAND = "admin." + OPLOG_NAMESPACE_COMMAND;
     public final static String OPLOG_OBJECT = "o";
     public final static String OPLOG_UPDATE = "o2";
     public final static String OPLOG_OPERATION = "op";
@@ -100,6 +102,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     public final static String OPLOG_COMMAND_OPERATION = "c";
     public final static String OPLOG_DROP_COMMAND_OPERATION = "drop";
     public final static String OPLOG_DROP_DATABASE_COMMAND_OPERATION = "dropDatabase";
+    public final static String OPLOG_RENAME_COLLECTION_COMMAND_OPERATION = "renameCollection";
+    public final static String OPLOG_TO = "to";
     public final static String OPLOG_TIMESTAMP = "ts";
     public final static String OPLOG_FROM_MIGRATE = "fromMigrate";
     public final static String GRIDFS_FILES_SUFFIX = ".files";
@@ -213,6 +217,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                     cursor.close();
                 }
             } else {
+                logger.trace("Not mongos");
                 Thread tailerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_slurper").newThread(
                         new Slurper(definition.getMongoServers(), definition, context, client));
                 tailerThreads.add(tailerThread);
@@ -243,7 +248,26 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         if (adminDb == null) {
             return false;
         }
-        CommandResult cr = adminDb.command(new BasicDBObject("serverStatus", 1));
+        logger.trace("Found {} database", MONGODB_ADMIN_DATABASE);
+        // CommandResult cr = adminDb.command(new BasicDBObject("serverStatus",
+        // 1));
+        DBObject command = BasicDBObjectBuilder.start(
+                ImmutableMap.builder().put("serverStatus", 1).put("asserts", 0).put("backgroundFlushing", 0).put("connections", 0)
+                        .put("cursors", 0).put("dur", 0).put("extra_info", 0).put("globalLock", 0).put("indexCounters", 0).put("locks", 0)
+                        .put("metrics", 0).put("network", 0).put("opcounters", 0).put("opcountersRepl", 0).put("recordStats", 0)
+                        .put("repl", 0).build()).get();
+        logger.trace("About to execute: {}", command);
+        CommandResult cr = adminDb.command(command);
+        logger.trace("Command executed return : {}", cr);
+        // BasicDBObjectBuilder.start(ImmutableMap.of("serverStatus", 1,
+        // "asserts", 0, "backgroundFlushing", 0, "metrics", 0, "connections",
+        // 0, "cursors", 0, "dur", 0, "extra_info", 0, "globalLock", 0,
+        // "indexCounters", 0, "locks", 0, "network", 0, "opcounters", 0,
+        // "opcountersRepl", 0, "recordStats", 0, "repl", 0)).get();
+        // replica1:PRIMARY> db.runCommand({serverStatus: 1, asserts: 0,
+        // backgroundFlushing: 0, metrics: 0, connections: 0, cursors: 0, dur:
+        // 0, extra_info: 0, globalLock: 0, indexCounters:0, locks: 0, network:
+        // 0, opcounters:0, opcountersRepl: 0, recordStats: 0, repl: 0})
 
         logger.info("MongoDB version - {}", cr.get("version"));
         if (logger.isTraceEnabled()) {
@@ -271,7 +295,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         if (adminDb == null) {
             adminDb = getMongoClient().getDB(MONGODB_ADMIN_DATABASE);
             if (logger.isTraceEnabled()) {
-                logger.trace("MongoAdminUser: {} - isAuthenticated: {}", definition.getMongoAdminUser(), adminDb.isAuthenticated());
+                logger.trace("MongoAdminUser: {} - authenticated: {}", definition.getMongoAdminUser(), adminDb.isAuthenticated());
             }
             if (!definition.getMongoAdminUser().isEmpty() && !definition.getMongoAdminPassword().isEmpty() && !adminDb.isAuthenticated()) {
                 logger.info("Authenticate {} with {}", MONGODB_ADMIN_DATABASE, definition.getMongoAdminUser());
@@ -281,6 +305,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                             .toCharArray());
                     if (!cmd.ok()) {
                         logger.error("Autenticatication failed for {}: {}", MONGODB_ADMIN_DATABASE, cmd.getErrorMessage());
+                    } else {
+                        logger.trace("authenticateCommand: {} - isAuthenticated: {}", cmd, adminDb.isAuthenticated());
                     }
                 } catch (MongoException mEx) {
                     logger.warn("getAdminDb() failed", mEx);

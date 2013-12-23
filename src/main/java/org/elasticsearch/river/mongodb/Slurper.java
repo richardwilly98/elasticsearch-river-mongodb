@@ -8,6 +8,7 @@ import org.bson.BasicBSONObject;
 import org.bson.types.BSONTimestamp;
 import org.bson.types.ObjectId;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.common.base.CharMatcher;
 import org.elasticsearch.common.collect.ImmutableList;
 import org.elasticsearch.common.collect.ImmutableMap;
 import org.elasticsearch.common.logging.ESLogger;
@@ -86,7 +87,7 @@ class Slurper implements Runnable {
                             break;
                         }
                         if (definition.isImportAllCollections()) {
-                            for(String name : slurpedDb.getCollectionNames()) {
+                            for (String name : slurpedDb.getCollectionNames()) {
                                 DBCollection collection = slurpedDb.getCollection(name);
                                 startTimestamp = doInitialImport(collection);
                             }
@@ -164,7 +165,8 @@ class Slurper implements Runnable {
      */
     protected BSONTimestamp doInitialImport(DBCollection collection) throws InterruptedException {
         // TODO: ensure the index type is empty
-//        DBCollection slurpedCollection = slurpedDb.getCollection(definition.getMongoCollection());
+        // DBCollection slurpedCollection =
+        // slurpedDb.getCollection(definition.getMongoCollection());
 
         logger.info("MongoDBRiver is beginning initial import of " + collection.getFullName());
         BSONTimestamp startTimestamp = getCurrentOplogTimestamp();
@@ -174,17 +176,17 @@ class Slurper implements Runnable {
                 updateIndexRefresh(definition.getIndexName(), -1L);
             }
             if (!definition.isMongoGridFS()) {
-                logger.info("Collection {} - count: {}", definition.getMongoCollection(), collection.count());
+                logger.info("Collection {} - count: {}", collection.getName(), collection.count());
                 long count = 0;
                 cursor = collection.find(definition.getMongoCollectionFilter());
                 while (cursor.hasNext()) {
                     DBObject object = cursor.next();
                     count++;
                     if (cursor.hasNext()) {
-                        addInsertToStream(null, applyFieldFilter(object));
+                        addInsertToStream(null, applyFieldFilter(object), collection.getName());
                     } else {
                         logger.debug("Last entry for initial import - add timestamp: {}", startTimestamp);
-                        addInsertToStream(startTimestamp, applyFieldFilter(object));
+                        addInsertToStream(startTimestamp, applyFieldFilter(object), collection.getName());
                     }
                 }
                 logger.info("Number documents indexed: {}", count);
@@ -314,8 +316,8 @@ class Slurper implements Runnable {
         DBObject object = (DBObject) entry.get(MongoDBRiver.OPLOG_OBJECT);
 
         if (definition.isImportAllCollections()) {
-            if (!namespace.equals(cmdOplogNamespace)) {
-                collection = namespace.substring(definition.getMongoDb().length() + 1);
+            if (namespace.startsWith(definition.getMongoDb()) && !namespace.equals(cmdOplogNamespace)) {
+                collection = getCollectionFromNamespace(namespace);
             }
         } else {
             collection = definition.getMongoCollection();
@@ -326,10 +328,21 @@ class Slurper implements Runnable {
                 operation = Operation.DROP_COLLECTION;
                 if (definition.isImportAllCollections()) {
                     collection = object.get(MongoDBRiver.OPLOG_DROP_COMMAND_OPERATION).toString();
+                    if (collection.startsWith("tmp.mr.")) {
+                        return;
+                    }
                 }
             }
             if (object.containsField(MongoDBRiver.OPLOG_DROP_DATABASE_COMMAND_OPERATION)) {
                 operation = Operation.DROP_DATABASE;
+            }
+        }
+
+        logger.trace("namespace: {} - operation: {}", namespace, operation);
+        if (namespace.equals(MongoDBRiver.OPLOG_ADMIN_COMMAND)) {
+            if (operation == Operation.COMMAND) {
+                processAdminCommandOplogEntry(entry, startTimestamp);
+                return;
             }
         }
 
@@ -376,6 +389,29 @@ class Slurper implements Runnable {
         }
     }
 
+    private void processAdminCommandOplogEntry(final DBObject entry, final BSONTimestamp startTimestamp) throws InterruptedException {
+        logger.debug("processAdminCommandOplogEntry - [{}]", entry);
+        DBObject object = (DBObject) entry.get(MongoDBRiver.OPLOG_OBJECT);
+        if (definition.isImportAllCollections()) {
+            if (object.containsField(MongoDBRiver.OPLOG_RENAME_COLLECTION_COMMAND_OPERATION) && object.containsField(MongoDBRiver.OPLOG_TO)) {
+                String to = object.get(MongoDBRiver.OPLOG_TO).toString();
+                if (to.startsWith(definition.getMongoDb())) {
+                    String newCollection = getCollectionFromNamespace(to);
+                    DBCollection coll = slurpedDb.getCollection(newCollection);
+                    doInitialImport(coll);
+                }
+            }
+        }
+    }
+
+    private String getCollectionFromNamespace(String namespace) {
+        if (namespace.startsWith(definition.getMongoDb()) && CharMatcher.is('.').countIn(namespace) == 1) {
+            return namespace.substring(definition.getMongoDb().length() + 1);
+        }
+        logger.info("Cannot get collection from namespace [{}]", namespace);
+        return null;
+    }
+
     private boolean isValidOplogEntry(final DBObject entry, final BSONTimestamp startTimestamp) {
         String namespace = (String) entry.get(MongoDBRiver.OPLOG_NAMESPACE);
         // Initial support for sharded collection -
@@ -402,7 +438,8 @@ class Slurper implements Runnable {
             validNamespace = gridfsOplogNamespace.equals(namespace);
         } else {
             if (definition.isImportAllCollections()) {
-                if (namespace.startsWith(definition.getMongoDb())) {
+                // Skip temp entry generated by map / reduce
+                if (namespace.startsWith(definition.getMongoDb()) && !namespace.startsWith(definition.getMongoDb() + ".tmp.mr")) {
                     validNamespace = true;
                 }
             } else {
@@ -411,6 +448,10 @@ class Slurper implements Runnable {
                 }
             }
             if (cmdOplogNamespace.equals(namespace)) {
+                validNamespace = true;
+            }
+
+            if (MongoDBRiver.OPLOG_ADMIN_COMMAND.equals(namespace)) {
                 validNamespace = true;
             }
         }
@@ -531,6 +572,11 @@ class Slurper implements Runnable {
 
     private void addInsertToStream(final BSONTimestamp currentTimestamp, final DBObject data) throws InterruptedException {
         addToStream(Operation.INSERT, currentTimestamp, data, definition.getMongoCollection());
+    }
+
+    private void addInsertToStream(final BSONTimestamp currentTimestamp, final DBObject data, final String collection)
+            throws InterruptedException {
+        addToStream(Operation.INSERT, currentTimestamp, data, collection);
     }
 
     private void addToStream(final Operation operation, final BSONTimestamp currentTimestamp, final DBObject data, final String collection)
