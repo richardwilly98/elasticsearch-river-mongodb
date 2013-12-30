@@ -27,6 +27,7 @@ import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.metadata.MappingMetaData;
 import org.elasticsearch.common.collect.ImmutableMap;
+import org.elasticsearch.common.collect.ImmutableOpenMap;
 import org.elasticsearch.common.collect.Maps;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.ESLoggerFactory;
@@ -226,7 +227,7 @@ public class MongoDBRiverBulkProcessor {
             semaphore.acquire();
             logger.trace("dropRecreateMapping index[{}] - type[{}]", index, type);
             client.admin().indices().prepareRefresh(index).get();
-            Map<String, MappingMetaData> mappings = client.admin().cluster().prepareState().get().getState().getMetaData().index(index)
+            ImmutableOpenMap<String,MappingMetaData> mappings = client.admin().cluster().prepareState().get().getState().getMetaData().index(index)
                     .mappings();
             logger.trace("mappings contains type {}: {}", type, mappings.containsKey(type));
             if (mappings.containsKey(type)) {

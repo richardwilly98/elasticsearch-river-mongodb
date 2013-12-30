@@ -38,6 +38,7 @@ import org.elasticsearch.common.xcontent.XContentFactory;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
 import com.mongodb.gridfs.GridFSDBFile;
+import com.mongodb.gridfs.GridFSFile;
 
 /*
  * MongoDB Helper class
@@ -166,5 +167,19 @@ public abstract class MongoDBHelper {
         }
         return version;
 
+    }
+
+    public static DBObject applyFieldFilter(DBObject object, final Set<String> includeFields, final Set<String> excludeFields) {
+        if (object instanceof GridFSFile) {
+            GridFSFile file = (GridFSFile) object;
+            DBObject metadata = file.getMetaData();
+            if (metadata != null) {
+                file.setMetaData(applyFieldFilter(metadata, includeFields, excludeFields));
+            }
+        } else {
+            object = MongoDBHelper.applyExcludeFields(object, excludeFields);
+            object = MongoDBHelper.applyIncludeFields(object, includeFields);
+        }
+        return object;
     }
 }
