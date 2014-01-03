@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.bson.types.BSONTimestamp;
+import org.bson.types.BasicBSONList;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.collect.ImmutableMap;
@@ -28,8 +29,10 @@ import org.elasticsearch.script.ExecutableScript;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.search.SearchHit;
 
+import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
+import com.mongodb.DBRef;
 import com.mongodb.gridfs.GridFSDBFile;
 
 class Indexer implements Runnable {
@@ -385,9 +388,45 @@ class Indexer implements Runnable {
             logger.info("Add Attachment: {} to index {} / type {}", objectId, definition.getIndexName(), definition.getTypeName());
             return MongoDBHelper.serialize((GridFSDBFile) data);
         } else {
-            return XContentFactory.jsonBuilder().map(data.toMap());
+            Map<String, Object> mapData = this.createObjectMap(data);
+            return XContentFactory.jsonBuilder().map(mapData);
         }
     }
+    
+    /**
+     * Map a DBObject for indexing
+     * @param base
+     * @param mapData
+     */
+    private Map<String, Object> createObjectMap(DBObject base) {
+        Map<String, Object> mapData = new HashMap<String, Object>();
+        for (String key : base.keySet()) {
+            Object forMap = base.get(key);
+            if (forMap instanceof DBRef) {
+                mapData.put(key, this.convertDbRef((DBRef) forMap));
+            } else if (forMap instanceof BasicDBList) {
+                mapData.put(key, ((BasicBSONList)forMap).toArray());
+            } else {
+                mapData.put(key, forMap);
+            }
+        }
+        
+        return mapData;
+    }
+    
+    /**
+     * Map a DBRef to a Map for indexing
+     * @param ref
+     * @return
+     */
+    private Map<String, Object> convertDbRef(DBRef ref) {
+        Map<String, Object> obj = new HashMap<String, Object>();
+        obj.put("id", ref.getId());
+        obj.put("ref", ref.getRef());
+        
+        return obj;
+    }
+    
 
     private boolean hasScript() {
         return definition.getScriptType() != null && definition.getScript() != null;
