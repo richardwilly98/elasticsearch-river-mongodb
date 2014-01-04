@@ -406,6 +406,8 @@ class Indexer implements Runnable {
                 mapData.put(key, this.convertDbRef((DBRef) forMap));
             } else if (forMap instanceof BasicDBList) {
                 mapData.put(key, ((BasicBSONList)forMap).toArray());
+            } else if (forMap instanceof BasicDBObject) {
+                mapData.put(key, this.createObjectMap((DBObject) forMap));
             } else {
                 mapData.put(key, forMap);
             }
