@@ -218,3 +218,7 @@ Changelog
 - Script filters
 - MongoDB driver 2.10.1 (use of MongoClient)
 
+
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/richardwilly98/elasticsearch-river-mongodb/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
