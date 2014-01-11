@@ -26,7 +26,7 @@ import com.spatial4j.core.shape.impl.GeoCircle;
 
 public class RiverMongoDbRefTest extends RiverMongoDBTestAbstract {
 
-    private static final String TEST_DBREF_MONGODB_DOCUMENT_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-document-with-dbref.json";
+    private static final String TEST_DBREF_MONGODB_DOCUMENT_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-document-with-dbref.json";
 
     private DB mongoDB;
     private DBCollection mongoCollection;
@@ -53,14 +53,13 @@ public class RiverMongoDbRefTest extends RiverMongoDBTestAbstract {
         mongoDB.dropDatabase();
     }
 
-
     @Test
     public void simpleBSONObject() throws Throwable {
         logger.debug("Start simpleBSONObject");
         try {
             String mongoDocument = copyToStringFromClasspath(TEST_DBREF_MONGODB_DOCUMENT_JSON);
             DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
-            
+
             WriteResult result = mongoCollection.insert(dbObject);
             Thread.sleep(wait);
             String id = dbObject.get("_id").toString();
@@ -69,22 +68,22 @@ public class RiverMongoDbRefTest extends RiverMongoDBTestAbstract {
                     .exists(new IndicesExistsRequest(getIndex()));
             assertThat(response.actionGet().isExists(), equalTo(true));
             refreshIndex();
-            SearchRequest search = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.fieldQuery("category.id", "5194272CFDEA65E5D6000021"))
-                    .request();
+            SearchRequest search = getNode().client().prepareSearch(getIndex())
+                    .setQuery(QueryBuilders.fieldQuery("category.id", "5194272CFDEA65E5D6000021")).request();
             SearchResponse searchResponse = getNode().client().search(search).actionGet();
             assertThat(searchResponse.getHits().getTotalHits(), equalTo(1l));
-            
-            
+
             search = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.fieldQuery("innerDoc.innerThing", "testing"))
                     .request();
             searchResponse = getNode().client().search(search).actionGet();
             assertThat(searchResponse.getHits().getTotalHits(), equalTo(1l));
 
-            
-//            search = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.geoShapeQuery("location", new GeoCircle(new Point, 20.0)))
-//                    .request();
-//            searchResponse = getNode().client().search(search).actionGet();
-//            assertThat(searchResponse.getHits().getTotalHits(), equalTo(1l));
+            // search =
+            // getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.geoShapeQuery("location",
+            // new GeoCircle(new Point, 20.0)))
+            // .request();
+            // searchResponse = getNode().client().search(search).actionGet();
+            // assertThat(searchResponse.getHits().getTotalHits(), equalTo(1l));
 
         } catch (Throwable t) {
             logger.error("simpleBSONObject failed.", t);
@@ -92,5 +91,5 @@ public class RiverMongoDbRefTest extends RiverMongoDBTestAbstract {
             throw t;
         }
     }
-    
+
 }
