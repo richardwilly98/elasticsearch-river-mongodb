@@ -1,0 +1,21 @@
+{
+  "_id": { "$oid" : "51A220FDB573DF1144000000" },
+  "body": "this is a for a post",
+  "category": {
+    "$ref": "category",
+    "$id": { "$oid" : "5194272CFDEA65E5D6000021" }
+  },
+  "images": [
+
+  ],
+  "location": [
+    -77.212365,
+    39.114207
+  ],
+  "innerDoc" : {
+  	"innerThing" : "testing"
+  },
+  "postDate": { "$date": 1388853809000.000000 },
+  "postalCode": "20878",
+  "title": "This is a title"
+}
