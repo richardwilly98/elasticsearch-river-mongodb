@@ -282,7 +282,7 @@ public abstract class RiverMongoDBTestAbstract {
             if (!initialSettings.v2().pluginsFile().exists()) {
                 FileSystemUtils.mkdirs(initialSettings.v2().pluginsFile());
                 if (settings.getByPrefix("plugins") != null) {
-                    PluginManager pluginManager = new PluginManager(initialSettings.v2(), null, OutputMode.DEFAULT);
+                    PluginManager pluginManager = new PluginManager(initialSettings.v2(), null, OutputMode.DEFAULT, PluginManager.DEFAULT_TIMEOUT);
 
                     Map<String, String> plugins = settings.getByPrefix("plugins").getAsMap();
                     for (String key : plugins.keySet()) {
