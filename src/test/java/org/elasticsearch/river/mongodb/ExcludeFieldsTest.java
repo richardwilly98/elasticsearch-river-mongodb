@@ -60,4 +60,31 @@ public class ExcludeFieldsTest {
             Assert.fail();
         }
     }
+
+    public void testIncludeFields204() {
+        try {
+            Set<String> includeFields = new HashSet<String>(Arrays.asList("system_info.userId", "place.area", "system_info.date",
+                    "place.country", "system_info.removed", "system_info.premium", "place.default", "system_info.price"));
+            String mongoDocument = copyToStringFromClasspath("/org/elasticsearch/river/mongodb/test-include-fields-document-204.json");
+            DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
+            logger.debug("Initial BSON object: {}", dbObject);
+            DBObject filteredObject = MongoDBHelper.applyIncludeFields(dbObject, includeFields);
+            logger.debug("Filtered BSON object: {}", filteredObject);
+            Assert.assertNotNull(filteredObject);
+            Assert.assertFalse(filteredObject.containsField("gross_weight"));
+            Assert.assertTrue(((DBObject) filteredObject.get("system_info")).containsField("userId"));
+            Assert.assertTrue(((DBObject) filteredObject.get("place")).containsField("area"));
+            Assert.assertTrue(((DBObject) filteredObject.get("system_info")).containsField("date"));
+            Assert.assertTrue(((DBObject) filteredObject.get("place")).containsField("country"));
+            Assert.assertTrue(((DBObject) filteredObject.get("system_info")).containsField("removed"));
+            Assert.assertTrue(((DBObject) filteredObject.get("system_info")).containsField("premium"));
+            Assert.assertTrue(((DBObject) filteredObject.get("place")).containsField("default"));
+            Assert.assertTrue(((DBObject) filteredObject.get("system_info")).containsField("price"));
+            Assert.assertFalse(filteredObject.containsField("truck_mounted_crane"));
+            Assert.assertFalse(((DBObject) filteredObject.get("system_info")).containsField("photos"));
+        } catch (Throwable t) {
+            logger.error("testIncludeFields204 failed", t);
+            Assert.fail();
+        }
+    }
 }

@@ -1,0 +1,132 @@
+{
+    "gross_weight" : 0,
+    "fifth_wheel_height" : 0,
+    "number_of_valves" : 0,
+    "number_of_cylinders" : 0,
+    "net_weight" : 0,
+    "truck_mounted_crane" : {
+        "checkbox" : false,
+        "string" : "",
+        "num" : 0
+    },
+    "central_lubrication" : false,
+    "right_hand_drive" : false,
+    "mega" : false,
+    "toolbox" : false,
+    "adr" : false,
+    "hydraulics" : false,
+    "rto" : false,
+    "fuel" : "",
+    "euro" : 0,
+    "engine_type" : "",
+    "engine_volume" : 0,
+    "turbo" : false,
+    "intercooler" : false,
+    "injector" : false,
+    "fuel_tanks" : {
+        "count" : 0,
+        "tank1" : 0,
+        "tank2" : 0,
+        "tank3" : 0,
+        "overall" : 0
+    },
+    "gearbox_type" : "",
+    "gears_number" : "",
+    "berth" : 0,
+    "coolers" : [ ],
+    "security" : [ ],
+    "exterior" : [ ],
+    "mirrors_glass" : [ ],
+    "headlight" : [ ],
+    "type_of_suspension" : "",
+    "axles_number" : 0,
+    "suspension_options" : [ ],
+    "wheel_formula" : "",
+    "axes_make" : "",
+    "wheelbase" : 0,
+    "brake_options" : [ ],
+    "rubber" : {
+        "brakes" : "",
+        "rest_rpc" : 0,
+        "rest_mm" : 0,
+        "size" : 0
+    },
+    "tire_size_on_the_axes" : {
+        "first_axis" : {
+            "brakes" : "",
+            "rest_rpc" : 0,
+            "rest_mm" : 0,
+            "size" : 0
+        },
+        "second_axis" : {
+            "brakes" : "",
+            "rest_rpc" : 0,
+            "rest_mm" : 0,
+            "size" : 0
+        },
+        "third_axis" : {
+            "brakes" : "",
+            "rest_rpc" : 0,
+            "rest_mm" : 0,
+            "size" : 0
+        }
+    },
+    "spare_wheel" : [ ],
+    "year" : {
+        "month" : "",
+        "year" : 0
+    },
+    "first_registration" : {
+        "month" : "",
+        "year" : 0
+    },
+    "mileage" : 0,
+    "color_metallic" : {
+        "color" : "",
+        "metallic" : false
+    },
+    "fuel_consumption_l_100km" : 0,
+    "engine_make" : "",
+    "cabin_type" : "",
+    "dimensions" : {
+        "heigth" : 4,
+        "width" : 3,
+        "length" : 2
+    },
+    "mark_model" : {
+        "model" : "eqwwqe",
+        "mark" : "avia_daewoo"
+    },
+    "aut_heater" : "",
+    "gearbox_make_model" : {
+        "model" : "",
+        "mark" : ""
+    },
+    "system_info" : {
+        "price" : 12,
+        "userId" : 227520,
+        "date" : 1389218400000,
+        "photos" : [ ],
+        "sub_goods_refs" : [ ],
+        "main_goods_ref" : "",
+        "premium" : false,
+        "extend_date" : 1389391200000,
+        "expire_date" : 1394575200000,
+        "removed" : false
+    },
+    "price" : {
+        "price" : 12,
+        "vat_percent" : 0,
+        "currency" : "uah"
+    },
+    "description" : {
+        "lng" : "ru",
+        "text" : "sadzxczxc"
+    },
+    "place" : {
+        "country" : "6",
+        "area" : "127",
+        "default" : false
+    },
+    "_model" : "$category_5200b707916c1489c4487bbd"
+}

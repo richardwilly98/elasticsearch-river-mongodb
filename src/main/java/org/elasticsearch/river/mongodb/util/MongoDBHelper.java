@@ -28,6 +28,7 @@ import java.util.Properties;
 import java.util.Set;
 
 import org.elasticsearch.common.Base64;
+import org.elasticsearch.common.collect.Sets;
 import org.elasticsearch.common.io.FastStringReader;
 import org.elasticsearch.common.io.Streams;
 import org.elasticsearch.common.joda.time.DateTimeZone;
@@ -118,6 +119,18 @@ public abstract class MongoDBHelper {
         return filteredObject;
     }
 
+    private static Set<String> getChildItems(String parent, final Set<String> fields) {
+        Set<String> children = Sets.newHashSet();
+        for (String field : fields) {
+            if (field.startsWith(parent + ".")) {
+                children.add(field.substring((parent + ".").length()));
+            } else if (field.startsWith(parent)) {
+                children.add(field);
+            }
+        }
+        return children;
+    }
+
     public static DBObject applyIncludeFields(DBObject bsonObject, final Set<String> includeFields) {
         if (includeFields == null) {
             return bsonObject;
@@ -134,11 +147,15 @@ public abstract class MongoDBHelper {
         for (String field : includeFields) {
             if (field.contains(".")) {
                 String rootObject = field.substring(0, field.indexOf("."));
-                String childObject = field.substring(field.indexOf(".") + 1);
+                // String childObject = field.substring(field.indexOf(".") + 1);
                 Object object = bsonObject.get(rootObject);
                 if (object instanceof DBObject) {
                     DBObject object2 = (DBObject) object;
-                    object2 = applyIncludeFields(object2, new HashSet<String>(Arrays.asList(childObject)));
+                    // object2 = applyIncludeFields(object2, new
+                    // HashSet<String>(Arrays.asList(childObject)));
+                    System.out.println(getChildItems(rootObject, includeFields));
+                    object2 = applyIncludeFields(object2, getChildItems(rootObject, includeFields));
+
                     filteredObject.put(rootObject, object2);
                 }
             }
