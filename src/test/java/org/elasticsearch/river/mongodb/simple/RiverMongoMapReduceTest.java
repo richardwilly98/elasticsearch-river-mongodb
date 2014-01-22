@@ -77,61 +77,39 @@ public class RiverMongoMapReduceTest extends RiverMongoDBTestAbstract {
             final String outputCollection = "order_totals";
             Random random = new Random();
             for (long i = 0; i < MAX; i++) {
-                DBObject object = BasicDBObjectBuilder.start().add("name", "order-" + i).add("cust_id", random.nextInt(10)).add("amount", random.nextInt(500)).get(); 
+                DBObject object = BasicDBObjectBuilder.start().add("name", "order-" + i).add("cust_id", random.nextInt(10))
+                        .add("amount", random.nextInt(500)).get();
                 mongoCollection.insert(object);
+                Thread.sleep(200);
             }
             Thread.sleep(wait);
             refreshIndex();
-            assertThat(getNode().client().admin().indices().prepareTypesExists(getIndex()).setTypes(mongoCollection.getName()).get().isExists(), equalTo(true));
+            assertThat(getNode().client().admin().indices().prepareTypesExists(getIndex()).setTypes(mongoCollection.getName()).get()
+                    .isExists(), equalTo(true));
 
             String map = "function() { emit(this.cust_id, this.amount); }";
             String reduce = "function (key, values) { return Array.sum( values ) }";
-            
-            MapReduceCommand cmd = new MapReduceCommand(mongoCollection, map, reduce,
-                    "order_totals", MapReduceCommand.OutputType.REPLACE, null);
+
+            MapReduceCommand cmd = new MapReduceCommand(mongoCollection, map, reduce, "order_totals", MapReduceCommand.OutputType.REPLACE,
+                    null);
 
             MapReduceOutput out = mongoCollection.mapReduce(cmd);
             logger.debug("MapReduceOutput: {}", out);
             Thread.sleep(wait);
             refreshIndex();
-            assertThat(getNode().client().admin().indices().prepareTypesExists(getIndex()).setTypes(outputCollection).get().isExists(), equalTo(true));
-   
-            logger.debug("*** Index/type [{}/{}] count [{}]", getIndex(), mongoCollection.getName(), getNode().client().prepareCount(getIndex()).setTypes(mongoCollection.getName()).get().getCount());
-            
-            logger.debug("*** Index/type [{}/{}] count [{}]", getIndex(), outputCollection, getNode().client().prepareCount(getIndex()).setTypes(outputCollection).get().getCount());
-            
-            assertThat(getNode().client().prepareCount(getIndex()).setTypes(mongoCollection.getName()).get().getCount(), equalTo(mongoCollection.count()));
-            assertThat(getNode().client().prepareCount(getIndex()).setTypes(outputCollection).get().getCount(), equalTo(mongoDB.getCollection(outputCollection).count()));
+            assertThat(getNode().client().admin().indices().prepareTypesExists(getIndex()).setTypes(outputCollection).get().isExists(),
+                    equalTo(true));
 
-            //            Assert.assertNotNull(getNode().client().prepareGet(getIndex(), mongoCollection.getName(), id).get().getId());
-//            String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
-//            DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
-//            WriteResult result = mongoCollection.insert(dbObject);
-//            Thread.sleep(wait);
-//            String id = dbObject.get("_id").toString();
-//            logger.info("WriteResult: {}", result.toString());
-//            refreshIndex();
-//            Assert.assertNotNull(getNode().client().prepareGet(getIndex(), mongoCollection.getName(), id).get().getId());
-//
-//            DBObject dbObject2 = (DBObject) JSON.parse(mongoDocument);
-//            WriteResult result2 = mongoCollection2.insert(dbObject2);
-//            Thread.sleep(wait);
-//            String id2 = dbObject2.get("_id").toString();
-//            logger.info("WriteResult: {}", result2.toString());
-//            refreshIndex();
-//            Assert.assertNotNull(getNode().client().prepareGet(getIndex(), mongoCollection2.getName(), id2).get().getId());
-//
-//            mongoCollection.remove(dbObject);
-//            Thread.sleep(wait);
-//            refreshIndex();
-//            assertThat(getNode().client().prepareCount(getIndex()).setTypes(mongoCollection.getName()).setQuery(fieldQuery("_id", id))
-//                    .get().getCount(), equalTo(0L));
-//
-//            mongoCollection2.remove(dbObject2);
-//            Thread.sleep(wait);
-//            refreshIndex();
-//            assertThat(getNode().client().prepareCount(getIndex()).setTypes(mongoCollection2.getName()).setQuery(fieldQuery("_id", id2))
-//                    .get().getCount(), equalTo(0L));
+            logger.debug("*** Index/type [{}/{}] count [{}]", getIndex(), mongoCollection.getName(),
+                    getNode().client().prepareCount(getIndex()).setTypes(mongoCollection.getName()).get().getCount());
+
+            logger.debug("*** Index/type [{}/{}] count [{}]", getIndex(), outputCollection, getNode().client().prepareCount(getIndex())
+                    .setTypes(outputCollection).get().getCount());
+
+            assertThat(getNode().client().prepareCount(getIndex()).setTypes(mongoCollection.getName()).get().getCount(),
+                    equalTo(mongoCollection.count()));
+            assertThat(getNode().client().prepareCount(getIndex()).setTypes(outputCollection).get().getCount(), equalTo(mongoDB
+                    .getCollection(outputCollection).count()));
         } catch (Throwable t) {
             logger.error("mapReduceTest failed.", t);
             t.printStackTrace();
