@@ -24,6 +24,7 @@ import static org.elasticsearch.index.query.QueryBuilders.fieldQuery;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
+import org.apache.commons.io.filefilter.FalseFileFilter;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
@@ -122,4 +123,46 @@ public class RiverMongoDBTest extends RiverMongoDBTestAbstract {
         }
     }
 
+    @Test
+    public void collectionWithDot_Issue206() throws Throwable {
+        logger.debug("Start collectionWithDot_Issue206");
+        try {
+            long timestamp = System.currentTimeMillis();
+            String collection = "collection." + timestamp;
+            String database = "db-" + timestamp;
+            String myriver = "river_206-" + timestamp;
+            DB db = getMongo().getDB(database);
+            db.setWriteConcern(WriteConcern.REPLICAS_SAFE);
+            super.createRiver(TEST_MONGODB_RIVER_SIMPLE_JSON, myriver, String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
+                    String.valueOf(getMongoPort3()), database, collection, collection);
+
+            DBCollection dottedCollection = db.createCollection(collection, null);
+            Assert.assertNotNull(dottedCollection);
+            DBObject dbObject  = new BasicDBObject("name", "richard-" + timestamp);
+            WriteResult result = dottedCollection.insert(dbObject);
+            Thread.sleep(wait);
+            String id = dbObject.get("_id").toString();
+            logger.info("WriteResult: {}", result.toString());
+            logger.info("dbObject: {}", dbObject.toString());
+            ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices()
+                    .exists(new IndicesExistsRequest(collection));
+            assertThat(response.actionGet().isExists(), equalTo(true));
+            refreshIndex();
+            CountResponse countResponse = getNode().client().count(countRequest(collection).query(fieldQuery("_id", id))).get();
+            assertThat(countResponse.getCount(), equalTo(1l));
+
+            dottedCollection.remove(dbObject, WriteConcern.REPLICAS_SAFE);
+
+            Thread.sleep(wait);
+            refreshIndex();
+            countResponse = getNode().client().count(countRequest(collection).query(fieldQuery("_id", id))).actionGet();
+            logger.debug("Count after delete request: {}", countResponse.getCount());
+            assertThat(countResponse.getCount(), equalTo(0L));
+
+        } catch (Throwable t) {
+            logger.error("collectionWithDot_Issue206 failed.", t);
+            t.printStackTrace();
+            throw t;
+        }
+    }
 }
