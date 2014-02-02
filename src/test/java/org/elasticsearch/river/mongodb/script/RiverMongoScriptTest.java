@@ -20,7 +20,6 @@ package org.elasticsearch.river.mongodb.script;
 
 import static org.elasticsearch.client.Requests.countRequest;
 import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath;
-import static org.elasticsearch.index.query.QueryBuilders.fieldQuery;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
@@ -29,6 +28,7 @@ import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsReques
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -126,7 +126,8 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAbstract {
                     .exists(new IndicesExistsRequest(getIndex()));
             assertThat(response.actionGet().isExists(), equalTo(true));
 
-            SearchResponse sr = getNode().client().prepareSearch(getIndex()).setQuery(fieldQuery("_id", id)).execute().actionGet();
+            SearchResponse sr = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.queryString(id).defaultField("_id"))
+                    .execute().actionGet();
             logger.debug("SearchResponse {}", sr.toString());
             long totalHits = sr.getHits().getTotalHits();
             logger.debug("TotalHits: {}", totalHits);
@@ -172,7 +173,8 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAbstract {
                     .exists(new IndicesExistsRequest(getIndex()));
             assertThat(response.actionGet().isExists(), equalTo(true));
 
-            SearchResponse sr = getNode().client().prepareSearch(getIndex()).setQuery(fieldQuery("_id", id)).execute().actionGet();
+            SearchResponse sr = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.queryString(id).defaultField("_id"))
+                    .execute().actionGet();
             logger.debug("SearchResponse {}", sr.toString());
             long totalHits = sr.getHits().getTotalHits();
             logger.debug("TotalHits: {}", totalHits);
@@ -211,7 +213,8 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAbstract {
 
             assertThat(getNode().client().admin().indices().prepareExists(index).get().isExists(), equalTo(true));
 
-            SearchResponse sr = getNode().client().prepareSearch(index).setQuery(fieldQuery("_id", id)).execute().actionGet();
+            SearchResponse sr = getNode().client().prepareSearch(index).setQuery(QueryBuilders.queryString(id).defaultField("_id"))
+                    .execute().actionGet();
             logger.debug("SearchResponse {}", sr.toString());
             long totalHits = sr.getHits().getTotalHits();
             logger.debug("TotalHits: {}", totalHits);
@@ -248,8 +251,9 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAbstract {
             refreshIndex(getIndex());
 
             assertThat(getNode().client().admin().indices().prepareExists(getIndex()).get().isExists(), equalTo(true));
-            
-            SearchResponse sr = getNode().client().prepareSearch(getIndex()).setQuery(fieldQuery("_id", id)).execute().actionGet();
+
+            SearchResponse sr = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.queryString(id).defaultField("_id"))
+                    .execute().actionGet();
             logger.debug("SearchResponse {}", sr.toString());
             long totalHits = sr.getHits().getTotalHits();
             logger.debug("TotalHits: {}", totalHits);

@@ -20,13 +20,13 @@ package org.elasticsearch.river.mongodb.simple;
 
 import static org.elasticsearch.client.Requests.countRequest;
 import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath;
-import static org.elasticsearch.index.query.QueryBuilders.fieldQuery;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.count.CountResponse;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
@@ -145,8 +145,8 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAbstract {
                     equalTo(true));
             assertThat(getNode().client().admin().indices().prepareTypesExists(getIndex()).setTypes(getDatabase()).execute().actionGet()
                     .isExists(), equalTo(true));
-            CountResponse countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("attribute1", value)))
-                    .actionGet();
+            CountResponse countResponse = getNode().client().prepareCount(getIndex())
+                    .setQuery(QueryBuilders.queryString(value).defaultField("attribute1")).get();
             assertThat(countResponse.getCount(), equalTo(1L));
         } catch (Throwable t) {
             logger.error("testDropCollectionIssue79 failed.", t);
@@ -195,8 +195,8 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAbstract {
                     equalTo(true));
             assertThat(getNode().client().admin().indices().prepareTypesExists(getIndex()).setTypes(getDatabase()).execute().actionGet()
                     .isExists(), equalTo(true));
-            CountResponse countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("attribute1", value)))
-                    .actionGet();
+            CountResponse countResponse = getNode().client().prepareCount(getIndex())
+                    .setQuery(QueryBuilders.queryString(value).defaultField("attribute1")).get();
             assertThat(countResponse.getCount(), equalTo(1L));
         } catch (Throwable t) {
             logger.error("testDropDatabaseIssue133 failed.", t);

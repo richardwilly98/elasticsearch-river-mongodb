@@ -19,13 +19,14 @@
 package org.elasticsearch.river.mongodb.gridfs;
 
 import static org.elasticsearch.client.Requests.countRequest;
+import static org.elasticsearch.client.Requests.getRequest;
 import static org.elasticsearch.common.io.Streams.copyToBytesFromClasspath;
-import static org.elasticsearch.index.query.QueryBuilders.fieldQuery;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
 import org.bson.types.ObjectId;
 import org.elasticsearch.action.count.CountResponse;
+import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.testng.Assert;
@@ -102,9 +103,12 @@ public class RiverMongoWithGridFSTest extends RiverMongoGridFSTestAbstract {
             logger.debug("Index total count: {}", countResponse.getCount());
             assertThat(countResponse.getCount(), equalTo(1l));
 
-            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
-            logger.debug("Index count for id {}: {}", id, countResponse.getCount());
-            assertThat(countResponse.getCount(), equalTo(1l));
+            GetResponse getResponse = getNode().client().get(getRequest(getIndex()).id(id)).get();
+            logger.debug("Get request for id {}: {}", id, getResponse.isExists());
+            assertThat(getResponse.isExists(), equalTo(true));
+//            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
+//            logger.debug("Index count for id {}: {}", id, countResponse.getCount());
+//            assertThat(countResponse.getCount(), equalTo(1l));
 
             SearchResponse response = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.queryString("Aliquam")).execute()
                     .actionGet();
@@ -118,9 +122,12 @@ public class RiverMongoWithGridFSTest extends RiverMongoGridFSTestAbstract {
             Thread.sleep(wait);
             refreshIndex();
 
-            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
-            logger.debug("Count after delete request: {}", countResponse.getCount());
-            assertThat(countResponse.getCount(), equalTo(0L));
+            getResponse = getNode().client().get(getRequest(getIndex()).id(id)).get();
+            logger.debug("Get request for id {}: {}", id, getResponse.isExists());
+            assertThat(getResponse.isExists(), equalTo(false));
+//            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
+//            logger.debug("Count after delete request: {}", countResponse.getCount());
+//            assertThat(countResponse.getCount(), equalTo(0L));
         } catch (Throwable t) {
             logger.error("testImportAttachment failed.", t);
             Assert.fail("testImportAttachment failed", t);
@@ -160,9 +167,12 @@ public class RiverMongoWithGridFSTest extends RiverMongoGridFSTestAbstract {
             logger.debug("Index total count: {}", countResponse.getCount());
             assertThat(countResponse.getCount(), equalTo(1l));
 
-            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
-            logger.debug("Index count for id {}: {}", id, countResponse.getCount());
-            assertThat(countResponse.getCount(), equalTo(1l));
+            GetResponse getResponse = getNode().client().get(getRequest(getIndex()).id(id)).get();
+            logger.debug("Get request for id {}: {}", id, getResponse.isExists());
+            assertThat(getResponse.isExists(), equalTo(true));
+//            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
+//            logger.debug("Index count for id {}: {}", id, countResponse.getCount());
+//            assertThat(countResponse.getCount(), equalTo(1l));
 
             SearchResponse response = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.queryString("Lorem ipsum dolor"))
                     .execute().actionGet();
@@ -176,9 +186,12 @@ public class RiverMongoWithGridFSTest extends RiverMongoGridFSTestAbstract {
             Thread.sleep(wait);
             refreshIndex();
 
-            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
-            logger.debug("Count after delete request: {}", countResponse.getCount());
-            assertThat(countResponse.getCount(), equalTo(0L));
+            getResponse = getNode().client().get(getRequest(getIndex()).id(id)).get();
+            logger.debug("Get request for id {}: {}", id, getResponse.isExists());
+            assertThat(getResponse.isExists(), equalTo(false));
+//            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
+//            logger.debug("Count after delete request: {}", countResponse.getCount());
+//            assertThat(countResponse.getCount(), equalTo(0L));
         } catch (Throwable t) {
             logger.error("testImportPDFAttachment failed.", t);
             Assert.fail("testImportPDFAttachment failed", t);
@@ -225,9 +238,12 @@ public class RiverMongoWithGridFSTest extends RiverMongoGridFSTestAbstract {
             logger.debug("Index total count: {}", countResponse.getCount());
             assertThat(countResponse.getCount(), equalTo(1l));
 
-            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
-            logger.debug("Index count for id {}: {}", id, countResponse.getCount());
-            assertThat(countResponse.getCount(), equalTo(1l));
+            GetResponse getResponse = getNode().client().get(getRequest(getIndex()).id(id)).get();
+            logger.debug("Get request for id {}: {}", id, getResponse.isExists());
+            assertThat(getResponse.isExists(), equalTo(true));
+//            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
+//            logger.debug("Index count for id {}: {}", id, countResponse.getCount());
+//            assertThat(countResponse.getCount(), equalTo(1l));
 
             SearchResponse response = getNode().client().prepareSearch(getIndex())
                     .setQuery(QueryBuilders.queryString("metadata.attribut1:value1")).execute().actionGet();
@@ -241,9 +257,12 @@ public class RiverMongoWithGridFSTest extends RiverMongoGridFSTestAbstract {
             Thread.sleep(wait);
             refreshIndex();
 
-            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
-            logger.debug("Count after delete request: {}", countResponse.getCount());
-            assertThat(countResponse.getCount(), equalTo(0L));
+            getResponse = getNode().client().get(getRequest(getIndex()).id(id)).get();
+            logger.debug("Get request for id {}: {}", id, getResponse.isExists());
+            assertThat(getResponse.isExists(), equalTo(false));
+//            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
+//            logger.debug("Count after delete request: {}", countResponse.getCount());
+//            assertThat(countResponse.getCount(), equalTo(0L));
         } catch (Throwable t) {
             logger.error("testImportAttachmentWithCustomMetadata failed.", t);
             Assert.fail("testImportAttachmentWithCustomMetadata failed", t);

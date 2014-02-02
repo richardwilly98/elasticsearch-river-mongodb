@@ -10,6 +10,7 @@ import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRespon
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.QueryStringQueryBuilder;
 import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -22,7 +23,6 @@ import com.mongodb.DBObject;
 import com.mongodb.WriteConcern;
 import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
-import com.spatial4j.core.shape.impl.GeoCircle;
 
 public class RiverMongoDbRefTest extends RiverMongoDBTestAbstract {
 
@@ -69,11 +69,11 @@ public class RiverMongoDbRefTest extends RiverMongoDBTestAbstract {
             assertThat(response.actionGet().isExists(), equalTo(true));
             refreshIndex();
             SearchRequest search = getNode().client().prepareSearch(getIndex())
-                    .setQuery(QueryBuilders.fieldQuery("category.id", "5194272CFDEA65E5D6000021")).request();
+                    .setQuery(QueryBuilders.queryString("5194272CFDEA65E5D6000021").defaultField("category.id")).request();
             SearchResponse searchResponse = getNode().client().search(search).actionGet();
             assertThat(searchResponse.getHits().getTotalHits(), equalTo(1l));
 
-            search = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.fieldQuery("innerDoc.innerThing", "testing"))
+            search = getNode().client().prepareSearch(getIndex()).setQuery(new QueryStringQueryBuilder("testing").defaultField("innerDoc.innerThing"))
                     .request();
             searchResponse = getNode().client().search(search).actionGet();
             assertThat(searchResponse.getHits().getTotalHits(), equalTo(1l));

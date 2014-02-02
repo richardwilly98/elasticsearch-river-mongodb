@@ -19,10 +19,10 @@
 package org.elasticsearch.river.mongodb.simple;
 
 import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath;
-import static org.elasticsearch.index.query.QueryBuilders.fieldQuery;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -92,13 +92,13 @@ public class RiverMongoImportAllCollectionsTest extends RiverMongoDBTestAbstract
             mongoCollection.remove(dbObject);
             Thread.sleep(wait);
             refreshIndex();
-            assertThat(getNode().client().prepareCount(getIndex()).setTypes(mongoCollection.getName()).setQuery(fieldQuery("_id", id))
+            assertThat(getNode().client().prepareCount(getIndex()).setTypes(mongoCollection.getName()).setQuery(QueryBuilders.queryString(id).defaultField("_id"))
                     .get().getCount(), equalTo(0L));
 
             mongoCollection2.remove(dbObject2);
             Thread.sleep(wait);
             refreshIndex();
-            assertThat(getNode().client().prepareCount(getIndex()).setTypes(mongoCollection2.getName()).setQuery(fieldQuery("_id", id2))
+            assertThat(getNode().client().prepareCount(getIndex()).setTypes(mongoCollection2.getName()).setQuery(QueryBuilders.queryString(id2).defaultField("_id"))
                     .get().getCount(), equalTo(0L));
         } catch (Throwable t) {
             logger.error("importAllCollectionsTest failed.", t);

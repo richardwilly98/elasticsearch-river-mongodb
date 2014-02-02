@@ -19,16 +19,16 @@
 package org.elasticsearch.river.mongodb.simple;
 
 import static org.elasticsearch.client.Requests.countRequest;
+import static org.elasticsearch.client.Requests.getRequest;
 import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath;
-import static org.elasticsearch.index.query.QueryBuilders.fieldQuery;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
-import org.apache.commons.io.filefilter.FalseFileFilter;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
-import org.elasticsearch.action.count.CountResponse;
+import org.elasticsearch.action.count.CountRequest;
+import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -99,22 +99,26 @@ public class RiverMongoDBTest extends RiverMongoDBTestAbstract {
                     .exists(new IndicesExistsRequest(getIndex()));
             assertThat(response.actionGet().isExists(), equalTo(true));
             refreshIndex();
-            SearchRequest search = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.fieldQuery("name", "Richard"))
+            SearchRequest search = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.queryString("Richard").defaultField("name"))
                     .request();
             SearchResponse searchResponse = getNode().client().search(search).actionGet();
             assertThat(searchResponse.getHits().getTotalHits(), equalTo(1l));
             String chinese = (String) searchResponse.getHits().getAt(0).getSource().get("chinese");
             assertThat(chinese, equalTo("中国菜很好吃。"));
-            CountResponse countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
-            assertThat(countResponse.getCount(), equalTo(1l));
+            GetResponse getResponse = getNode().client().get(getRequest(getIndex()).id(id)).get();
+            assertThat(getResponse.isExists(), equalTo(true));
+//            CountResponse countResponse = getNode().client().count(countRequest(getIndex()).query(QueryBuilders.queryString("_id").defaultField(id))).actionGet();
+//            assertThat(countResponse.getCount(), equalTo(1l));
 
             mongoCollection.remove(dbObject, WriteConcern.REPLICAS_SAFE);
 
             Thread.sleep(wait);
             refreshIndex();
-            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
-            logger.debug("Count after delete request: {}", countResponse.getCount());
-            assertThat(countResponse.getCount(), equalTo(0L));
+            getResponse = getNode().client().get(getRequest(getIndex()).id(id)).get();
+            assertThat(getResponse.isExists(), equalTo(false));
+//            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
+//            logger.debug("Count after delete request: {}", countResponse.getCount());
+//            assertThat(countResponse.getCount(), equalTo(0L));
 
         } catch (Throwable t) {
             logger.error("simpleBSONObject failed.", t);
@@ -148,16 +152,21 @@ public class RiverMongoDBTest extends RiverMongoDBTestAbstract {
                     .exists(new IndicesExistsRequest(collection));
             assertThat(response.actionGet().isExists(), equalTo(true));
             refreshIndex();
-            CountResponse countResponse = getNode().client().count(countRequest(collection).query(fieldQuery("_id", id))).get();
-            assertThat(countResponse.getCount(), equalTo(1l));
+            logger.info("Request: [{}] - count: [{}]", getRequest(collection).id(id), getNode().client().count(countRequest(collection)).get().getCount());
+            GetResponse getResponse = getNode().client().get(getRequest(collection).id(id)).get();
+            assertThat(getResponse.isExists(), equalTo(true));
+//            CountResponse countResponse = getNode().client().count(countRequest(collection).query(fieldQuery("_id", id))).get();
+//            assertThat(countResponse.getCount(), equalTo(1l));
 
             dottedCollection.remove(dbObject, WriteConcern.REPLICAS_SAFE);
 
             Thread.sleep(wait);
             refreshIndex();
-            countResponse = getNode().client().count(countRequest(collection).query(fieldQuery("_id", id))).actionGet();
-            logger.debug("Count after delete request: {}", countResponse.getCount());
-            assertThat(countResponse.getCount(), equalTo(0L));
+            getResponse = getNode().client().get(getRequest(collection).id(id)).get();
+            assertThat(getResponse.isExists(), equalTo(false));
+//            countResponse = getNode().client().count(countRequest(collection).query(fieldQuery("_id", id))).actionGet();
+//            logger.debug("Count after delete request: {}", countResponse.getCount());
+//            assertThat(countResponse.getCount(), equalTo(0L));
 
         } catch (Throwable t) {
             logger.error("collectionWithDot_Issue206 failed.", t);

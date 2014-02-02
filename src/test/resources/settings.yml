@@ -22,10 +22,10 @@ cluster:
 	name: es-test-cluster
 	
 plugins:
-  mapper-attachments: elasticsearch/elasticsearch-mapper-attachments/1.9.0
-  lang-javascript: elasticsearch/elasticsearch-lang-javascript/1.4.0
-  lang-groovy: elasticsearch/elasticsearch-lang-groovy/1.5.0
+  mapper-attachments: elasticsearch/elasticsearch-mapper-attachments/2.0.0.RC1
+  lang-javascript: elasticsearch/elasticsearch-lang-javascript/2.0.0.RC1
+  lang-groovy: elasticsearch/elasticsearch-lang-groovy/2.0.0.RC1
 
 mongodb:
-  version: 2.4.8
+  version: 2.4.9
   use_dynamic_ports: false

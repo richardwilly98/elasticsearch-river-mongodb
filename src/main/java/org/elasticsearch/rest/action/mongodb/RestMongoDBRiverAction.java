@@ -12,7 +12,8 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.index.query.FieldQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
+//import org.elasticsearch.index.query.FieldQueryBuilder;
 import org.elasticsearch.rest.BaseRestHandler;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestController;
@@ -145,7 +146,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
     }
 
     private List<Map<String, Object>> getRivers() {
-        SearchResponse searchResponse = client.prepareSearch(riverIndexName).setQuery(new FieldQueryBuilder("type", MongoDBRiver.TYPE))
+        SearchResponse searchResponse = client.prepareSearch(riverIndexName).setQuery(QueryBuilders.queryString(MongoDBRiver.TYPE).defaultField("type"))
                 .get();
         long totalHits = searchResponse.getHits().totalHits();
         logger.trace("totalHits: {}", totalHits);

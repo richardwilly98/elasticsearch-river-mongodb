@@ -27,7 +27,7 @@ import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsReques
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.QueryStringQueryBuilder;
 import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.elasticsearch.river.mongodb.Status;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
@@ -84,7 +84,7 @@ public class RiverMongoCannotStopTest extends RiverMongoDBTestAbstract {
                     .exists(new IndicesExistsRequest(getIndex()));
             assertThat(response.actionGet().isExists(), equalTo(true));
             refreshIndex();
-            SearchRequest search = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.fieldQuery("name", "Richard"))
+            SearchRequest search = getNode().client().prepareSearch(getIndex()).setQuery(new QueryStringQueryBuilder("Richard").defaultField("name"))
                     .request();
             SearchResponse searchResponse = getNode().client().search(search).actionGet();
             assertThat(searchResponse.getHits().getTotalHits(), equalTo(1l));

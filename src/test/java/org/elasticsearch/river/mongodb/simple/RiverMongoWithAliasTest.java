@@ -19,9 +19,9 @@
 package org.elasticsearch.river.mongodb.simple;
 
 import static org.elasticsearch.client.Requests.countRequest;
+import static org.elasticsearch.client.Requests.getRequest;
 import static org.elasticsearch.common.io.Streams.copyToBytesFromClasspath;
 import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath;
-import static org.elasticsearch.index.query.QueryBuilders.fieldQuery;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
@@ -30,9 +30,11 @@ import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.count.CountResponse;
+import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.QueryStringQueryBuilder;
 import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.elasticsearch.river.mongodb.gridfs.RiverMongoWithGridFSTest;
 import org.testng.Assert;
@@ -106,7 +108,7 @@ public class RiverMongoWithAliasTest extends RiverMongoDBTestAbstract {
                     .exists(new IndicesExistsRequest(getIndex()));
             assertThat(response.actionGet().isExists(), equalTo(true));
             refreshIndex();
-            SearchRequest search = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.fieldQuery("name", "Richard"))
+            SearchRequest search = getNode().client().prepareSearch(getIndex()).setQuery(new QueryStringQueryBuilder("Richard").defaultField("name"))
                     .request();
             SearchResponse searchResponse = getNode().client().search(search).actionGet();
             assertThat(searchResponse.getHits().getTotalHits(), equalTo(1l));
@@ -115,9 +117,12 @@ public class RiverMongoWithAliasTest extends RiverMongoDBTestAbstract {
             Thread.sleep(wait);
 
             refreshIndex();
-            CountResponse countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
-            logger.debug("Count after delete request: {}", countResponse.getCount());
-            assertThat(countResponse.getCount(), equalTo(0L));
+            GetResponse getResponse = getNode().client().get(getRequest(getIndex()).id(id)).get();
+            logger.debug("Get request for id {}: {}", id, getResponse.isExists());
+            assertThat(getResponse.isExists(), equalTo(false));
+//            CountResponse countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
+//            logger.debug("Count after delete request: {}", countResponse.getCount());
+//            assertThat(countResponse.getCount(), equalTo(0L));
 
         } catch (Throwable t) {
             logger.error("simpleRiverWithAlias failed.", t);
@@ -161,9 +166,12 @@ public class RiverMongoWithAliasTest extends RiverMongoDBTestAbstract {
             logger.debug("Index total count: {}", countResponse.getCount());
             assertThat(countResponse.getCount(), equalTo(1l));
 
-            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
-            logger.debug("Index count for id {}: {}", id, countResponse.getCount());
-            assertThat(countResponse.getCount(), equalTo(1l));
+            GetResponse getResponse = getNode().client().get(getRequest(getIndex()).id(id)).get();
+            logger.debug("Get request for id {}: {}", id, getResponse.isExists());
+            assertThat(getResponse.isExists(), equalTo(true));
+//            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
+//            logger.debug("Index count for id {}: {}", id, countResponse.getCount());
+//            assertThat(countResponse.getCount(), equalTo(1l));
 
             SearchResponse response = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.queryString("Aliquam")).execute()
                     .actionGet();
@@ -177,9 +185,12 @@ public class RiverMongoWithAliasTest extends RiverMongoDBTestAbstract {
             Thread.sleep(wait);
             refreshIndex();
 
-            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
-            logger.debug("Count after delete request: {}", countResponse.getCount());
-            assertThat(countResponse.getCount(), equalTo(0L));
+            getResponse = getNode().client().get(getRequest(getIndex()).id(id)).get();
+            logger.debug("Get request for id {}: {}", id, getResponse.isExists());
+            assertThat(getResponse.isExists(), equalTo(false));
+//            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
+//            logger.debug("Count after delete request: {}", countResponse.getCount());
+//            assertThat(countResponse.getCount(), equalTo(0L));
         } catch (Throwable t) {
             logger.error("gridfsRiverWithAlias failed.", t);
             t.printStackTrace();

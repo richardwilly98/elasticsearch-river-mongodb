@@ -19,7 +19,6 @@
 package org.elasticsearch.river.mongodb.script;
 
 import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath;
-import static org.elasticsearch.index.query.QueryBuilders.fieldQuery;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
@@ -27,6 +26,7 @@ import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -133,7 +133,7 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAbstract {
                     .exists(new IndicesExistsRequest(INDEX_NAME));
             assertThat(response.actionGet().isExists(), equalTo(true));
 
-            SearchResponse sr = getNode().client().prepareSearch(INDEX_NAME).setQuery(fieldQuery("_id", authorId)).execute().actionGet();
+            SearchResponse sr = getNode().client().prepareSearch(INDEX_NAME).setQuery(QueryBuilders.queryString(authorId).defaultField("_id")).execute().actionGet();
             logger.debug("SearchResponse {}", sr.toString());
             long totalHits = sr.getHits().getTotalHits();
             logger.debug("TotalHits: {}", totalHits);
@@ -150,7 +150,7 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAbstract {
             response = getNode().client().admin().indices().exists(new IndicesExistsRequest(INDEX_NAME));
             assertThat(response.actionGet().isExists(), equalTo(true));
 
-            sr = getNode().client().prepareSearch(INDEX_NAME).setQuery(fieldQuery("_id", bookId)).execute().actionGet();
+            sr = getNode().client().prepareSearch(INDEX_NAME).setQuery(QueryBuilders.queryString(bookId).defaultField("_id")).execute().actionGet();
             logger.debug("SearchResponse {}", sr.toString());
             totalHits = sr.getHits().getTotalHits();
             logger.debug("TotalHits: {}", totalHits);

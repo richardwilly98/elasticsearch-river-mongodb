@@ -18,7 +18,6 @@
  */
 package org.elasticsearch.river.mongodb.simple;
 
-import static org.elasticsearch.index.query.QueryBuilders.fieldQuery;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
@@ -27,6 +26,7 @@ import java.util.Map;
 import org.bson.types.ObjectId;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -86,7 +86,8 @@ public class RiverMongoIncludeFieldsTest extends RiverMongoDBTestAbstract {
                     equalTo(true));
             refreshIndex();
 
-            SearchResponse sr = getNode().client().prepareSearch(getIndex()).setQuery(fieldQuery("_id", id)).execute().actionGet();
+            SearchResponse sr = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.queryString(id).defaultField("_id"))
+                    .execute().actionGet();
             logger.debug("SearchResponse {}", sr.toString());
             long totalHits = sr.getHits().getTotalHits();
             logger.debug("TotalHits: {}", totalHits);
@@ -103,7 +104,8 @@ public class RiverMongoIncludeFieldsTest extends RiverMongoDBTestAbstract {
             mongoCollection.save(dbObject);
             Thread.sleep(wait);
 
-            sr = getNode().client().prepareSearch(getIndex()).setQuery(fieldQuery("_id", id)).execute().actionGet();
+            sr = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.queryString(id).defaultField("_id")).execute()
+                    .actionGet();
             logger.debug("SearchResponse {}", sr.toString());
             totalHits = sr.getHits().getTotalHits();
             logger.debug("TotalHits: {}", totalHits);

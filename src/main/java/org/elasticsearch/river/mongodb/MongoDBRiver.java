@@ -30,7 +30,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 import org.bson.types.BSONTimestamp;
-import org.elasticsearch.ElasticSearchException;
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.get.GetResponse;
@@ -314,7 +314,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             }
         }
         if (adminDb == null) {
-            throw new ElasticSearchException(String.format("Could not get %s database from MongoDB", MONGODB_ADMIN_DATABASE));
+            throw new ElasticsearchException(String.format("Could not get %s database from MongoDB", MONGODB_ADMIN_DATABASE));
         }
         return adminDb;
     }
@@ -334,7 +334,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             // }
         }
         if (configDb == null) {
-            throw new ElasticSearchException(String.format("Could not get %s database from MongoDB", MONGODB_CONFIG_DATABASE));
+            throw new ElasticsearchException(String.format("Could not get %s database from MongoDB", MONGODB_CONFIG_DATABASE));
         }
         return configDb;
     }
