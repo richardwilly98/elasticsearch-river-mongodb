@@ -10,7 +10,7 @@ import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRespon
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
+import org.elasticsearch.river.mongodb.BaseRiverMongoDBTest;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -22,9 +22,8 @@ import com.mongodb.DBObject;
 import com.mongodb.WriteConcern;
 import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
-import com.spatial4j.core.shape.impl.GeoCircle;
 
-public class RiverMongoDbRefTest extends RiverMongoDBTestAbstract {
+public class RiverMongoDbRefTest extends BaseRiverMongoDBTest {
 
     private static final String TEST_DBREF_MONGODB_DOCUMENT_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-document-with-dbref.json";
 

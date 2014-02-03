@@ -24,7 +24,6 @@ import static org.elasticsearch.index.query.QueryBuilders.fieldQuery;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
-import org.apache.commons.io.filefilter.FalseFileFilter;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
@@ -32,7 +31,7 @@ import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
+import org.elasticsearch.river.mongodb.BaseRiverMongoDBTest;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -47,7 +46,7 @@ import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
 
 @Test
-public class RiverMongoDBTest extends RiverMongoDBTestAbstract {
+public class RiverMongoDBTest extends BaseRiverMongoDBTest {
 
     private DB mongoDB;
     private DBCollection mongoCollection;
@@ -138,7 +137,7 @@ public class RiverMongoDBTest extends RiverMongoDBTestAbstract {
 
             DBCollection dottedCollection = db.createCollection(collection, null);
             Assert.assertNotNull(dottedCollection);
-            DBObject dbObject  = new BasicDBObject("name", "richard-" + timestamp);
+            DBObject dbObject = new BasicDBObject("name", "richard-" + timestamp);
             WriteResult result = dottedCollection.insert(dbObject);
             Thread.sleep(wait);
             String id = dbObject.get("_id").toString();
@@ -168,4 +167,58 @@ public class RiverMongoDBTest extends RiverMongoDBTestAbstract {
             getMongo().dropDatabase(database);
         }
     }
+
+//    @Test(enabled = false)
+//    public void loopRegisterRiver() throws Throwable {
+//        int count = 100;
+//        for (int i = 0; i < count; i++) {
+//            registerRiver();
+//        }
+//    }
+//
+//    private void registerRiver() throws Throwable {
+//        logger.debug("Start registerRiver");
+//        long timestamp = System.currentTimeMillis();
+//        String river = "river-" + timestamp;
+//        String database = "db-" + timestamp;
+//        try {
+//            String collection = "collection." + timestamp;
+//            DB db = getMongo().getDB(database);
+//            db.setWriteConcern(WriteConcern.REPLICAS_SAFE);
+//            super.createRiver(TEST_MONGODB_RIVER_SIMPLE_JSON, river, String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
+//                    String.valueOf(getMongoPort3()), database, collection, collection);
+//
+//            DBCollection dottedCollection = db.createCollection(collection, null);
+//            Assert.assertNotNull(dottedCollection);
+//            DBObject dbObject = new BasicDBObject("name", "richard-" + timestamp);
+//            WriteResult result = dottedCollection.insert(dbObject);
+//            Thread.sleep(wait);
+//            String id = dbObject.get("_id").toString();
+//            logger.info("WriteResult: {}", result.toString());
+//            logger.info("dbObject: {}", dbObject.toString());
+//            ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices()
+//                    .exists(new IndicesExistsRequest(collection));
+//            assertThat(response.actionGet().isExists(), equalTo(true));
+//            refreshIndex();
+//            // getNode().client().prepareCount(collection).setQuery(QueryBuilders.queryString(id).defaultField("_id")).get();
+//            CountResponse countResponse = getNode().client().count(countRequest(collection).query(fieldQuery("_id", id))).get();
+//            assertThat(countResponse.getCount(), equalTo(1l));
+//
+//            dottedCollection.remove(dbObject, WriteConcern.REPLICAS_SAFE);
+//
+//            Thread.sleep(wait);
+//            refreshIndex();
+//            countResponse = getNode().client().count(countRequest(collection).query(fieldQuery("_id", id))).actionGet();
+//            logger.debug("Count after delete request: {}", countResponse.getCount());
+//            assertThat(countResponse.getCount(), equalTo(0L));
+//
+//        } catch (Throwable t) {
+//            logger.error("registerRiver failed.", t);
+//            t.printStackTrace();
+//            throw t;
+//        } finally {
+//            super.deleteRiver(river);
+//            getMongo().dropDatabase(database);
+//        }
+//    }
 }

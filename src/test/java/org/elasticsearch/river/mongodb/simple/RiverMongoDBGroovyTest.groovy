@@ -4,7 +4,7 @@ import com.gmongo.GMongo
 import com.mongodb.BasicDBObject
 import com.mongodb.DBCollection
 import com.mongodb.WriteConcern
-import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract
+import org.elasticsearch.river.mongodb.BaseRiverMongoDBTest
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest
 import org.testng.annotations.*
 import org.testng.Assert
@@ -12,7 +12,7 @@ import org.elasticsearch.search.SearchHit
 
 import static org.elasticsearch.index.query.QueryBuilders.fieldQuery
 
-class RiverMongoDBGroovyTest extends RiverMongoDBTestAbstract {
+class RiverMongoDBGroovyTest extends BaseRiverMongoDBTest {
 
 	static final int WAIT = 1000
 

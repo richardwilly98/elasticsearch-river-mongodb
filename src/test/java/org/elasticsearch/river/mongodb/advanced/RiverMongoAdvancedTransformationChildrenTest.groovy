@@ -6,7 +6,7 @@ import static org.elasticsearch.search.sort.SortOrder.ASC
 
 import org.bson.types.ObjectId
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest
-import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract
+import org.elasticsearch.river.mongodb.BaseRiverMongoDBTest
 import org.elasticsearch.search.SearchHit
 import org.testng.Assert
 import org.testng.annotations.AfterClass
@@ -18,7 +18,7 @@ import com.mongodb.BasicDBObject
 import com.mongodb.DBCollection
 import com.mongodb.WriteConcern
 
-class RiverMongoAdvancedTransformationChildrenTest extends RiverMongoDBTestAbstract {
+class RiverMongoAdvancedTransformationChildrenTest extends BaseRiverMongoDBTest {
 	// This Groovy script is available in src/test/scripts. 
 	// It will be copied by Maven plugin build-helper-maven-plugin in target/config/scripts
 	static final String GROOVY_SCRIPT = "advanced-transformation-groovy-script"

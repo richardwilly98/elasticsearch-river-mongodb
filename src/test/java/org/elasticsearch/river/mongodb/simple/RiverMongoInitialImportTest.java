@@ -30,7 +30,7 @@ import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.common.xcontent.support.XContentMapValues;
 import org.elasticsearch.river.mongodb.MongoDBRiver;
 import org.elasticsearch.river.mongodb.MongoDBRiverDefinition;
-import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
+import org.elasticsearch.river.mongodb.BaseRiverMongoDBTest;
 import org.elasticsearch.river.mongodb.Status;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 import org.testng.Assert;
@@ -45,7 +45,7 @@ import com.mongodb.WriteConcern;
 import com.mongodb.WriteResult;
 
 @Test
-public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
+public class RiverMongoInitialImportTest extends BaseRiverMongoDBTest {
 
     public static final String TEST_MONGODB_RIVER_SIMPLE_SKIP_INITIAL_IMPORT_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-skip-initial-import.json";
     private DB mongoDB;

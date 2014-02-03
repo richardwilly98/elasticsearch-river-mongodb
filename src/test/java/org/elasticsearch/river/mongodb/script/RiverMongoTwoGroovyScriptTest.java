@@ -29,7 +29,7 @@ import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsReques
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
+import org.elasticsearch.river.mongodb.BaseRiverMongoDBTest;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -43,7 +43,7 @@ import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
 
 @Test
-public class RiverMongoTwoGroovyScriptTest extends RiverMongoDBTestAbstract {
+public class RiverMongoTwoGroovyScriptTest extends BaseRiverMongoDBTest {
 
     private static final String GROOVY_SCRIPT_TYPE = "groovy";
     private DB mongoDB;

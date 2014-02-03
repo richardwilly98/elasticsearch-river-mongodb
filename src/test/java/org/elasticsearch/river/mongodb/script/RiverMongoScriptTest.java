@@ -29,7 +29,7 @@ import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsReques
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
+import org.elasticsearch.river.mongodb.BaseRiverMongoDBTest;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -43,7 +43,7 @@ import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
 
 @Test
-public class RiverMongoScriptTest extends RiverMongoDBTestAbstract {
+public class RiverMongoScriptTest extends BaseRiverMongoDBTest {
 
     private static final String JAVASCRIPT_SCRIPT_TYPE = "js";
     private DB mongoDB;
@@ -248,7 +248,7 @@ public class RiverMongoScriptTest extends RiverMongoDBTestAbstract {
             refreshIndex(getIndex());
 
             assertThat(getNode().client().admin().indices().prepareExists(getIndex()).get().isExists(), equalTo(true));
-            
+
             SearchResponse sr = getNode().client().prepareSearch(getIndex()).setQuery(fieldQuery("_id", id)).execute().actionGet();
             logger.debug("SearchResponse {}", sr.toString());
             long totalHits = sr.getHits().getTotalHits();

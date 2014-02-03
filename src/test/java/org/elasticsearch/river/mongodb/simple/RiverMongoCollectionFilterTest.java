@@ -25,7 +25,7 @@ import static org.hamcrest.Matchers.equalTo;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
-import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
+import org.elasticsearch.river.mongodb.BaseRiverMongoDBTest;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -40,7 +40,7 @@ import com.mongodb.WriteConcern;
 import com.mongodb.WriteResult;
 
 @Test
-public class RiverMongoCollectionFilterTest extends RiverMongoDBTestAbstract {
+public class RiverMongoCollectionFilterTest extends BaseRiverMongoDBTest {
 
     private static final String TEST_SIMPLE_MONGODB_RIVER_COLLECTION_FILTER_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-collection-filter.json";
     private DB mongoDB;

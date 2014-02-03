@@ -25,7 +25,7 @@ import static org.hamcrest.Matchers.equalTo;
 
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.count.CountResponse;
-import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
+import org.elasticsearch.river.mongodb.BaseRiverMongoDBTest;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -37,7 +37,7 @@ import com.mongodb.DBObject;
 import com.mongodb.WriteConcern;
 import com.mongodb.util.JSON;
 
-public class RiverMongoInitialTimestampTest extends RiverMongoDBTestAbstract {
+public class RiverMongoInitialTimestampTest extends BaseRiverMongoDBTest {
 
     private static final String TEST_SIMPLE_MONGODB_RIVER_INITIAL_TIMESTAMP_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-initial-timestamp.json";
     private static final String GROOVY_SCRIPT_TYPE = "groovy";

@@ -27,7 +27,7 @@ import java.util.Map;
 import org.bson.types.ObjectId;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
+import org.elasticsearch.river.mongodb.BaseRiverMongoDBTest;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -40,7 +40,7 @@ import com.mongodb.DBObject;
 import com.mongodb.WriteConcern;
 
 @Test
-public class RiverMongoIncludeFieldsTest extends RiverMongoDBTestAbstract {
+public class RiverMongoIncludeFieldsTest extends BaseRiverMongoDBTest {
 
     private DB mongoDB;
     private DBCollection mongoCollection;

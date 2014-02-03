@@ -23,7 +23,7 @@ import static org.hamcrest.Matchers.equalTo;
 
 import java.util.Random;
 
-import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
+import org.elasticsearch.river.mongodb.BaseRiverMongoDBTest;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -38,7 +38,7 @@ import com.mongodb.MapReduceOutput;
 import com.mongodb.WriteConcern;
 
 @Test
-public class RiverMongoMapReduceTest extends RiverMongoDBTestAbstract {
+public class RiverMongoMapReduceTest extends BaseRiverMongoDBTest {
 
     private DB mongoDB;
     private DBCollection mongoCollection;

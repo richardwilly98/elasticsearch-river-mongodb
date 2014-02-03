@@ -71,7 +71,7 @@ public class MongoDBRiverDefinitionTest {
             Assert.assertEquals(11000, definition.getConnectTimeout());
             Assert.assertEquals(riverName.getName(), definition.getRiverName());
             Assert.assertFalse(definition.isStoreStatistics());
-            
+
             // Test bulk
             Assert.assertEquals(500, definition.getBulk().getBulkActions());
             Assert.assertEquals(40, definition.getBulk().getConcurrentRequests());
@@ -185,7 +185,8 @@ public class MongoDBRiverDefinitionTest {
     public void testLoadMongoDBRiverDefinitionStoreStatistics() {
         try {
             RiverName riverName = new RiverName("mongodb", "mongodb-" + System.currentTimeMillis());
-            InputStream in = getClass().getResourceAsStream("/org/elasticsearch/river/mongodb/test-mongodb-river-definition-store-statistics.json");
+            InputStream in = getClass().getResourceAsStream(
+                    "/org/elasticsearch/river/mongodb/test-mongodb-river-definition-store-statistics.json");
             RiverSettings riverSettings = new RiverSettings(ImmutableSettings.settingsBuilder().build(), XContentHelper.convertToMap(
                     Streams.copyToByteArray(in), false).v2());
             ScriptService scriptService = null;

@@ -25,7 +25,7 @@ import static org.hamcrest.Matchers.equalTo;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
-import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
+import org.elasticsearch.river.mongodb.BaseRiverMongoDBTest;
 import org.elasticsearch.river.mongodb.Status;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 import org.testng.Assert;
@@ -40,7 +40,7 @@ import com.mongodb.WriteConcern;
 import com.mongodb.WriteResult;
 
 @Test
-public class RiverMongoIndexExistsTest extends RiverMongoDBTestAbstract {
+public class RiverMongoIndexExistsTest extends BaseRiverMongoDBTest {
 
     private DB mongoDB;
     private DBCollection mongoCollection;

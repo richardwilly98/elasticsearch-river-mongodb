@@ -33,7 +33,7 @@ import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
+import org.elasticsearch.river.mongodb.BaseRiverMongoDBTest;
 import org.elasticsearch.river.mongodb.gridfs.RiverMongoWithGridFSTest;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -51,7 +51,7 @@ import com.mongodb.gridfs.GridFSInputFile;
 import com.mongodb.util.JSON;
 
 @Test
-public class RiverMongoWithAliasTest extends RiverMongoDBTestAbstract {
+public class RiverMongoWithAliasTest extends BaseRiverMongoDBTest {
 
     private DB mongoDB;
     private DBCollection mongoCollection;

@@ -32,7 +32,7 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
+import org.elasticsearch.river.mongodb.BaseRiverMongoDBTest;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
@@ -41,7 +41,7 @@ import com.mongodb.DBObject;
 import com.mongodb.WriteConcern;
 
 @Test
-public class RiverMongoExcludeFieldsTest extends RiverMongoDBTestAbstract {
+public class RiverMongoExcludeFieldsTest extends BaseRiverMongoDBTest {
 
     private DB mongoDB;
     private DBCollection mongoCollection;

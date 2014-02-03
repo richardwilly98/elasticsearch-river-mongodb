@@ -31,6 +31,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
+import org.elasticsearch.action.admin.cluster.health.ClusterHealthStatus;
+import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.admin.indices.exists.types.TypesExistsResponse;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
@@ -81,7 +84,7 @@ import de.flapdoodle.embed.mongo.distribution.Versions;
 import de.flapdoodle.embed.process.distribution.GenericVersion;
 import de.flapdoodle.embed.process.runtime.Network;
 
-public abstract class RiverMongoDBTestAbstract {
+public class BaseRiverMongoDBTest {
 
     public static final String TEST_MONGODB_RIVER_SIMPLE_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river.json";
     public static final String TEST_MONGODB_RIVER_SIMPLE_WITH_TYPE_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-with-type.json";
@@ -93,6 +96,7 @@ public abstract class RiverMongoDBTestAbstract {
     public static final String TEST_MONGODB_RIVER_STORE_STATISTICS_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-store-statistics.json";
     public static final String TEST_SIMPLE_MONGODB_DOCUMENT_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-document.json";
 
+    private static final ESLogger _logger = Loggers.getLogger(BaseRiverMongoDBTest.class.getName());
     protected final ESLogger logger = Loggers.getLogger(getClass().getName());
     protected final static long wait = 2000;
 
@@ -101,44 +105,37 @@ public abstract class RiverMongoDBTestAbstract {
     public static final String REPLICA_SET_NAME = "rep1";
     public static final String OPLOG_COLLECTION = "oplog.rs";
 
-    private IMongodConfig mongodConfig1;
-    private IMongodConfig mongodConfig2;
-    private IMongodConfig mongodConfig3;
-    private MongodExecutable mongodExe1;
+    private static IMongodConfig mongodConfig1;
+    private static IMongodConfig mongodConfig2;
+    private static IMongodConfig mongodConfig3;
+    private static MongodExecutable mongodExe1;
     private static int mongoPort1;
     private static MongodProcess mongod1;
-    private MongodExecutable mongodExe2;
+    private static MongodExecutable mongodExe2;
     private static int mongoPort2;
     private static MongodProcess mongod2;
-    private MongodExecutable mongodExe3;
+    private static MongodExecutable mongodExe3;
     private static int mongoPort3;
     private static MongodProcess mongod3;
     protected static Mongo mongo;
-    private DB mongoAdminDB;
+    private static DB mongoAdminDB;
 
     private static Node node;
     private static Settings settings;
 
-    private boolean useDynamicPorts;
-    private String mongoVersion;
+    private static boolean useDynamicPorts;
+    private static String mongoVersion;
 
     private final String river;
     private final String database;
     private final String collection;
     private final String index;
 
-    protected RiverMongoDBTestAbstract(/*
-                                        * String river, String database, String
-                                        * collection, String index
-                                        */) {
-        // this.river = river;
-        // this.database = database;
-        // this.collection = collection;
-        // this.index = index;
+    protected BaseRiverMongoDBTest() {
         this(false);
     }
 
-    protected RiverMongoDBTestAbstract(boolean isGridFS) {
+    protected BaseRiverMongoDBTest(boolean isGridFS) {
         String suffix = getClass().getSimpleName().toLowerCase();
         if (suffix.length() > 35) {
             suffix = suffix.substring(0, 34);
@@ -152,12 +149,13 @@ public abstract class RiverMongoDBTestAbstract {
             this.collection = "c-" + suffix;
         }
         this.index = "i-" + suffix;
-        loadSettings();
+//        loadSettings();
     }
 
     @BeforeSuite
-    public void beforeSuite() throws Exception {
-        logger.debug("*** beforeSuite ***");
+    public static void beforeSuite() throws Exception {
+        _logger.debug("*** beforeSuite ***");
+        loadSettings();
         if (useDynamicPorts) {
             mongoPort1 = Network.getFreeServerPort();
             mongoPort2 = Network.getFreeServerPort();
@@ -171,15 +169,14 @@ public abstract class RiverMongoDBTestAbstract {
         initMongoInstances();
     }
 
-    private void loadSettings() {
+    private static void loadSettings() {
         settings = settingsBuilder().loadFromStream("settings.yml", ClassLoader.getSystemResourceAsStream("settings.yml")).build();
-
-        this.useDynamicPorts = settings.getAsBoolean("mongodb.use_dynamic_ports", Boolean.FALSE);
-        this.mongoVersion = settings.get("mongodb.version");
+        useDynamicPorts = settings.getAsBoolean("mongodb.use_dynamic_ports", Boolean.FALSE);
+        mongoVersion = settings.get("mongodb.version");
     }
 
-    private void initMongoInstances() throws Exception {
-        logger.debug("*** initMongoInstances ***");
+    private static void initMongoInstances() throws Exception {
+        _logger.debug("*** initMongoInstances ***");
         CommandResult cr;
 
         // Create 3 mongod processes
@@ -205,30 +202,30 @@ public abstract class RiverMongoDBTestAbstract {
         String server1 = Network.getLocalHost().getHostName() + ":" + mongodConfig1.net().getPort();
         String server2 = Network.getLocalHost().getHostName() + ":" + mongodConfig2.net().getPort();
         String server3 = Network.getLocalHost().getHostName() + ":" + mongodConfig3.net().getPort();
-        logger.debug("Server #1: {}", server1);
-        logger.debug("Server #2: {}", server2);
-        logger.debug("Server #3: {}", server3);
+        _logger.debug("Server #1: {}", server1);
+        _logger.debug("Server #2: {}", server2);
+        _logger.debug("Server #3: {}", server3);
         Thread.sleep(2000);
         MongoClientOptions mco = MongoClientOptions.builder().autoConnectRetry(true).connectTimeout(15000).socketTimeout(60000).build();
         mongo = new MongoClient(new ServerAddress(Network.getLocalHost().getHostName(), mongodConfig1.net().getPort()), mco);
         mongoAdminDB = mongo.getDB(ADMIN_DATABASE_NAME);
 
         cr = mongoAdminDB.command(new BasicDBObject("isMaster", 1));
-        logger.debug("isMaster: " + cr);
+        _logger.debug("isMaster: " + cr);
 
         // Initialize replica set
         cr = mongoAdminDB.command(new BasicDBObject("replSetInitiate", (DBObject) JSON.parse("{'_id': '" + REPLICA_SET_NAME
                 + "', 'members': [{'_id': 0, 'host': '" + server1 + "'}, {'_id': 1, 'host': '" + server2 + "'}, {'_id': 2, 'host': '"
                 + server3 + "', 'arbiterOnly' : true}]} }")));
-        logger.debug("replSetInitiate: " + cr);
+        _logger.debug("replSetInitiate: " + cr);
 
         Thread.sleep(5000);
         cr = mongoAdminDB.command(new BasicDBObject("replSetGetStatus", 1));
-        logger.trace("replSetGetStatus: {}", cr);
+        _logger.trace("replSetGetStatus: {}", cr);
 
         // Check replica set status before to proceed
         while (!isReplicaSetStarted(cr)) {
-            logger.debug("Waiting 3 seconds for replicaset to change status...");
+            _logger.debug("Waiting 3 seconds for replicaset to change status...");
             Thread.sleep(3000);
             cr = mongoAdminDB.command(new BasicDBObject("replSetGetStatus", 1));
             // logger.debug("replSetGetStatus: " + cr);
@@ -248,7 +245,7 @@ public abstract class RiverMongoDBTestAbstract {
         mongo.setWriteConcern(WriteConcern.REPLICAS_SAFE);
     }
 
-    private boolean isReplicaSetStarted(BasicDBObject setting) {
+    private static boolean isReplicaSetStarted(BasicDBObject setting) {
         if (setting.get("members") == null) {
             return false;
         }
@@ -256,9 +253,9 @@ public abstract class RiverMongoDBTestAbstract {
         BasicDBList members = (BasicDBList) setting.get("members");
         for (Object m : members.toArray()) {
             BasicDBObject member = (BasicDBObject) m;
-            logger.trace("Member: {}", member);
+            _logger.trace("Member: {}", member);
             int state = member.getInt("state");
-            logger.info("Member state: " + state);
+            _logger.info("Member state: " + state);
             // 1 - PRIMARY, 2 - SECONDARY, 7 - ARBITER
             if (state != 1 && state != 2 && state != 7) {
                 return false;
@@ -267,8 +264,8 @@ public abstract class RiverMongoDBTestAbstract {
         return true;
     }
 
-    private void setupElasticsearchServer() throws Exception {
-        logger.debug("*** setupElasticsearchServer ***");
+    private static void setupElasticsearchServer() throws Exception {
+        _logger.debug("*** setupElasticsearchServer ***");
         try {
             Tuple<Settings, Environment> initialSettings = InternalSettingsPreparer.prepareSettings(settings, true);
             if (!initialSettings.v2().configFile().exists()) {
@@ -282,7 +279,8 @@ public abstract class RiverMongoDBTestAbstract {
             if (!initialSettings.v2().pluginsFile().exists()) {
                 FileSystemUtils.mkdirs(initialSettings.v2().pluginsFile());
                 if (settings.getByPrefix("plugins") != null) {
-                    PluginManager pluginManager = new PluginManager(initialSettings.v2(), null, OutputMode.DEFAULT, PluginManager.DEFAULT_TIMEOUT);
+                    PluginManager pluginManager = new PluginManager(initialSettings.v2(), null, OutputMode.DEFAULT,
+                            PluginManager.DEFAULT_TIMEOUT);
 
                     Map<String, String> plugins = settings.getByPrefix("plugins").getAsMap();
                     for (String key : plugins.keySet()) {
@@ -290,13 +288,14 @@ public abstract class RiverMongoDBTestAbstract {
                     }
                 }
             } else {
-                logger.info("Plugin {} has been already installed.", settings.get("plugins.mapper-attachments"));
-                logger.info("Plugin {} has been already installed.", settings.get("plugins.lang-javascript"));
+                _logger.info("Plugin {} has been already installed.", settings.get("plugins.mapper-attachments"));
+                _logger.info("Plugin {} has been already installed.", settings.get("plugins.lang-javascript"));
             }
 
             node = nodeBuilder().local(true).settings(settings).node();
+            assertThat(node.client().admin().indices().create(new CreateIndexRequest("_river")).get().isAcknowledged(), equalTo(true));
         } catch (Exception ex) {
-            logger.error("setupElasticsearchServer failed", ex);
+            _logger.error("setupElasticsearchServer failed", ex);
             throw ex;
         }
     }
@@ -321,8 +320,9 @@ public abstract class RiverMongoDBTestAbstract {
     protected void waitForGreenStatus() {
         try {
             logger.debug("Running Cluster Health");
-            logger.info("Done Cluster Health, status {}",
-                    node.client().admin().cluster().health(clusterHealthRequest().waitForGreenStatus()).get().getStatus());
+            ClusterHealthResponse response = node.client().admin().cluster().health(clusterHealthRequest().waitForGreenStatus()).get();
+            assertThat(response.getStatus(), equalTo(ClusterHealthStatus.GREEN));
+            logger.info("Done Cluster Health, status {}", response.getStatus());
         } catch (Exception ex) {
             Assert.fail("waitForGreenStatus failed", ex);
         }
@@ -333,11 +333,16 @@ public abstract class RiverMongoDBTestAbstract {
         logger.info("Create river [{}]", river);
         String settings = getJsonSettings(jsonDefinition, args);
         logger.info("River setting [{}]", settings);
+        if (node.client().prepareGet("_river", river, "_meta").get().isExists()) {
+            logger.info("DELETE PREVIOUS RIVER [{}]", river);
+            node.client().prepareDelete("_river", river, "_meta").get();
+        }
         node.client().prepareIndex("_river", river, "_meta").setSource(settings).execute().actionGet();
         waitForGreenStatus();
         GetResponse response = getNode().client().prepareGet("_river", river, "_meta").execute().actionGet();
         assertThat(response.isExists(), equalTo(true));
         int count = 0;
+        int max = 2;
         while (true) {
             refreshIndex("_river");
             if (MongoDBRiverHelper.getRiverStatus(node.client(), river) != Status.UNKNOWN) {
@@ -345,10 +350,10 @@ public abstract class RiverMongoDBTestAbstract {
             } else {
                 logger.debug("Wait for river [{}] to start", river);
             }
-            if (count == 5) {
+            if (count == max) {
                 throw new Exception(String.format("Fail to create and start river %s", river));
             }
-            Thread.sleep(1000);
+            Thread.sleep(wait);
             count++;
         }
     }
@@ -459,34 +464,34 @@ public abstract class RiverMongoDBTestAbstract {
     }
 
     @AfterSuite
-    public void afterSuite() {
-        logger.debug("*** afterSuite ***");
+    public static void afterSuite() {
+        _logger.debug("*** afterSuite ***");
         shutdownElasticsearchServer();
         shutdownMongoInstances();
     }
 
-    private void shutdownMongoInstances() {
-        logger.debug("*** shutdownMongoInstances ***");
+    private static void shutdownMongoInstances() {
+        _logger.debug("*** shutdownMongoInstances ***");
         mongo.close();
         try {
-            logger.debug("Start shutdown {}", mongod1);
+            _logger.debug("Start shutdown {}", mongod1);
             mongod1.stop();
         } catch (Throwable t) {
         }
         try {
-            logger.debug("Start shutdown {}", mongod2);
+            _logger.debug("Start shutdown {}", mongod2);
             mongod2.stop();
         } catch (Throwable t) {
         }
         try {
-            logger.debug("Start shutdown {}", mongod3);
+            _logger.debug("Start shutdown {}", mongod3);
             mongod3.stop();
         } catch (Throwable t) {
         }
     }
 
-    private void shutdownElasticsearchServer() {
-        logger.debug("*** shutdownElasticsearchServer ***");
+    private static void shutdownElasticsearchServer() {
+        _logger.debug("*** shutdownElasticsearchServer ***");
         node.close();
     }
 

@@ -26,7 +26,7 @@ import static org.hamcrest.Matchers.equalTo;
 
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.count.CountResponse;
-import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
+import org.elasticsearch.river.mongodb.BaseRiverMongoDBTest;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -39,7 +39,7 @@ import com.mongodb.WriteConcern;
 import com.mongodb.util.JSON;
 
 @Test
-public class RiverMongoIncludeCollectionTest extends RiverMongoDBTestAbstract {
+public class RiverMongoIncludeCollectionTest extends BaseRiverMongoDBTest {
 
     private static final String TEST_SIMPLE_MONGODB_RIVER_INCLUDE_COLLECTION_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-include-collection.json";
     private DB mongoDB;

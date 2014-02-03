@@ -29,7 +29,7 @@ public class OplogProcessor {
     private final String gridfsOplogNamespace;
     private final String cmdOplogNamespace;
     private final DB db;
-    
+
     public OplogProcessor(MongoDBRiverDefinition definition, SharedContext context, DB db) {
         this.definition = definition;
         this.context = context;
@@ -111,26 +111,28 @@ public class OplogProcessor {
                 throw new NullPointerException(MongoDBRiver.MONGODB_ID_FIELD);
             }
             logger.debug("Add attachment: {}", objectId);
-            addToStream(operation, oplogTimestamp, MongoDBHelper.applyFieldFilter(object, definition.getIncludeFields(), definition.getExcludeFields()), collection);
+            addToStream(operation, oplogTimestamp,
+                    MongoDBHelper.applyFieldFilter(object, definition.getIncludeFields(), definition.getExcludeFields()), collection);
         } else {
             if (operation == Operation.UPDATE) {
                 DBObject update = (DBObject) entry.get(MongoDBRiver.OPLOG_UPDATE);
                 logger.debug("Updated item: {}", update);
                 addQueryToStream(operation, oplogTimestamp, update, collection);
             } else {
-                addToStream(operation, oplogTimestamp, MongoDBHelper.applyFieldFilter(object, definition.getIncludeFields(), definition.getExcludeFields()), collection);
+                addToStream(operation, oplogTimestamp,
+                        MongoDBHelper.applyFieldFilter(object, definition.getIncludeFields(), definition.getExcludeFields()), collection);
             }
         }
     }
 
     private void addQueryToStream(Operation operation, BSONTimestamp oplogTimestamp, DBObject update, String collection) {
         // TODO Auto-generated method stub
-        
+
     }
 
     private void addToStream(Operation operation, BSONTimestamp oplogTimestamp, DBObject applyFieldFilter, String collection) {
         // TODO Auto-generated method stub
-        
+
     }
 
     private void processAdminCommandOplogEntry(final DBObject entry, final BSONTimestamp startTimestamp) throws InterruptedException {
@@ -150,7 +152,7 @@ public class OplogProcessor {
 
     private void doInitialImport(DBCollection coll) {
         // TODO Auto-generated method stub
-        
+
     }
 
     private String getCollectionFromNamespace(String namespace) {

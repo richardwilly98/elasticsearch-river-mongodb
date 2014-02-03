@@ -27,7 +27,7 @@ import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
+import org.elasticsearch.river.mongodb.BaseRiverMongoDBTest;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -41,7 +41,7 @@ import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
 
 //@Test
-public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAbstract {
+public class RiverMongoParentChildScriptTest extends BaseRiverMongoDBTest {
 
     private static final String QUERY_BOOKS_JSON = "/org/elasticsearch/river/mongodb/script/query-books.json";
     private static final String BOOK1_DOCUMENT_JSON = "/org/elasticsearch/river/mongodb/script/test-mongodb-book1-document.json";

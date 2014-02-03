@@ -227,8 +227,8 @@ public class MongoDBRiverBulkProcessor {
             semaphore.acquire();
             logger.trace("dropRecreateMapping index[{}] - type[{}]", index, type);
             client.admin().indices().prepareRefresh(index).get();
-            ImmutableOpenMap<String,MappingMetaData> mappings = client.admin().cluster().prepareState().get().getState().getMetaData().index(index)
-                    .mappings();
+            ImmutableOpenMap<String, MappingMetaData> mappings = client.admin().cluster().prepareState().get().getState().getMetaData()
+                    .index(index).mappings();
             logger.trace("mappings contains type {}: {}", type, mappings.containsKey(type));
             if (mappings.containsKey(type)) {
                 /*
