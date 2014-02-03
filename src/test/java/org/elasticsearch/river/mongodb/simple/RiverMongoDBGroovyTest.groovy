@@ -10,7 +10,7 @@ import org.testng.annotations.*
 import org.testng.Assert
 import org.elasticsearch.search.SearchHit
 
-import static org.elasticsearch.index.query.QueryBuilders.fieldQuery
+import org.elasticsearch.index.query.QueryBuilders
 
 class RiverMongoDBGroovyTest extends RiverMongoDBTestAbstract {
 
@@ -60,7 +60,7 @@ class RiverMongoDBGroovyTest extends RiverMongoDBTestAbstract {
 			// Search data by parent
 			refreshIndex()
 			def id = dbObject.get("_id").toString()
-			def response = node.client().prepareSearch(index).setQuery(fieldQuery("_id", id)).execute().actionGet()
+			def response = node.client().prepareSearch(index).setQuery(QueryBuilders.queryString(id).defaultField("_id")).execute().actionGet()
 			logger.debug("SearchResponse $response")
 
 			// Asserts data

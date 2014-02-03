@@ -1,11 +1,12 @@
 package org.elasticsearch.river.mongodb.advanced
 
 import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath
-import static org.elasticsearch.index.query.QueryBuilders.fieldQuery
+import org.elasticsearch.index.query.QueryBuilders
 import static org.elasticsearch.search.sort.SortOrder.ASC
 
 import org.bson.types.ObjectId
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract
 import org.elasticsearch.search.SearchHit
 import org.testng.Assert
@@ -93,7 +94,7 @@ class RiverMongoAdvancedTransformationChildrenTest extends RiverMongoDBTestAbstr
 			// Search data by parent
 			refreshIndex(index)
 			def parentId = dbObject.get("_id").toString()
-			def response = node.client().prepareSearch(index).setQuery(fieldQuery("_parent", parentId)).addSort("text", ASC).execute().actionGet()
+			def response = node.client().prepareSearch(index).setQuery(QueryBuilders.queryString(parentId).defaultField("_parent")).addSort("text", ASC).execute().actionGet()
 			logger.debug("SearchResponse $response")
 			// Asserts data
 			assert response.hits.totalHits == 3
@@ -108,7 +109,7 @@ class RiverMongoAdvancedTransformationChildrenTest extends RiverMongoDBTestAbstr
 			dbCollection.update([_id: new ObjectId(parentId)], document)
 			Thread.sleep(WAIT)
 			refreshIndex(index)
-			response = node.client().prepareSearch(index).setQuery(fieldQuery("_parent", parentId)).addSort("text", ASC).execute().actionGet()
+			response = node.client().prepareSearch(index).setQuery(QueryBuilders.queryString(parentId).defaultField("_parent")).addSort("text", ASC).execute().actionGet()
 			logger.debug("SearchResponse $response")
 			// Asserts data
 			assert response.hits.totalHits == 3
@@ -120,7 +121,7 @@ class RiverMongoAdvancedTransformationChildrenTest extends RiverMongoDBTestAbstr
 			dbCollection.update([_id: new ObjectId(parentId)], [$push: [tweets:[_id: "51c8ddbae4b0548e8d233184", text: "abc"]]])
 			Thread.sleep(WAIT)
 			refreshIndex(index)
-			response = node.client().prepareSearch(index).setQuery(fieldQuery("_parent", parentId)).addSort("text", ASC).execute().actionGet()
+			response = node.client().prepareSearch(index).setQuery(QueryBuilders.queryString(parentId).defaultField("_parent")).addSort("text", ASC).execute().actionGet()
 			logger.debug("SearchResponse $response")
 			// Asserts data
 			assert response.hits.totalHits == 4
@@ -134,7 +135,7 @@ class RiverMongoAdvancedTransformationChildrenTest extends RiverMongoDBTestAbstr
 			dbCollection.update([_id: new ObjectId(parentId)], [$pull: [tweets:[text: "bar"]]])
 			Thread.sleep(WAIT)
 			refreshIndex(index)
-			response = node.client().prepareSearch(index).setQuery(fieldQuery("_parent", parentId)).addSort("text", ASC).execute().actionGet()
+			response = node.client().prepareSearch(index).setQuery(QueryBuilders.queryString(parentId).defaultField("_parent")).addSort("text", ASC).execute().actionGet()
 			logger.debug("SearchResponse $response")
 			// Asserts data
 			assert response.hits.totalHits == 3
@@ -148,7 +149,7 @@ class RiverMongoAdvancedTransformationChildrenTest extends RiverMongoDBTestAbstr
 			Thread.sleep(WAIT)
 			refreshIndex(index)
             assert !node.client().prepareGet(index, "author", parentId).get().exists
-			response = node.client().prepareSearch(index).setQuery(fieldQuery("_parent", parentId)).execute().actionGet()
+			response = node.client().prepareSearch(index).setQuery(QueryBuilders.queryString(parentId).defaultField("_parent")).execute().actionGet()
 			logger.debug("SearchResponse $response")
 			// Asserts data
 			assert response.hits.totalHits == 0
