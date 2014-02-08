@@ -18,7 +18,6 @@
  */
 package org.elasticsearch.river.mongodb.simple;
 
-import static org.elasticsearch.client.Requests.countRequest;
 import static org.elasticsearch.client.Requests.getRequest;
 import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -27,7 +26,6 @@ import static org.hamcrest.Matchers.equalTo;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
-import org.elasticsearch.action.count.CountRequest;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
@@ -124,57 +122,6 @@ public class RiverMongoDBTest extends RiverMongoDBTestAbstract {
             logger.error("simpleBSONObject failed.", t);
             t.printStackTrace();
             throw t;
-        }
-    }
-
-    @Test
-    public void collectionWithDot_Issue206() throws Throwable {
-        logger.debug("Start collectionWithDot_Issue206");
-        long timestamp = System.currentTimeMillis();
-        String river = "river_206-" + timestamp;
-        String database = "db-" + timestamp;
-        try {
-            String collection = "collection." + timestamp;
-            DB db = getMongo().getDB(database);
-            db.setWriteConcern(WriteConcern.REPLICAS_SAFE);
-            super.createRiver(TEST_MONGODB_RIVER_SIMPLE_JSON, river, String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
-                    String.valueOf(getMongoPort3()), database, collection, collection);
-
-            DBCollection dottedCollection = db.createCollection(collection, null);
-            Assert.assertNotNull(dottedCollection);
-            DBObject dbObject  = new BasicDBObject("name", "richard-" + timestamp);
-            WriteResult result = dottedCollection.insert(dbObject);
-            Thread.sleep(wait);
-            String id = dbObject.get("_id").toString();
-            logger.info("WriteResult: {}", result.toString());
-            logger.info("dbObject: {}", dbObject.toString());
-            ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices()
-                    .exists(new IndicesExistsRequest(collection));
-            assertThat(response.actionGet().isExists(), equalTo(true));
-            refreshIndex();
-            logger.info("Request: [{}] - count: [{}]", getRequest(collection).id(id), getNode().client().count(countRequest(collection)).get().getCount());
-            GetResponse getResponse = getNode().client().get(getRequest(collection).id(id)).get();
-            assertThat(getResponse.isExists(), equalTo(true));
-//            CountResponse countResponse = getNode().client().count(countRequest(collection).query(fieldQuery("_id", id))).get();
-//            assertThat(countResponse.getCount(), equalTo(1l));
-
-            dottedCollection.remove(dbObject, WriteConcern.REPLICAS_SAFE);
-
-            Thread.sleep(wait);
-            refreshIndex();
-            getResponse = getNode().client().get(getRequest(collection).id(id)).get();
-            assertThat(getResponse.isExists(), equalTo(false));
-//            countResponse = getNode().client().count(countRequest(collection).query(fieldQuery("_id", id))).actionGet();
-//            logger.debug("Count after delete request: {}", countResponse.getCount());
-//            assertThat(countResponse.getCount(), equalTo(0L));
-
-        } catch (Throwable t) {
-            logger.error("collectionWithDot_Issue206 failed.", t);
-            t.printStackTrace();
-            throw t;
-        } finally {
-            super.deleteRiver(river);
-            getMongo().dropDatabase(database);
         }
     }
 }
