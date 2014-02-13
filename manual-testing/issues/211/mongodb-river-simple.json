@@ -1,0 +1,18 @@
+{
+  "mongodb": {
+    "db": "mydb211", 
+    "options": {
+      "secondaryread_preference": true, 
+      "include_fields": ["deleted", "user", "created", "modified", "meta", "assets", "status"]
+    }, 
+    "collection": "media"
+  }, 
+  "type": "mongodb", 
+  "index": {
+    "bulk": {
+      "concurrent_requests": 1
+    }, 
+    "type": "media", 
+    "name": "media"
+  }
+}
