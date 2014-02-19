@@ -531,13 +531,13 @@ public class MongoDBRiverDefinition {
                 if (mongoOptionsSettings.containsKey(PARENT_TYPES_FIELD)) {
                     Set<String> parentTypes = new HashSet<String>();
                     Object parentTypesSettings = mongoOptionsSettings.get(PARENT_TYPES_FIELD);
-                    logger.info("parentTypesSettings: " + parentTypesSettings);
+                    logger.debug("parentTypesSettings: " + parentTypesSettings);
                     boolean array = XContentMapValues.isArray(parentTypesSettings);
 
                     if (array) {
                         ArrayList<String> fields = (ArrayList<String>) parentTypesSettings;
                         for (String field : fields) {
-                            logger.info("Field: " + field);
+                            logger.debug("Field: " + field);
                             parentTypes.add(field);
                         }
                     }
@@ -572,13 +572,13 @@ public class MongoDBRiverDefinition {
                 if (mongoOptionsSettings.containsKey(INCLUDE_FIELDS_FIELD)) {
                     Set<String> includeFields = new HashSet<String>();
                     Object includeFieldsSettings = mongoOptionsSettings.get(INCLUDE_FIELDS_FIELD);
-                    logger.info("includeFieldsSettings: " + includeFieldsSettings);
+                    logger.debug("includeFieldsSettings: " + includeFieldsSettings);
                     boolean array = XContentMapValues.isArray(includeFieldsSettings);
 
                     if (array) {
                         ArrayList<String> fields = (ArrayList<String>) includeFieldsSettings;
                         for (String field : fields) {
-                            logger.info("Field: " + field);
+                            logger.debug("Field: " + field);
                             includeFields.add(field);
                         }
                     }
@@ -590,13 +590,13 @@ public class MongoDBRiverDefinition {
                 } else if (mongoOptionsSettings.containsKey(EXCLUDE_FIELDS_FIELD)) {
                     Set<String> excludeFields = new HashSet<String>();
                     Object excludeFieldsSettings = mongoOptionsSettings.get(EXCLUDE_FIELDS_FIELD);
-                    logger.info("excludeFieldsSettings: " + excludeFieldsSettings);
+                    logger.debug("excludeFieldsSettings: " + excludeFieldsSettings);
                     boolean array = XContentMapValues.isArray(excludeFieldsSettings);
 
                     if (array) {
                         ArrayList<String> fields = (ArrayList<String>) excludeFieldsSettings;
                         for (String field : fields) {
-                            logger.info("Field: " + field);
+                            logger.debug("Field: " + field);
                             excludeFields.add(field);
                         }
                     }
