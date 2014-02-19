@@ -112,6 +112,8 @@ class Slurper implements Runnable {
                         processOplogEntry(item, startTimestamp);
                     }
                     Thread.sleep(500);
+                } catch (MongoException.CursorNotFound e) {
+                    logger.info("Cursor {} has been closed. About to open a new cusor.", cursor.getCursorId());
                 } catch (Exception ex) {
                     logger.warn("Exception while looping in cursor", ex);
                     Thread.currentThread().interrupt();
@@ -170,57 +172,80 @@ class Slurper implements Runnable {
 
         logger.info("MongoDBRiver is beginning initial import of " + collection.getFullName());
         BSONTimestamp startTimestamp = getCurrentOplogTimestamp();
-        DBCursor cursor = null;
-        try {
-            if (definition.isDisableIndexRefresh()) {
-                updateIndexRefresh(definition.getIndexName(), -1L);
-            }
-            if (!definition.isMongoGridFS()) {
-                logger.info("Collection {} - count: {}", collection.getName(), collection.count());
-                long count = 0;
-                cursor = collection.find(definition.getMongoCollectionFilter());
-                while (cursor.hasNext()) {
-                    DBObject object = cursor.next();
-                    count++;
-                    if (cursor.hasNext()) {
-                        addInsertToStream(null, applyFieldFilter(object), collection.getName());
-                    } else {
-                        logger.debug("Last entry for initial import - add timestamp: {}", startTimestamp);
-                        addInsertToStream(startTimestamp, applyFieldFilter(object), collection.getName());
-                    }
+        boolean inProgress = true;
+        String lastId = null;
+        while (inProgress) {
+            DBCursor cursor = null;
+            try {
+                if (definition.isDisableIndexRefresh()) {
+                    updateIndexRefresh(definition.getIndexName(), -1L);
                 }
-                logger.info("Number documents indexed: {}", count);
-            } else {
-                // TODO: To be optimized.
-                // https://github.com/mongodb/mongo-java-driver/pull/48#issuecomment-25241988
-                // possible option: Get the object id list from .fs collection
-                // then call GriDFS.findOne
-                GridFS grid = new GridFS(mongo.getDB(definition.getMongoDb()), definition.getMongoCollection());
-
-                cursor = grid.getFileList();
-                while (cursor.hasNext()) {
-                    DBObject object = cursor.next();
-                    if (object instanceof GridFSDBFile) {
-                        GridFSDBFile file = grid.findOne(new ObjectId(object.get(MongoDBRiver.MONGODB_ID_FIELD).toString()));
+                if (!definition.isMongoGridFS()) {
+                    logger.info("Collection {} - count: {}", collection.getName(), collection.count());
+                    long count = 0;
+                    cursor = collection.find(getFilterForInitialImport(definition.getMongoCollectionFilter(), lastId));
+                    while (cursor.hasNext()) {
+                        DBObject object = cursor.next();
+                        count++;
                         if (cursor.hasNext()) {
-                            addInsertToStream(null, file);
+                            lastId = addInsertToStream(null, applyFieldFilter(object), collection.getName());
                         } else {
                             logger.debug("Last entry for initial import - add timestamp: {}", startTimestamp);
-                            addInsertToStream(startTimestamp, file);
+                            lastId = addInsertToStream(startTimestamp, applyFieldFilter(object), collection.getName());
+                            inProgress = false;
+                        }
+                    }
+                    logger.info("Number documents indexed: {}", count);
+                } else {
+                    // TODO: To be optimized.
+                    // https://github.com/mongodb/mongo-java-driver/pull/48#issuecomment-25241988
+                    // possible option: Get the object id list from .fs
+                    // collection
+                    // then call GriDFS.findOne
+                    GridFS grid = new GridFS(mongo.getDB(definition.getMongoDb()), definition.getMongoCollection());
+
+                    cursor = grid.getFileList();
+                    while (cursor.hasNext()) {
+                        DBObject object = cursor.next();
+                        if (object instanceof GridFSDBFile) {
+                            GridFSDBFile file = grid.findOne(new ObjectId(object.get(MongoDBRiver.MONGODB_ID_FIELD).toString()));
+                            if (cursor.hasNext()) {
+                                lastId = addInsertToStream(null, file);
+                            } else {
+                                logger.debug("Last entry for initial import - add timestamp: {}", startTimestamp);
+                                lastId = addInsertToStream(startTimestamp, file);
+                                inProgress = false;
+                            }
                         }
                     }
                 }
-            }
-        } finally {
-            if (cursor != null) {
-                logger.trace("Closing initial import cursor");
-                cursor.close();
-            }
-            if (definition.isDisableIndexRefresh()) {
-                updateIndexRefresh(definition.getIndexName(), TimeValue.timeValueSeconds(1));
+            } catch (MongoException.CursorNotFound e) {
+                logger.info("Cursor {} has been closed. About to open a new cusor.", cursor.getCursorId());
+            } finally {
+                if (cursor != null) {
+                    logger.trace("Closing initial import cursor");
+                    cursor.close();
+                }
+                if (definition.isDisableIndexRefresh()) {
+                    updateIndexRefresh(definition.getIndexName(), TimeValue.timeValueSeconds(1));
+                }
             }
         }
         return startTimestamp;
+    }
+
+    private BasicDBObject getFilterForInitialImport(BasicDBObject filter, String id) {
+        if (id == null) {
+            return filter;
+        } else {
+            BasicDBObject filterId = new BasicDBObject(MongoDBRiver.MONGODB_ID_FIELD, new BasicBSONObject(QueryOperators.GT, id));
+            if (filter == null) {
+                return filterId;
+            } else {
+                List<BasicDBObject> values = ImmutableList.of(filter, filterId);
+                return new BasicDBObject(QueryOperators.AND, values);
+            }
+        }
     }
 
     protected boolean assignCollections() {
@@ -570,13 +595,14 @@ class Slurper implements Runnable {
         }
     }
 
-    private void addInsertToStream(final BSONTimestamp currentTimestamp, final DBObject data) throws InterruptedException {
-        addToStream(Operation.INSERT, currentTimestamp, data, definition.getMongoCollection());
+    private String addInsertToStream(final BSONTimestamp currentTimestamp, final DBObject data) throws InterruptedException {
+        return addInsertToStream(currentTimestamp, data, definition.getMongoCollection());
     }
 
-    private void addInsertToStream(final BSONTimestamp currentTimestamp, final DBObject data, final String collection)
+    private String addInsertToStream(final BSONTimestamp currentTimestamp, final DBObject data, final String collection)
             throws InterruptedException {
         addToStream(Operation.INSERT, currentTimestamp, data, collection);
+        return data.containsField(MongoDBRiver.MONGODB_ID_FIELD) ? data.get(MongoDBRiver.MONGODB_ID_FIELD).toString() : null;
     }
 
     private void addToStream(final Operation operation, final BSONTimestamp currentTimestamp, final DBObject data, final String collection)
