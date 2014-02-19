@@ -129,7 +129,7 @@ public class RiverMongoWithGridFSTest extends RiverMongoGridFSTestAbstract {
         }
     }
 
-    @Test
+    @Test(enabled = false)
     public void testImportPDFAttachment() throws Exception {
         logger.debug("*** testImportPDFAttachment ***");
         try {
