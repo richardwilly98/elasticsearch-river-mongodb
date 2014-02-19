@@ -382,7 +382,6 @@ class Indexer implements Runnable {
         return lastTimestamp;
     }
 
-    @SuppressWarnings("unchecked")
     private XContentBuilder build(final DBObject data, final String objectId) throws IOException {
         if (data instanceof GridFSDBFile) {
             logger.info("Add Attachment: {} to index {} / type {}", objectId, definition.getIndexName(), definition.getTypeName());
@@ -392,9 +391,10 @@ class Indexer implements Runnable {
             return XContentFactory.jsonBuilder().map(mapData);
         }
     }
-    
+
     /**
      * Map a DBObject for indexing
+     * 
      * @param base
      * @param mapData
      */
@@ -405,19 +405,20 @@ class Indexer implements Runnable {
             if (forMap instanceof DBRef) {
                 mapData.put(key, this.convertDbRef((DBRef) forMap));
             } else if (forMap instanceof BasicDBList) {
-                mapData.put(key, ((BasicBSONList)forMap).toArray());
+                mapData.put(key, ((BasicBSONList) forMap).toArray());
             } else if (forMap instanceof BasicDBObject) {
                 mapData.put(key, this.createObjectMap((DBObject) forMap));
             } else {
                 mapData.put(key, forMap);
             }
         }
-        
+
         return mapData;
     }
-    
+
     /**
      * Map a DBRef to a Map for indexing
+     * 
      * @param ref
      * @return
      */
@@ -425,10 +426,9 @@ class Indexer implements Runnable {
         Map<String, Object> obj = new HashMap<String, Object>();
         obj.put("id", ref.getId());
         obj.put("ref", ref.getRef());
-        
+
         return obj;
     }
-    
 
     private boolean hasScript() {
         return definition.getScriptType() != null && definition.getScript() != null;

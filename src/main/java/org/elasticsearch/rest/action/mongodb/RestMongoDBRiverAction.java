@@ -146,8 +146,8 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
     }
 
     private List<Map<String, Object>> getRivers() {
-        SearchResponse searchResponse = client.prepareSearch(riverIndexName).setQuery(QueryBuilders.queryString(MongoDBRiver.TYPE).defaultField("type"))
-                .get();
+        SearchResponse searchResponse = client.prepareSearch(riverIndexName)
+                .setQuery(QueryBuilders.queryString(MongoDBRiver.TYPE).defaultField("type")).get();
         long totalHits = searchResponse.getHits().totalHits();
         logger.trace("totalHits: {}", totalHits);
         List<Map<String, Object>> rivers = new ArrayList<Map<String, Object>>();
