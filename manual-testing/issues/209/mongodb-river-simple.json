@@ -1,0 +1,14 @@
+{
+  "mongodb": {
+    "db": "mydb209", 
+    "options": {
+      "secondaryread_preference": true
+    }, 
+    "collection": "mycollec209"
+  }, 
+  "type": "mongodb", 
+  "index": {
+    "type": "mycollec209", 
+    "name": "mydb209"
+  }
+}
