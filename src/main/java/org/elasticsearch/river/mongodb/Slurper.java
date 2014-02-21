@@ -192,9 +192,9 @@ class Slurper implements Runnable {
                         } else {
                             logger.debug("Last entry for initial import - add timestamp: {}", startTimestamp);
                             lastId = addInsertToStream(startTimestamp, applyFieldFilter(object), collection.getName());
-                            inProgress = false;
                         }
                     }
+                    inProgress = false;
                     logger.info("Number documents indexed: {}", count);
                 } else {
                     // TODO: To be optimized.
@@ -214,10 +214,10 @@ class Slurper implements Runnable {
                             } else {
                                 logger.debug("Last entry for initial import - add timestamp: {}", startTimestamp);
                                 lastId = addInsertToStream(startTimestamp, file);
-                                inProgress = false;
                             }
                         }
                     }
+                    inProgress = false;
                 }
             } catch (MongoException.CursorNotFound e) {
                 logger.info("Cursor {} has been closed. About to open a new cusor.", cursor.getCursorId());
