@@ -16,6 +16,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionRequestValidationException;
+import org.elasticsearch.action.admin.cluster.node.info.NodeInfo;
+import org.elasticsearch.action.admin.cluster.node.info.NodesInfoResponse;
 import org.elasticsearch.action.admin.cluster.node.stats.NodeStats;
 import org.elasticsearch.action.admin.cluster.node.stats.NodesStatsResponse;
 import org.elasticsearch.action.admin.indices.mapping.put.PutMappingResponse;
@@ -33,14 +35,16 @@ import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
+import org.elasticsearch.threadpool.ThreadPool.Info;
 import org.elasticsearch.threadpool.ThreadPoolStats.Stats;
 
 public class MongoDBRiverBulkProcessor {
 
+    public static final long DEFAULT_BULK_QUEUE_SIZE = 50;
     public static final Map<String, Boolean> DROP_INDEX = ImmutableMap.of("dropIndex", Boolean.TRUE);
     private final ESLogger logger = ESLoggerFactory.getLogger(this.getClass().getName());
+    private final MongoDBRiver river;
     private final MongoDBRiverDefinition definition;
-    private final SharedContext context;
     private final Client client;
     private final BulkProcessor bulkProcessor;
     private final String index;
@@ -53,24 +57,26 @@ public class MongoDBRiverBulkProcessor {
     private final AtomicLong documentCount = new AtomicLong();
     private final static Semaphore semaphore = new Semaphore(1);
 
+    private final long bulkQueueSize;
+    
     public static class Builder {
 
+        private final MongoDBRiver river;
         private final MongoDBRiverDefinition definition;
-        private final SharedContext context;
         private final Client client;
         private String index;
         private String type;
 
-        public Builder(MongoDBRiverDefinition definition, SharedContext context, Client client, String index, String type) {
+        public Builder(MongoDBRiver river, MongoDBRiverDefinition definition, Client client, String index, String type) {
+            this.river = river;
             this.definition = definition;
-            this.context = context;
             this.client = client;
             this.index = index;
             this.type = type;
         }
 
         public MongoDBRiverBulkProcessor build() {
-            return new MongoDBRiverBulkProcessor(definition, context, client, index, type);
+            return new MongoDBRiverBulkProcessor(river, definition, client, index, type);
         }
     }
 
@@ -92,7 +98,10 @@ public class MongoDBRiverBulkProcessor {
                     flushBulkProcessor.set(false);
                 } catch (Throwable t) {
                     logger.error("Drop collection operation failed", t);
-                    context.setStatus(Status.IMPORT_FAILED);
+                    MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.IMPORT_FAILED);
+                    request.requests().clear();
+                    bulkProcessor.close();
+                    river.close();
                 }
             }
         }
@@ -121,6 +130,9 @@ public class MongoDBRiverBulkProcessor {
             } else {
                 logger.error("afterBulk - Bulk request failed: {} - {} - {}", executionId, request, failure);
                 MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.IMPORT_FAILED);
+                request.requests().clear();
+                bulkProcessor.close();
+                river.close();
             }
         }
 
@@ -129,6 +141,9 @@ public class MongoDBRiverBulkProcessor {
             if (response.hasFailures()) {
                 logger.error("Bulk processor failed. {}", response.buildFailureMessage());
                 MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.IMPORT_FAILED);
+                request.requests().clear();
+                bulkProcessor.close();
+                river.close();
             } else {
                 documentCount.addAndGet(response.getItems().length);
                 logStatistics(response.getTookInMillis());
@@ -143,15 +158,16 @@ public class MongoDBRiverBulkProcessor {
         }
     };
 
-    MongoDBRiverBulkProcessor(MongoDBRiverDefinition definition, SharedContext context, Client client, String index, String type) {
+    MongoDBRiverBulkProcessor(MongoDBRiver river, MongoDBRiverDefinition definition, Client client, String index, String type) {
+        this.river = river;
         this.bulkProcessor = BulkProcessor.builder(client, listener).setBulkActions(definition.getBulk().getBulkActions())
                 .setConcurrentRequests(definition.getBulk().getConcurrentRequests())
                 .setFlushInterval(definition.getBulk().getFlushInterval()).setBulkSize(definition.getBulk().getBulkSize()).build();
         this.definition = definition;
-        this.context = context;
         this.client = client;
         this.index = index;
         this.type = type;
+        this.bulkQueueSize = getBulkQueueSize();
     }
 
     public void dropIndex() {
@@ -189,16 +205,29 @@ public class MongoDBRiverBulkProcessor {
     private void checkBulkProcessorAvailability() {
         while (!isBulkProcessorAvailable()) {
             try {
-                if (logger.isDebugEnabled()) {
-                    logger.debug("Waiting for bulk processor to be available...");
+                if (logger.isInfoEnabled()) {
+                    logger.info("Waiting for bulk queue to empty...");
                 }
-                Thread.sleep(500);
+                Thread.sleep(2000);
             } catch (InterruptedException e) {
                 logger.warn("checkIndexStatistics interrupted", e);
             }
         }
     }
 
+    private long getBulkQueueSize() {
+        NodesInfoResponse response = client.admin().cluster().prepareNodesInfo().setThreadPool(true).get();
+        for (NodeInfo node : response.getNodes()) {
+            Iterator<Info> iterator = node.getThreadPool().iterator();
+            while (iterator.hasNext()) {
+                Info info = iterator.next();
+                if ("bulk".equals(info.getName())) {
+                    return info.getQueueSize().getSingles();
+                }
+            }
+        }
+        return DEFAULT_BULK_QUEUE_SIZE;
+    }
     private boolean isBulkProcessorAvailable() {
         NodesStatsResponse response = client.admin().cluster().prepareNodesStats().setThreadPool(true).get();
         for (NodeStats nodeStats : response.getNodes()) {
@@ -206,16 +235,9 @@ public class MongoDBRiverBulkProcessor {
             while (iterator.hasNext()) {
                 Stats stats = iterator.next();
                 if ("bulk".equals(stats.getName())) {
-                    int threads = stats.getThreads();
-                    int active = stats.getActive();
-                    if (threads == 0 || threads - active > 0) {
-                        return true;
-                    } else {
-                        if (logger.isDebugEnabled()) {
-                            logger.debug("Bulk processor threads[{}] active[{}]", threads, active);
-                        }
-                        return false;
-                    }
+                    int queue = stats.getQueue();
+                    logger.trace("bulkQueueSize [{}] - queue [{}] - availability [{}]", bulkQueueSize, queue, 1 - (queue / bulkQueueSize));
+                    return 1 - (queue / bulkQueueSize) > 0.1;
                 }
             }
         }
@@ -257,12 +279,11 @@ public class MongoDBRiverBulkProcessor {
         }
     }
 
-    // TODO: Still interested in timing / duration?
     private void logStatistics(long duration) {
-        long totalDocuments = deletedDocuments.get() + insertedDocuments.get();
-        logger.debug("Indexed {} documents, {} insertions, {} updates, {} deletions", totalDocuments, insertedDocuments.get(),
-                updatedDocuments.get(), deletedDocuments.get());
         if (definition.isStoreStatistics()) {
+            long totalDocuments = deletedDocuments.get() + insertedDocuments.get();
+            logger.debug("Indexed {} documents, {} insertions, {} updates, {} deletions", totalDocuments, insertedDocuments.get(),
+                    updatedDocuments.get(), deletedDocuments.get());
             Map<String, Object> source = new HashMap<String, Object>();
             Map<String, Object> statistics = Maps.newHashMap();
             statistics.put("duration", duration);
