@@ -38,6 +38,7 @@ import com.mongodb.gridfs.GridFSDBFile;
 class Indexer implements Runnable {
 
     private final ESLogger logger = ESLoggerFactory.getLogger(this.getClass().getName());
+    private final MongoDBRiver river;
     private final MongoDBRiverDefinition definition;
     private final SharedContext context;
     private final Client client;
@@ -45,7 +46,8 @@ class Indexer implements Runnable {
 
     private final Map<SimpleEntry<String, String>, MongoDBRiverBulkProcessor> processors = Maps.newHashMap();
 
-    public Indexer(MongoDBRiverDefinition definition, SharedContext context, Client client, ScriptService scriptService) {
+    public Indexer(MongoDBRiver river, MongoDBRiverDefinition definition, SharedContext context, Client client, ScriptService scriptService) {
+        this.river = river;
         this.definition = definition;
         this.context = context;
         this.client = client;
@@ -89,7 +91,7 @@ class Indexer implements Runnable {
     private MongoDBRiverBulkProcessor getBulkProcessor(String index, String type) {
         SimpleEntry<String, String> entry = new SimpleEntry<String, String>(index, type);
         if (!processors.containsKey(entry)) {
-            processors.put(new SimpleEntry<String, String>(index, type), new MongoDBRiverBulkProcessor.Builder(definition, context, client,
+            processors.put(new SimpleEntry<String, String>(index, type), new MongoDBRiverBulkProcessor.Builder(river, definition, client,
                     index, type).build());
         }
         return processors.get(entry);
@@ -147,8 +149,8 @@ class Indexer implements Runnable {
             return applyAdvancedTransformation(entry, type);
         }
 
-        if (logger.isDebugEnabled()) {
-            logger.debug("updateBulkRequest for id: [{}], operation: [{}]", objectId, operation);
+        if (logger.isTraceEnabled()) {
+            logger.trace("updateBulkRequest for id: [{}], operation: [{}]", objectId, operation);
         }
 
         if (!definition.getIncludeCollection().isEmpty()) {
@@ -222,8 +224,8 @@ class Indexer implements Runnable {
 
     private void updateBulkRequest(DBObject data, String objectId, Operation operation, String index, String type, String routing,
             String parent) throws IOException {
-        if (logger.isDebugEnabled()) {
-            logger.debug("Operation: {} - index: {} - type: {} - routing: {} - parent: {}", operation, index, type, routing, parent);
+        if (logger.isTraceEnabled()) {
+            logger.trace("Operation: {} - index: {} - type: {} - routing: {} - parent: {}", operation, index, type, routing, parent);
         }
 
         if (operation == Operation.UNKNOWN) {
@@ -238,15 +240,15 @@ class Indexer implements Runnable {
             isAttachment = (data instanceof GridFSDBFile);
         }
         if (operation == Operation.INSERT) {
-            if (logger.isDebugEnabled()) {
-                logger.debug("Insert operation - id: {} - contains attachment: {}", objectId, isAttachment);
+            if (logger.isTraceEnabled()) {
+                logger.trace("Insert operation - id: {} - contains attachment: {}", objectId, isAttachment);
             }
             getBulkProcessor(index, type).addBulkRequest(objectId, build(data, objectId), routing, parent);
         }
         // UPDATE = DELETE + INSERT operation
         if (operation == Operation.UPDATE) {
-            if (logger.isDebugEnabled()) {
-                logger.debug("Update operation - id: {} - contains attachment: {}", objectId, isAttachment);
+            if (logger.isTraceEnabled()) {
+                logger.trace("Update operation - id: {} - contains attachment: {}", objectId, isAttachment);
             }
             deleteBulkRequest(objectId, index, type, routing, parent);
             getBulkProcessor(index, type).addBulkRequest(objectId, build(data, objectId), routing, parent);
@@ -269,8 +271,10 @@ class Indexer implements Runnable {
      * Delete children when parent / child is used
      */
     private void deleteBulkRequest(String objectId, String index, String type, String routing, String parent) {
-        logger.trace("bulkDeleteRequest - objectId: {} - index: {} - type: {} - routing: {} - parent: {}", objectId, index, type, routing,
-                parent);
+        if (logger.isTraceEnabled()) {
+            logger.trace("bulkDeleteRequest - objectId: {} - index: {} - type: {} - routing: {} - parent: {}", objectId, index, type,
+                    routing, parent);
+        }
 
         if (definition.getParentTypes() != null && definition.getParentTypes().contains(type)) {
             QueryBuilder builder = QueryBuilders.hasParentQuery(type, QueryBuilders.termQuery(MongoDBRiver.MONGODB_ID_FIELD, objectId));
@@ -347,7 +351,9 @@ class Indexer implements Runnable {
                     for (Object object : documents) {
                         if (object instanceof Map<?, ?>) {
                             Map<String, Object> item = (Map<String, Object>) object;
-                            logger.trace("item: {}", item);
+                            if (logger.isTraceEnabled()) {
+                                logger.trace("item: {}", item);
+                            }
                             if (isDocumentDeleted(item)) {
                                 item.put("operation", MongoDBRiver.OPLOG_DELETE_OPERATION);
                             }
