@@ -145,7 +145,13 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     public void start() {
         try {
             logger.info("Starting river {}", riverName.getName());
-            if (MongoDBRiverHelper.getRiverStatus(client, riverName.getName()) == Status.STOPPED) {
+            Status status = MongoDBRiverHelper.getRiverStatus(client, riverName.getName());
+            if (status == Status.IMPORT_FAILED || status == Status.INITIAL_IMPORT_FAILED || status == Status.SCRIPT_IMPORT_FAILED
+                    || status == Status.START_FAILED) {
+                logger.error("Cannot start river {}. Current status is {}", riverName.getName(), status);
+                return;
+            }
+            if (status == Status.STOPPED) {
                 logger.debug("Cannot start river {}. It is currently disabled", riverName.getName());
                 startInvoked = true;
                 return;
@@ -166,8 +172,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
             // Create the index if it does not exist
             try {
-                if (!client.admin().indices().prepareExists(definition.getIndexName()).execute().actionGet().isExists()) {
-                    client.admin().indices().prepareCreate(definition.getIndexName()).execute().actionGet();
+                if (!client.admin().indices().prepareExists(definition.getIndexName()).get().isExists()) {
+                    client.admin().indices().prepareCreate(definition.getIndexName()).get();
                 }
             } catch (Exception e) {
                 if (ExceptionsHelper.unwrapCause(e) instanceof IndexAlreadyExistsException) {
@@ -192,7 +198,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                         logger.debug("Set explicit attachment mapping.");
                     }
                     client.admin().indices().preparePutMapping(definition.getIndexName()).setType(definition.getTypeName())
-                            .setSource(getGridFSMapping()).execute().actionGet();
+                            .setSource(getGridFSMapping()).get();
                 } catch (Exception e) {
                     logger.warn("Failed to set explicit mapping (attachment): {}", e);
                 }
@@ -228,7 +234,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             }
 
             indexerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_indexer").newThread(
-                    new Indexer(definition, context, client, scriptService));
+                    new Indexer(this, definition, context, client, scriptService));
             indexerThread.start();
 
             statusThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_status").newThread(
@@ -249,8 +255,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             return false;
         }
         logger.trace("Found {} database", MONGODB_ADMIN_DATABASE);
-        // CommandResult cr = adminDb.command(new BasicDBObject("serverStatus",
-        // 1));
         DBObject command = BasicDBObjectBuilder.start(
                 ImmutableMap.builder().put("serverStatus", 1).put("asserts", 0).put("backgroundFlushing", 0).put("connections", 0)
                         .put("cursors", 0).put("dur", 0).put("extra_info", 0).put("globalLock", 0).put("indexCounters", 0).put("locks", 0)
@@ -259,15 +263,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         logger.trace("About to execute: {}", command);
         CommandResult cr = adminDb.command(command);
         logger.trace("Command executed return : {}", cr);
-        // BasicDBObjectBuilder.start(ImmutableMap.of("serverStatus", 1,
-        // "asserts", 0, "backgroundFlushing", 0, "metrics", 0, "connections",
-        // 0, "cursors", 0, "dur", 0, "extra_info", 0, "globalLock", 0,
-        // "indexCounters", 0, "locks", 0, "network", 0, "opcounters", 0,
-        // "opcountersRepl", 0, "recordStats", 0, "repl", 0)).get();
-        // replica1:PRIMARY> db.runCommand({serverStatus: 1, asserts: 0,
-        // backgroundFlushing: 0, metrics: 0, connections: 0, cursors: 0, dur:
-        // 0, extra_info: 0, globalLock: 0, indexCounters:0, locks: 0, network:
-        // 0, opcounters:0, opcountersRepl: 0, recordStats: 0, repl: 0})
 
         logger.info("MongoDB version - {}", cr.get("version"));
         if (logger.isTraceEnabled()) {
@@ -417,15 +412,12 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     @SuppressWarnings("unchecked")
     public static BSONTimestamp getLastTimestamp(Client client, MongoDBRiverDefinition definition) {
 
-        GetResponse lastTimestampResponse = client
-                .prepareGet(definition.getRiverIndexName(), definition.getRiverName(), definition.getMongoOplogNamespace()).execute()
-                .actionGet();
+        client.admin().indices().prepareRefresh(definition.getRiverIndexName()).get();
 
-        // API changes since 0.90.0 lastTimestampResponse.exists() replaced by
-        // lastTimestampResponse.isExists()
+        GetResponse lastTimestampResponse = client.prepareGet(definition.getRiverIndexName(), definition.getRiverName(),
+                definition.getMongoOplogNamespace()).get();
+
         if (lastTimestampResponse.isExists()) {
-            // API changes since 0.90.0 lastTimestampResponse.sourceAsMap()
-            // replaced by lastTimestampResponse.getSourceAsMap()
             Map<String, Object> mongodbState = (Map<String, Object>) lastTimestampResponse.getSourceAsMap().get(TYPE);
             if (mongodbState != null) {
                 String lastTimestamp = mongodbState.get(LAST_TIMESTAMP_FIELD).toString();
@@ -453,6 +445,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
      */
     static void setLastTimestamp(final MongoDBRiverDefinition definition, final BSONTimestamp time, final BulkProcessor bulkProcessor) {
         try {
+            if (logger.isDebugEnabled()) {
+                logger.debug("setLastTimestamp [{}] [{}] [{}]", definition.getRiverName(), definition.getMongoOplogNamespace(),
+                        JSON.serialize(time));
+            }
             bulkProcessor.add(indexRequest(definition.getRiverIndexName())
                     .type(definition.getRiverName())
                     .id(definition.getMongoOplogNamespace())
@@ -470,8 +466,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             } else {
                 if (client.admin().indices().prepareTypesExists(definition.getIndexName()).setTypes(definition.getTypeName()).get()
                         .isExists()) {
-                    return client.prepareCount(definition.getIndexName()).setTypes(definition.getTypeName()).execute().actionGet()
-                            .getCount();
+                    return client.prepareCount(definition.getIndexName()).setTypes(definition.getTypeName()).get().getCount();
                 }
             }
         }
