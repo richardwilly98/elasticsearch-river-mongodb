@@ -4,11 +4,12 @@ MongoDB River Plugin for ElasticSearch
 This plugin uses MongoDB as datasource to store data in ElasticSearch. Filtering and transformation are also possible. 
 See the [wiki](https://github.com/richardwilly98/elasticsearch-river-mongodb/wiki) for more details.
 
-In order to install the plugin, simply run: ```bin/plugin --install com.github.richardwilly98.elasticsearch/elasticsearch-river-mongodb/1.7.4```
+In order to install the plugin, simply run: ```bin/plugin --install com.github.richardwilly98.elasticsearch/elasticsearch-river-mongodb/2.0.0```
 
 | MongoDB River Plugin     | ElasticSearch    | MongoDB |
 |--------------------------|------------------|---------|
-| master                   | 0.90.10          | 2.4.8   |
+| master                   | 1.0.0            | 2.4.9   |
+| 2.0.0                    | 1.0.0            | 2.4.9   |
 | 1.7.4                    | 0.90.10          | 2.4.8   |
 | 1.7.3                    | 0.90.7           | 2.4.8   |
 | 1.7.2                    | 0.90.5           | 2.4.8   |
@@ -129,6 +130,10 @@ License
 
 Changelog
 -------
+
+#### 2.0.0
+- Update versions ES 1.0.0, MongoDB 2.4.9, MongoDB driver 2.11.4
+- TODO
 
 #### 1.7.4
 - TODO
