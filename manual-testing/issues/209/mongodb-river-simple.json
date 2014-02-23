@@ -9,6 +9,7 @@
   "type": "mongodb", 
   "index": {
     "type": "mycollec209", 
-    "name": "mydb209"
+    "name": "mydb209",
+    "throttle_size": 50000
   }
 }
