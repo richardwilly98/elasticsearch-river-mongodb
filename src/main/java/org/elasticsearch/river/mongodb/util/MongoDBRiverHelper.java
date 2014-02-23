@@ -18,7 +18,7 @@ public abstract class MongoDBRiverHelper {
     private static final ESLogger logger = Loggers.getLogger(MongoDBRiverHelper.class);
 
     public static Status getRiverStatus(Client client, String riverName) {
-        GetResponse statusResponse = client.prepareGet("_river", riverName, MongoDBRiver.STATUS_ID).execute().actionGet();
+        GetResponse statusResponse = client.prepareGet("_river", riverName, MongoDBRiver.STATUS_ID).get();
         if (!statusResponse.isExists()) {
             return Status.UNKNOWN;
         } else {
@@ -34,7 +34,7 @@ public abstract class MongoDBRiverHelper {
         try {
             xb = jsonBuilder().startObject().startObject(MongoDBRiver.TYPE).field(MongoDBRiver.STATUS_FIELD, status).endObject()
                     .endObject();
-            client.prepareIndex("_river", riverName, MongoDBRiver.STATUS_ID).setSource(xb).execute().actionGet();
+            client.prepareIndex("_river", riverName, MongoDBRiver.STATUS_ID).setSource(xb).get();
         } catch (IOException ioEx) {
             logger.error("setRiverStatus failed for river {}", ioEx, riverName);
         }
