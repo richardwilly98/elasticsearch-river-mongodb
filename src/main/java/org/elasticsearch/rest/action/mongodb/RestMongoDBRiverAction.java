@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.bson.types.BSONTimestamp;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
@@ -27,6 +26,7 @@ import org.elasticsearch.river.RiverSettings;
 import org.elasticsearch.river.mongodb.MongoDBRiver;
 import org.elasticsearch.river.mongodb.MongoDBRiverDefinition;
 import org.elasticsearch.river.mongodb.Status;
+import org.elasticsearch.river.mongodb.Timestamp;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 import org.elasticsearch.search.SearchHit;
 
@@ -157,10 +157,10 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
             RiverSettings riverSettings = new RiverSettings(null, hit.getSource());
             MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName, riverIndexName, riverSettings, null);
 
-            BSONTimestamp ts = MongoDBRiver.getLastTimestamp(client, definition);
+            Timestamp<?> ts = MongoDBRiver.getLastTimestamp(client, definition);
             Long lastTimestamp = null;
             if (ts != null) {
-                lastTimestamp = 1000L * ts.getTime();
+                lastTimestamp = ts.getTime();
             }
             source.put("name", riverName);
             source.put("status", MongoDBRiverHelper.getRiverStatus(client, riverName));

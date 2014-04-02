@@ -9,7 +9,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.bson.types.BSONTimestamp;
 import org.bson.types.BasicBSONList;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
@@ -64,7 +63,7 @@ class Indexer implements Runnable {
         while (context.getStatus() == Status.RUNNING) {
 
             try {
-                BSONTimestamp lastTimestamp = null;
+                Timestamp<?> lastTimestamp = null;
 
                 // 1. Attempt to fill as much of the bulk request as possible
                 QueueEntry entry = context.getStream().take();
@@ -105,7 +104,7 @@ class Indexer implements Runnable {
     }
 
     @SuppressWarnings({ "unchecked" })
-    private BSONTimestamp processBlockingQueue(QueueEntry entry) {
+    private Timestamp<?> processBlockingQueue(QueueEntry entry) {
         Operation operation = entry.getOperation();
         if (entry.getData().get(MongoDBRiver.MONGODB_ID_FIELD) == null
                 && (operation == Operation.INSERT || operation == Operation.UPDATE || operation == Operation.DELETE)) {
@@ -113,7 +112,7 @@ class Indexer implements Runnable {
             return null;
         }
 
-        BSONTimestamp lastTimestamp = entry.getOplogTimestamp();
+        Timestamp<?> lastTimestamp = entry.getOplogTimestamp();
         String type;
         if (definition.isImportAllCollections()) {
             type = entry.getCollection();
@@ -288,9 +287,9 @@ class Indexer implements Runnable {
     }
 
     @SuppressWarnings("unchecked")
-    private BSONTimestamp applyAdvancedTransformation(QueueEntry entry, String type) {
+    private Timestamp<?> applyAdvancedTransformation(QueueEntry entry, String type) {
 
-        BSONTimestamp lastTimestamp = entry.getOplogTimestamp();
+        Timestamp<?> lastTimestamp = entry.getOplogTimestamp();
         Operation operation = entry.getOperation();
         String objectId = "";
         if (entry.getData().get(MongoDBRiver.MONGODB_ID_FIELD) != null) {
