@@ -100,6 +100,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     public final static String OPLOG_INSERT_OPERATION = "i";
     public final static String OPLOG_DELETE_OPERATION = "d";
     public final static String OPLOG_COMMAND_OPERATION = "c";
+    public final static String OPLOG_NOOP_OPERATION = "n";
     public final static String OPLOG_DROP_COMMAND_OPERATION = "drop";
     public final static String OPLOG_DROP_DATABASE_COMMAND_OPERATION = "dropDatabase";
     public final static String OPLOG_RENAME_COLLECTION_COMMAND_OPERATION = "renameCollection";

@@ -487,6 +487,10 @@ class Slurper implements Runnable {
     }
 
     private boolean isValidOplogEntry(final DBObject entry, final Timestamp<?> startTimestamp) {
+        if (MongoDBRiver.OPLOG_NOOP_OPERATION.equals(entry.get(MongoDBRiver.OPLOG_OPERATION))) {
+            logger.debug("[No-op Oplog Entry] - can be ignored. {}", entry);
+            return false;
+        }
         String namespace = (String) entry.get(MongoDBRiver.OPLOG_NAMESPACE);
         // Initial support for sharded collection -
         // https://jira.mongodb.org/browse/SERVER-4333
