@@ -106,6 +106,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     public final static String OPLOG_TO = "to";
     public final static String OPLOG_TIMESTAMP = "ts";
     public final static String OPLOG_FROM_MIGRATE = "fromMigrate";
+    public static final String OPLOG_OPS = "ops";
+    public static final String OPLOG_CREATE_COMMAND = "create";
     public final static String GRIDFS_FILES_SUFFIX = ".files";
     public final static String GRIDFS_CHUNKS_SUFFIX = ".chunks";
     public final static String INSERTION_ORDER_KEY = "$natural";

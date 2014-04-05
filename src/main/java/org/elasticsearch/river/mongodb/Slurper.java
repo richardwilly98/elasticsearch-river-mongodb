@@ -348,6 +348,11 @@ class Slurper implements Runnable {
     }
 
     private Timestamp<?> processOplogEntry(final DBObject entry, final Timestamp<?> startTimestamp) throws InterruptedException {
+        // To support transactions, TokuMX wraps one or more operations in a single oplog entry, in a list.
+        // As long as clients are not transaction-aware, we can pretty safely assume there will only be one operation in the list.
+        // Supporting genuine multi-operation transactions will require a bit more logic here.
+        flattenOps(entry);
+
         if (!isValidOplogEntry(entry, startTimestamp)) {
             return startTimestamp;
         }
@@ -433,6 +438,27 @@ class Slurper implements Runnable {
             }
         }
         return oplogTimestamp;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void flattenOps(DBObject entry) {
+        Object ops = entry.get(MongoDBRiver.OPLOG_OPS);
+        if (ops != null) {
+            try {
+                for (DBObject op : (List<DBObject>) ops) {
+                    String operation = (String) op.get(MongoDBRiver.OPLOG_OPERATION);
+                    if (operation.equals(MongoDBRiver.OPLOG_COMMAND_OPERATION)) {
+                        DBObject object = (DBObject) op.get(MongoDBRiver.OPLOG_OBJECT);
+                        if (object.containsField(MongoDBRiver.OPLOG_CREATE_COMMAND)) {
+                            continue;
+                        }
+                    }
+                    entry.putAll(op);
+                }
+            } catch (ClassCastException e) {
+                logger.error(e.toString(), e);
+            }
+        }
     }
 
     private void processAdminCommandOplogEntry(final DBObject entry, final Timestamp<?> startTimestamp) throws InterruptedException {
