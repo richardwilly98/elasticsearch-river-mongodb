@@ -55,6 +55,7 @@ class Slurper implements Runnable {
     private final String gridfsOplogNamespace;
     private final String cmdOplogNamespace;
     private final ImmutableList<String> oplogOperations = ImmutableList.of(MongoDBRiver.OPLOG_DELETE_OPERATION,
+            MongoDBRiver.OPLOG_UPDATE_ROW_OPERATION, // from TokuMX
             MongoDBRiver.OPLOG_UPDATE_OPERATION, MongoDBRiver.OPLOG_INSERT_OPERATION, MongoDBRiver.OPLOG_COMMAND_OPERATION);
     private final Client client;
     private Mongo mongo;
