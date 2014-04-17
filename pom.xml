@@ -213,7 +213,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.0</version>
+				<version>3.1</version>
 				<configuration>
 					<compilerId>groovy-eclipse-compiler</compilerId>
 					<source>1.6</source>
@@ -290,12 +290,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>2.15</version>
-				<configuration>
-					<includes>
-						<include>**/*Test.java</include>
-					</includes>
-				</configuration>
+				<version>2.17</version>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
