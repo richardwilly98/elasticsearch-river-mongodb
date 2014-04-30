@@ -90,18 +90,16 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAbstract {
             getNode().client().admin().indices().prepareCreate(INDEX_NAME).execute().actionGet();
 
             getNode().client().admin().indices().preparePutMapping(INDEX_NAME).setType(AUTHOR_TYPE)
-                    .setSource(getJsonSettings(AUTHORS_MAPPING_JSON)).execute().actionGet();
+                    .setSource(getJsonSettings(AUTHORS_MAPPING_JSON, 0)).execute().actionGet();
 
             getNode().client().admin().indices().preparePutMapping(INDEX_NAME).setType(BOOK_TYPE)
-                    .setSource(getJsonSettings(BOOKS_MAPPING_JSON)).execute().actionGet();
+                    .setSource(getJsonSettings(BOOKS_MAPPING_JSON, 0)).execute().actionGet();
 
-            super.createRiver(TEST_MONGODB_RIVER_SIMPLE_WITH_TYPE_JSON, AUTHORS_RIVER_NAME, (Object) String.valueOf(getMongoPort1()),
-                    (Object) String.valueOf(getMongoPort2()), (Object) String.valueOf(getMongoPort3()), (Object) DATABASE_NAME,
+            super.createRiver(TEST_MONGODB_RIVER_SIMPLE_WITH_TYPE_JSON, AUTHORS_RIVER_NAME, 3, (Object) DATABASE_NAME,
                     (Object) AUTHORS_COLLECTION, (Object) INDEX_NAME, (Object) AUTHOR_TYPE);
 
             String script = "if(ctx.document._parentId) { ctx._parent = ctx.document._parentId; delete ctx.document._parentId;}";
-            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, BOOKS_RIVER_NAME, (Object) String.valueOf(getMongoPort1()),
-                    (Object) String.valueOf(getMongoPort2()), (Object) String.valueOf(getMongoPort3()), (Object) DATABASE_NAME,
+            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, BOOKS_RIVER_NAME, 3, (Object) DATABASE_NAME,
                     (Object) BOOKS_COLLECTION, (Object) "js", script, (Object) INDEX_NAME, (Object) BOOK_TYPE);
         } catch (Throwable t) {
             logger.error("createIndicesAndMappings failed.", t);
@@ -156,7 +154,7 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAbstract {
             logger.debug("TotalHits: {}", totalHits);
             assertThat(totalHits, equalTo(1l));
 
-            sr = getNode().client().prepareSearch(INDEX_NAME).setTypes(AUTHOR_TYPE).setSource(getJsonSettings(QUERY_BOOKS_JSON)).execute()
+            sr = getNode().client().prepareSearch(INDEX_NAME).setTypes(AUTHOR_TYPE).setSource(getJsonSettings(QUERY_BOOKS_JSON, 0)).execute()
                     .actionGet();
             logger.debug("SearchResponse {}", sr.toString());
             totalHits = sr.getHits().getTotalHits();

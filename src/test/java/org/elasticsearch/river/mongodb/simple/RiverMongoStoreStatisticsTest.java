@@ -99,7 +99,7 @@ public class RiverMongoStoreStatisticsTest extends RiverMongoDBTestAbstract {
 
     private void createRiver() {
         try {
-            super.createRiver(TEST_MONGODB_RIVER_STORE_STATISTICS_JSON, getRiver(), (Object) String.valueOf(getMongoPort1()),
+            super.createRiver(TEST_MONGODB_RIVER_STORE_STATISTICS_JSON, getRiver(), 1,
                     (Object) storeStatsIndex, (Object) storeStatsType, (Object) getDatabase(), (Object) getCollection(),
                     (Object) getIndex(), (Object) getDatabase());
 

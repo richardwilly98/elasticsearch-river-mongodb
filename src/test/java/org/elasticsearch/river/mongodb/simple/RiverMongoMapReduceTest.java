@@ -55,8 +55,7 @@ public class RiverMongoMapReduceTest extends RiverMongoDBTestAbstract {
             Assert.assertNotNull(mongoCollection);
             mongoCollection2 = mongoDB.createCollection("collection-" + System.currentTimeMillis(), null);
             Assert.assertNotNull(mongoCollection2);
-            createRiver(TEST_MONGODB_RIVER_IMPORT_ALL_COLLECTION_JSON, getRiver(), String.valueOf(getMongoPort1()),
-                    String.valueOf(getMongoPort2()), String.valueOf(getMongoPort3()), getDatabase(), getIndex());
+            createRiver(TEST_MONGODB_RIVER_IMPORT_ALL_COLLECTION_JSON, getRiver(), 3, getDatabase(), getIndex());
         } catch (Throwable t) {
             logger.error("createDatabase failed.", t);
         }

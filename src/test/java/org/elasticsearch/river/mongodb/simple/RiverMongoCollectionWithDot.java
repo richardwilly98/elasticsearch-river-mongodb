@@ -58,8 +58,7 @@ public class RiverMongoCollectionWithDot extends RiverMongoDBTestAbstract {
     }
 
     private void createRiver(String database, String collection) throws Exception {
-        super.createRiver(TEST_MONGODB_RIVER_SIMPLE_JSON, getRiver(), String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
-                String.valueOf(getMongoPort3()), database, collection, collection);
+        super.createRiver(TEST_MONGODB_RIVER_SIMPLE_JSON, getRiver(), 3, database, collection, collection);
     }
 
     private void cleanUp() {

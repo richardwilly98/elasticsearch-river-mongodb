@@ -83,14 +83,12 @@ public class RiverMongoTwoGroovyScriptTest extends RiverMongoDBTestAbstract {
         try {
             logger.debug("Create river {}", river1);
             String script = "ctx.ignore = true";
-            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, river1, String.valueOf(getMongoPort1()),
-                    String.valueOf(getMongoPort2()), String.valueOf(getMongoPort3()), getDatabase(), collection1, GROOVY_SCRIPT_TYPE,
+            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, river1, 3, getDatabase(), collection1, GROOVY_SCRIPT_TYPE,
                     script, index1, getDatabase());
 
             logger.debug("Create river {}", river2);
             script = "if (ctx.document.to_be_deleted) { ctx.operation = 'd' }";
-            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, river2, String.valueOf(getMongoPort1()),
-                    String.valueOf(getMongoPort2()), String.valueOf(getMongoPort3()), getDatabase(), collection2, GROOVY_SCRIPT_TYPE,
+            super.createRiver(TEST_MONGODB_RIVER_WITH_SCRIPT_JSON, river2, 3, getDatabase(), collection2, GROOVY_SCRIPT_TYPE,
                     script, index2, getDatabase());
 
             String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);

@@ -78,8 +78,7 @@ public class RiverMongoAdvancedTransformationGroovyScriptTest extends RiverMongo
             logger.debug("Create river {}", river);
             String script = "ctx.documents << [data: [id: 12345, name: '99'], operation: 'i'] ";
             script += "<< [data: [id: 6666, name: 'document-ignored'], ignore: true] ";
-            super.createRiver(TEST_MONGODB_RIVER_WITH_ADVANCED_TRANSFORMATION_JSON, river, String.valueOf(getMongoPort1()),
-                    String.valueOf(getMongoPort2()), String.valueOf(getMongoPort3()), (Object) "[]", getDatabase(), getCollection(),
+            super.createRiver(TEST_MONGODB_RIVER_WITH_ADVANCED_TRANSFORMATION_JSON, river, 3, (Object) "[]", getDatabase(), getCollection(),
                     GROOVY_SCRIPT_TYPE, script, index, getDatabase());
 
             String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);

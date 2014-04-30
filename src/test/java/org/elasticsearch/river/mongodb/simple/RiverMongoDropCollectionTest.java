@@ -53,8 +53,7 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAbstract {
         try {
             mongoDB = getMongo().getDB(getDatabase());
             mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
-            super.createRiver(TEST_SIMPLE_MONGODB_RIVER_DROP_COLLECTION_JSON, getRiver(), (Object) String.valueOf(getMongoPort1()),
-                    (Object) String.valueOf(getMongoPort2()), (Object) String.valueOf(getMongoPort3()), (Object) dropCollectionOption,
+            super.createRiver(TEST_SIMPLE_MONGODB_RIVER_DROP_COLLECTION_JSON, getRiver(), 3, (Object) dropCollectionOption,
                     (Object) getDatabase(), (Object) getCollection(), (Object) getIndex(), (Object) getDatabase());
             logger.info("Start createCollection");
             mongoCollection = mongoDB.createCollection(getCollection(), null);

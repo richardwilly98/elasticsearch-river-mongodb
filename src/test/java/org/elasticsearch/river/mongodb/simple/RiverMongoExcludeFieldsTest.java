@@ -52,8 +52,7 @@ public class RiverMongoExcludeFieldsTest extends RiverMongoDBTestAbstract {
         try {
             mongoDB = getMongo().getDB(getDatabase());
             mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
-            super.createRiver(TEST_MONGODB_RIVER_EXCLUDE_FIELDS_JSON, getRiver(), (Object) String.valueOf(getMongoPort1()),
-                    (Object) String.valueOf(getMongoPort2()), (Object) String.valueOf(getMongoPort3()),
+            super.createRiver(TEST_MONGODB_RIVER_EXCLUDE_FIELDS_JSON, getRiver(), 3,
                     (Object) "[\"exclude-field-1\", \"exclude-field-2\"]", (Object) getDatabase(), (Object) getCollection(),
                     (Object) getIndex(), (Object) getDatabase());
             logger.info("Start createCollection");

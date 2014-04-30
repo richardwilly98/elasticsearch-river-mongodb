@@ -113,8 +113,7 @@ public class RiverMongoCollectionFilterTest extends RiverMongoDBTestAbstract {
     }
 
     private void createRiver(Object filter) throws Exception {
-        super.createRiver(TEST_SIMPLE_MONGODB_RIVER_COLLECTION_FILTER_JSON, getRiver(), (Object) String.valueOf(getMongoPort1()),
-                (Object) String.valueOf(getMongoPort2()), (Object) String.valueOf(getMongoPort3()), (Object) getDatabase(),
+        super.createRiver(TEST_SIMPLE_MONGODB_RIVER_COLLECTION_FILTER_JSON, getRiver(), 3, (Object) getDatabase(),
                 (Object) getCollection(), filter, (Object) getIndex(), (Object) getDatabase());
     }
 

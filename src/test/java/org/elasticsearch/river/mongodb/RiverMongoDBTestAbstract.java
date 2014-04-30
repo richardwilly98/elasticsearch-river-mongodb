@@ -18,6 +18,7 @@
  */
 package org.elasticsearch.river.mongodb;
 
+import static com.google.common.collect.ObjectArrays.concat;
 import static org.elasticsearch.client.Requests.clusterHealthRequest;
 import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath;
 import static org.elasticsearch.common.settings.ImmutableSettings.settingsBuilder;
@@ -28,6 +29,7 @@ import static org.hamcrest.Matchers.equalTo;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -58,6 +60,7 @@ import org.testng.Assert;
 import org.testng.annotations.AfterSuite;
 import org.testng.annotations.BeforeSuite;
 
+import com.google.common.collect.Collections2;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.CommandResult;
@@ -301,13 +304,21 @@ public abstract class RiverMongoDBTestAbstract {
         }
     }
 
-    protected String getJsonSettings(String jsonDefinition, Object... args) throws Exception {
+    protected String getJsonSettings(String jsonDefinition, int numPortArgs, Object... additionalArgs) throws Exception {
         logger.debug("Get river setting");
         String setting = copyToStringFromClasspath(jsonDefinition);
-        if (args != null) {
-            setting = String.format(setting, args);
+        switch(numPortArgs) {
+        case 0:
+            return additionalArgs == null ? setting : String.format(setting, additionalArgs);
+        case 1:
+            return String.format(setting, concat(String.valueOf(getMongoPort1()), additionalArgs));
+        case 3:
+            List<String> ports = Arrays.asList(
+                    String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()), String.valueOf(getMongoPort3()));
+            return String.format(setting, concat(ports.toArray(), additionalArgs, Object.class));
+        default:
+            throw new IllegalArgumentException("numPortArgs must be one of { 0, 1, 3 }");
         }
-        return setting;
     }
 
     protected void refreshIndex() {
@@ -329,9 +340,10 @@ public abstract class RiverMongoDBTestAbstract {
 
     }
 
-    protected void createRiver(String jsonDefinition, String river, Object... args) throws Exception {
+    /** Prepend MongoDB ports as first numPortArgs to format jsonDefinition with. */
+    protected void createRiver(String jsonDefinition, String river, int numPortArgs, Object... args) throws Exception {
         logger.info("Create river [{}]", river);
-        String settings = getJsonSettings(jsonDefinition, args);
+        String settings = getJsonSettings(jsonDefinition, numPortArgs, args);
         logger.info("River setting [{}]", settings);
         node.client().prepareIndex("_river", river, "_meta").setSource(settings).execute().actionGet();
         waitForGreenStatus();
@@ -353,17 +365,12 @@ public abstract class RiverMongoDBTestAbstract {
         }
     }
 
-    protected void createRiver(String jsonDefinition, Object... args) throws Exception {
-        createRiver(jsonDefinition, river, args);
-    }
-
     protected void createRiver(String jsonDefinition) throws Exception {
         createRiver(jsonDefinition, database, collection, index);
     }
 
     protected void createRiver(String jsonDefinition, String database, String collection, String index) throws Exception {
-        createRiver(jsonDefinition, river, String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
-                String.valueOf(getMongoPort3()), database, collection, index);
+        createRiver(jsonDefinition, river, 3, database, collection, index);
     }
 
     protected void deleteIndex(String name) {
@@ -442,8 +449,7 @@ public abstract class RiverMongoDBTestAbstract {
             RiverName riverName = new RiverName("mongodb", river);
             // InputStream in =
             // getClass().getResourceAsStream("/org/elasticsearch/river/mongodb/test-mongodb-river-simple-definition.json");
-            String settings = getJsonSettings(jsonDefinition, String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
-                    String.valueOf(getMongoPort3()), database, collection, index);
+            String settings = getJsonSettings(jsonDefinition, 3, database, collection, index);
             InputStream in = new ByteArrayInputStream(settings.getBytes());
             RiverSettings riverSettings = new RiverSettings(ImmutableSettings.settingsBuilder().build(), XContentHelper.convertToMap(
                     Streams.copyToByteArray(in), false).v2());
@@ -502,15 +508,15 @@ public abstract class RiverMongoDBTestAbstract {
         return node.client().admin().indices();
     }
 
-    protected static int getMongoPort1() {
+    private static int getMongoPort1() {
         return mongoPort1;
     }
 
-    protected static int getMongoPort2() {
+    private static int getMongoPort2() {
         return mongoPort2;
     }
 
-    protected static int getMongoPort3() {
+    private static int getMongoPort3() {
         return mongoPort3;
     }
 

@@ -75,8 +75,7 @@ public class RiverMongoInitialTimestampTest extends RiverMongoDBTestAbstract {
         String index = "testinitialtimestampgroovyindex-" + System.currentTimeMillis();
         try {
             String script = "import groovy.time.TimeCategory; use(TimeCategory){def date = new Date() + 5.second; date.time;}";
-            super.createRiver(TEST_SIMPLE_MONGODB_RIVER_INITIAL_TIMESTAMP_JSON, river, (Object) String.valueOf(getMongoPort1()),
-                    (Object) String.valueOf(getMongoPort2()), (Object) String.valueOf(getMongoPort3()), (Object) GROOVY_SCRIPT_TYPE,
+            super.createRiver(TEST_SIMPLE_MONGODB_RIVER_INITIAL_TIMESTAMP_JSON, river, 3, (Object) GROOVY_SCRIPT_TYPE,
                     (Object) script, (Object) getDatabase(), (Object) getCollection(), (Object) index, (Object) getDatabase());
 
             String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
@@ -129,8 +128,7 @@ public class RiverMongoInitialTimestampTest extends RiverMongoDBTestAbstract {
         String index = "testinitialtimestampjavascriptindex-" + System.currentTimeMillis();
         try {
             String script = "var date = new Date(); date.setSeconds(date.getSeconds() + 5); new java.lang.Long(date.getTime());";
-            super.createRiver(TEST_SIMPLE_MONGODB_RIVER_INITIAL_TIMESTAMP_JSON, river, (Object) String.valueOf(getMongoPort1()),
-                    (Object) String.valueOf(getMongoPort2()), (Object) String.valueOf(getMongoPort3()), (Object) JAVASCRIPT_SCRIPT_TYPE,
+            super.createRiver(TEST_SIMPLE_MONGODB_RIVER_INITIAL_TIMESTAMP_JSON, river, 3, (Object) JAVASCRIPT_SCRIPT_TYPE,
                     (Object) script, (Object) getDatabase(), (Object) getCollection(), (Object) index, (Object) getDatabase());
 
             String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);

@@ -37,8 +37,7 @@ class RiverMongoDBGroovyTest extends RiverMongoDBTestAbstract {
 		try {
 			// Create river
 			createRiver(
-					"/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river.json", river,
-					mongoPort1.toString(), mongoPort2.toString(), mongoPort3.toString(),
+					"/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river.json", river, 3,
 					database, collection, index
 					)
 

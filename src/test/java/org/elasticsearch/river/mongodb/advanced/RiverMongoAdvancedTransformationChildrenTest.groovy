@@ -63,12 +63,11 @@ class RiverMongoAdvancedTransformationChildrenTest extends RiverMongoDBTestAbstr
 					.preparePutMapping(index)
 					.setType("tweet")
 					.setSource(
-					getJsonSettings("/org/elasticsearch/river/mongodb/advanced/tweets-mapping.json"))
+					getJsonSettings("/org/elasticsearch/river/mongodb/advanced/tweets-mapping.json", 0))
 					.execute().actionGet()
 
 			createRiver(
-					RiverMongoAdvancedTransformationGroovyScriptTest.TEST_MONGODB_RIVER_WITH_ADVANCED_TRANSFORMATION_JSON, river,
-					mongoPort1.toString(), mongoPort2.toString(), mongoPort3.toString(),
+					RiverMongoAdvancedTransformationGroovyScriptTest.TEST_MONGODB_RIVER_WITH_ADVANCED_TRANSFORMATION_JSON, river, 3,
 					"[\"author\"]",
 					database, collection, RiverMongoAdvancedTransformationGroovyScriptTest.GROOVY_SCRIPT_TYPE, GROOVY_SCRIPT, index, database
 					)
