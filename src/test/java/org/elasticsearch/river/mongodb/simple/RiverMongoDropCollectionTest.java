@@ -206,7 +206,7 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAbstract {
     }
 
     private boolean databaseExists(String name) {
-        for (String databaseName : mongo.getDatabaseNames()) {
+        for (String databaseName : getMongo().getDatabaseNames()) {
             if (databaseName.equals(name)) {
                 return true;
             }
