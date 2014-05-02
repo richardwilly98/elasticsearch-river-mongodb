@@ -53,17 +53,20 @@ public class ArtifactStore2 implements IArtifactStore {
   private IDownloadConfig _downloadConfig;
   private IDirectory _tempDirFactory;
   private ITempNaming _executableNaming;
+
+  private IDownloader _downloader;
   
-  public ArtifactStore2(IDownloadConfig downloadConfig,IDirectory tempDirFactory,ITempNaming executableNaming) {
+  public ArtifactStore2(IDownloadConfig downloadConfig,IDirectory tempDirFactory,ITempNaming executableNaming,IDownloader downloader) {
     _downloadConfig=downloadConfig;
     _tempDirFactory = tempDirFactory;
     _executableNaming = executableNaming;
+    _downloader = downloader;
   }
   
   @Override
   public boolean checkDistribution(Distribution distribution) throws IOException {
     if (!LocalArtifactStore.checkArtifact(_downloadConfig, distribution)) {
-      return LocalArtifactStore.store(_downloadConfig, distribution, Downloader.download(_downloadConfig, distribution));
+      return LocalArtifactStore.store(_downloadConfig, distribution, _downloader.download(_downloadConfig, distribution));
     }
     return true;
   }

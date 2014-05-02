@@ -40,6 +40,8 @@ public class ArtifactStore2Builder extends AbstractBuilder<IArtifactStore> {
   private static final TypedProperty<IDownloadConfig> DOWNLOAD_CONFIG = TypedProperty.with("DownloadConfig",IDownloadConfig.class);
   private static final TypedProperty<Boolean> USE_CACHE = TypedProperty.with("UseCache",Boolean.class);
   private static final TypedProperty<ILibraryStore> LIBRARIES = TypedProperty.with("Libraries", ILibraryStore.class);
+
+  private static final TypedProperty<IDownloader> DOWNLOADER = TypedProperty.with("Downloader",IDownloader.class);
   
   public ArtifactStore2Builder download(AbstractBuilder<IDownloadConfig> downloadConfigBuilder) {
     return download(downloadConfigBuilder.build());
@@ -97,6 +99,15 @@ public class ArtifactStore2Builder extends AbstractBuilder<IArtifactStore> {
   protected IProperty<ILibraryStore> libraries() {
     return property(LIBRARIES);
   }
+  
+  public ArtifactStore2Builder downloader(IDownloader downloader) {
+    set(DOWNLOADER, downloader);
+    return this;
+  }
+
+  protected IProperty<IDownloader> downloader() {
+    return property(DOWNLOADER);
+  }
 
   
   @Override
@@ -105,7 +116,7 @@ public class ArtifactStore2Builder extends AbstractBuilder<IArtifactStore> {
     
     logger.fine("Build ArtifactStore(useCache:"+useCache+")");
     
-    IArtifactStore artifactStore = new ArtifactStore2(get(DOWNLOAD_CONFIG),get(TEMP_DIR_FACTORY), get(EXECUTABLE_NAMING));
+    IArtifactStore artifactStore = new ArtifactStore2(get(DOWNLOAD_CONFIG),get(TEMP_DIR_FACTORY), get(EXECUTABLE_NAMING), get(DOWNLOADER));
     if (useCache) {
       artifactStore=new CachingArtifactStore(artifactStore);
     }
