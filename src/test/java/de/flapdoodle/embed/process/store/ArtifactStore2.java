@@ -47,14 +47,14 @@ import de.flapdoodle.embed.process.io.directories.IDirectory;
 import de.flapdoodle.embed.process.io.file.Files;
 
 
-public class ArtifactStore implements IArtifactStore {
+public class ArtifactStore2 implements IArtifactStore {
   private static Logger logger = Logger.getLogger(ArtifactStore.class.getName());
 
   private IDownloadConfig _downloadConfig;
   private IDirectory _tempDirFactory;
   private ITempNaming _executableNaming;
   
-  public ArtifactStore(IDownloadConfig downloadConfig,IDirectory tempDirFactory,ITempNaming executableNaming) {
+  public ArtifactStore2(IDownloadConfig downloadConfig,IDirectory tempDirFactory,ITempNaming executableNaming) {
     _downloadConfig=downloadConfig;
     _tempDirFactory = tempDirFactory;
     _executableNaming = executableNaming;

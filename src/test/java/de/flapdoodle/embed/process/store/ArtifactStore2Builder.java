@@ -32,8 +32,8 @@ import de.flapdoodle.embed.process.distribution.Platform;
 import de.flapdoodle.embed.process.extract.ITempNaming;
 import de.flapdoodle.embed.process.io.directories.IDirectory;
 
-public class ArtifactStoreBuilder extends AbstractBuilder<IArtifactStore> {
-  private static Logger logger = Logger.getLogger(ArtifactStoreBuilder.class.getName());
+public class ArtifactStore2Builder extends AbstractBuilder<IArtifactStore> {
+  private static Logger logger = Logger.getLogger(ArtifactStore2Builder.class.getName());
 
   private static final TypedProperty<ITempNaming> EXECUTABLE_NAMING = TypedProperty.with("ExecutableNaming",ITempNaming.class);
   private static final TypedProperty<IDirectory> TEMP_DIR_FACTORY = TypedProperty.with("TempDir",IDirectory.class);
@@ -41,11 +41,11 @@ public class ArtifactStoreBuilder extends AbstractBuilder<IArtifactStore> {
   private static final TypedProperty<Boolean> USE_CACHE = TypedProperty.with("UseCache",Boolean.class);
   private static final TypedProperty<ILibraryStore> LIBRARIES = TypedProperty.with("Libraries", ILibraryStore.class);
   
-  public ArtifactStoreBuilder download(AbstractBuilder<IDownloadConfig> downloadConfigBuilder) {
+  public ArtifactStore2Builder download(AbstractBuilder<IDownloadConfig> downloadConfigBuilder) {
     return download(downloadConfigBuilder.build());
   }
   
-  public ArtifactStoreBuilder download(IDownloadConfig downloadConfig) {
+  public ArtifactStore2Builder download(IDownloadConfig downloadConfig) {
     set(DOWNLOAD_CONFIG, downloadConfig);
     return this;
   }
@@ -54,7 +54,7 @@ public class ArtifactStoreBuilder extends AbstractBuilder<IArtifactStore> {
     return property(DOWNLOAD_CONFIG);
   }
 
-  public ArtifactStoreBuilder tempDir(IDirectory tempDirFactory) {
+  public ArtifactStore2Builder tempDir(IDirectory tempDirFactory) {
     set(TEMP_DIR_FACTORY, tempDirFactory);
     return this;
   }
@@ -63,7 +63,7 @@ public class ArtifactStoreBuilder extends AbstractBuilder<IArtifactStore> {
     return property(TEMP_DIR_FACTORY);
   }
 
-  public ArtifactStoreBuilder executableNaming(ITempNaming execNaming) {
+  public ArtifactStore2Builder executableNaming(ITempNaming execNaming) {
     set(EXECUTABLE_NAMING,execNaming);
     return this;
   }
@@ -72,7 +72,7 @@ public class ArtifactStoreBuilder extends AbstractBuilder<IArtifactStore> {
     return property(EXECUTABLE_NAMING);
   }
 
-  public ArtifactStoreBuilder useCache(boolean cache) {
+  public ArtifactStore2Builder useCache(boolean cache) {
     set(USE_CACHE, cache);
     return this;
   }
@@ -82,14 +82,14 @@ public class ArtifactStoreBuilder extends AbstractBuilder<IArtifactStore> {
   }
   
   /**
-   * @see ArtifactStoreBuilder#useCache(boolean)
+   * @see ArtifactStore2Builder#useCache(boolean)
    */
   @Deprecated
-  public ArtifactStoreBuilder cache(boolean cache) {
+  public ArtifactStore2Builder cache(boolean cache) {
     return useCache(cache);
   }
   
-  public ArtifactStoreBuilder libraries(ILibraryStore libraries) {
+  public ArtifactStore2Builder libraries(ILibraryStore libraries) {
     set(LIBRARIES, libraries);
     return this;
   }
@@ -105,7 +105,7 @@ public class ArtifactStoreBuilder extends AbstractBuilder<IArtifactStore> {
     
     logger.fine("Build ArtifactStore(useCache:"+useCache+")");
     
-    IArtifactStore artifactStore = new ArtifactStore(get(DOWNLOAD_CONFIG),get(TEMP_DIR_FACTORY), get(EXECUTABLE_NAMING));
+    IArtifactStore artifactStore = new ArtifactStore2(get(DOWNLOAD_CONFIG),get(TEMP_DIR_FACTORY), get(EXECUTABLE_NAMING));
     if (useCache) {
       artifactStore=new CachingArtifactStore(artifactStore);
     }
