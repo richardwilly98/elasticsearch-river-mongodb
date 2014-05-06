@@ -56,6 +56,7 @@ import org.elasticsearch.plugins.PluginManager.OutputMode;
 import org.elasticsearch.river.RiverIndexName;
 import org.elasticsearch.river.RiverName;
 import org.elasticsearch.river.RiverSettings;
+import org.elasticsearch.river.mongodb.embed.TokuMXStarter;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 import org.elasticsearch.script.ScriptService;
 import org.testng.Assert;
@@ -88,6 +89,7 @@ import de.flapdoodle.embed.mongo.config.Storage;
 import de.flapdoodle.embed.mongo.distribution.Versions;
 import de.flapdoodle.embed.process.distribution.GenericVersion;
 import de.flapdoodle.embed.process.runtime.Network;
+import de.flapdoodle.embed.process.runtime.Starter;
 
 public abstract class RiverMongoDBTestAbstract {
 
@@ -116,14 +118,16 @@ public abstract class RiverMongoDBTestAbstract {
     }
 
     public static enum ExecutableType {
-        VANILLA("mongodb", true), /* TOKUMX("tokumx", false) */;
+        VANILLA("mongodb", true, MongodStarter.getDefaultInstance()), TOKUMX("tokumx", false, TokuMXStarter.getDefaultInstance());
 
         public final String configKey;
         public final boolean supportsGridFS;
+        public final Starter<IMongodConfig, MongodExecutable, MongodProcess> starter;
 
-        ExecutableType(String configKey, boolean supportsGridFS) {
+        ExecutableType(String configKey, boolean supportsGridFS, Starter<IMongodConfig, MongodExecutable, MongodProcess> mongodStarter) {
             this.configKey = configKey;
             this.supportsGridFS = supportsGridFS;
+            this.starter = mongodStarter;
         }
     }
 
@@ -212,13 +216,13 @@ public abstract class RiverMongoDBTestAbstract {
     }
 
     private void initMongoInstances() throws Exception {
-        logger.debug("*** initMongoInstances ***");
         for (ExecutableType type : ExecutableType.values()) {
             initMongoInstances(type);
         }
     }
 
     private void initMongoInstances(ExecutableType type) throws Exception {
+        logger.debug("*** initMongoInstances(" + type + ") ***");
         CommandResult cr;
         Settings rsSettings = settings.getByPrefix(type.configKey + '.');
         int[] ports;
@@ -230,7 +234,6 @@ public abstract class RiverMongoDBTestAbstract {
         }
         String replicaSetName = "es-test-" + type.configKey;
         // Create 3 mongod processes
-        MongodStarter starter = MongodStarter.getDefaultInstance();
         ImmutableList.Builder<MongoReplicaSet.Member> builder = ImmutableList.builder();
         for (int i = 1; i <= 3; ++i) {
             Storage storage = new Storage("target/" + replicaSetName + '/' + i, replicaSetName, 20);
@@ -238,7 +241,7 @@ public abstract class RiverMongoDBTestAbstract {
             member.config = new MongodConfigBuilder().version(Versions.withFeatures(new GenericVersion(rsSettings.get("version"))))
                 .net(new de.flapdoodle.embed.mongo.config.Net(ports[i - 1], Network.localhostIsIPv6())).replication(storage).build();
             logger.trace("replSetName in config: {}", member.config.replication().getReplSetName());
-            member.executable = starter.prepare(member.config);
+            member.executable = type.starter.prepare(member.config);
             member.process = member.executable.start();
             member.address = new ServerAddress(Network.getLocalHost().getHostName(), member.config.net().getPort());
             logger.debug("Server #" + i + ": {}", member.address);
