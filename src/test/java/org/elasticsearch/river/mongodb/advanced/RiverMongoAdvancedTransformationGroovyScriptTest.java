@@ -31,6 +31,7 @@ import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
 import com.mongodb.DB;
@@ -47,6 +48,11 @@ public class RiverMongoAdvancedTransformationGroovyScriptTest extends RiverMongo
     public static final String TEST_MONGODB_RIVER_WITH_ADVANCED_TRANSFORMATION_JSON = "/org/elasticsearch/river/mongodb/advanced/test-mongodb-river-with-advanced-transformation.json";
     private DB mongoDB;
     private DBCollection mongoCollection;
+
+    @Factory(dataProvider = "allMongoExecutableTypes")
+    public RiverMongoAdvancedTransformationGroovyScriptTest(ExecutableType type) {
+        super(type);
+    }
 
     @BeforeClass
     public void createDatabase() {

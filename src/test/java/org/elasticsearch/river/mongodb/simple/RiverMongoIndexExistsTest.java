@@ -29,6 +29,7 @@ import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.elasticsearch.river.mongodb.Status;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 import org.testng.Assert;
+import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
 import com.google.common.collect.ImmutableMap;
@@ -44,6 +45,11 @@ public class RiverMongoIndexExistsTest extends RiverMongoDBTestAbstract {
 
     private DB mongoDB;
     private DBCollection mongoCollection;
+
+    @Factory(dataProvider = "allMongoExecutableTypes")
+    public RiverMongoIndexExistsTest(ExecutableType type) {
+        super(type);
+    }
 
     @Test
     public void dontDoInitialImportIfCollectionExists() throws Throwable {

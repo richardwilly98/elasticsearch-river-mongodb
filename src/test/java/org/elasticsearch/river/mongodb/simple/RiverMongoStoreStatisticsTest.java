@@ -29,6 +29,7 @@ import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
+import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
 import com.google.common.collect.ImmutableMap;
@@ -45,6 +46,11 @@ public class RiverMongoStoreStatisticsTest extends RiverMongoDBTestAbstract {
     private DBCollection mongoCollection;
     private final String storeStatsIndex = "stats-index-" + System.currentTimeMillis();
     private final String storeStatsType = "stats" + System.currentTimeMillis();
+
+    @Factory(dataProvider = "allMongoExecutableTypes")
+    public RiverMongoStoreStatisticsTest(ExecutableType type) {
+        super(type);
+    }
 
     @Test
     public void testStoreStatistics() throws Throwable {

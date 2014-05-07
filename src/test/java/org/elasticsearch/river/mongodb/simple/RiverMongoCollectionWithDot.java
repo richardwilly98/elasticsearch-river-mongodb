@@ -29,6 +29,7 @@ import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRespon
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
+import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
 import com.mongodb.BasicDBObject;
@@ -43,6 +44,11 @@ public class RiverMongoCollectionWithDot extends RiverMongoDBTestAbstract {
 
     private DB mongoDB;
     private DBCollection mongoCollection;
+
+    @Factory(dataProvider = "allMongoExecutableTypes")
+    public RiverMongoCollectionWithDot(ExecutableType type) {
+        super(type);
+    }
 
     private void createDatabase(String database, String collection) {
         logger.debug("createDatabase {}", database);

@@ -31,6 +31,7 @@ import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
 import com.mongodb.DB;
@@ -63,6 +64,11 @@ public class RiverMongoParentChildScriptTest extends RiverMongoDBTestAbstract {
     private DB mongoDB;
     private DBCollection mongoAuthorsCollection;
     private DBCollection mongoBooksCollection;
+
+    @Factory(dataProvider = "allMongoExecutableTypes")
+    public RiverMongoParentChildScriptTest(ExecutableType type) {
+        super(type);
+    }
 
     @BeforeClass
     public void setupEnvironment() {

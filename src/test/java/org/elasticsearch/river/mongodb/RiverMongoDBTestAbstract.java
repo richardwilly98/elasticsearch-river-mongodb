@@ -160,17 +160,6 @@ public abstract class RiverMongoDBTestAbstract {
     private final String collection;
     private final String index;
 
-    protected RiverMongoDBTestAbstract(/*
-                                        * String river, String database, String
-                                        * collection, String index
-                                        */) {
-        // this.river = river;
-        // this.database = database;
-        // this.collection = collection;
-        // this.index = index;
-        this(false);
-    }
-
     protected RiverMongoDBTestAbstract(boolean isGridFS) {
         this(ExecutableType.VANILLA, isGridFS);
     }

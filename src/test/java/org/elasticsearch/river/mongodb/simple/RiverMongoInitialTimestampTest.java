@@ -29,6 +29,7 @@ import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
 import com.mongodb.DB;
@@ -44,6 +45,11 @@ public class RiverMongoInitialTimestampTest extends RiverMongoDBTestAbstract {
     private static final String JAVASCRIPT_SCRIPT_TYPE = "js";
     private DB mongoDB;
     private DBCollection mongoCollection;
+
+    @Factory(dataProvider = "allMongoExecutableTypes")
+    public RiverMongoInitialTimestampTest(ExecutableType type) {
+        super(type);
+    }
 
     @BeforeClass
     public void createDatabase() {

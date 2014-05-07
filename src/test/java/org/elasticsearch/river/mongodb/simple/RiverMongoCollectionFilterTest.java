@@ -29,6 +29,7 @@ import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
 import com.google.common.collect.ImmutableMap;
@@ -47,6 +48,11 @@ public class RiverMongoCollectionFilterTest extends RiverMongoDBTestAbstract {
     private DBCollection mongoCollection;
     private Object collectionFilterWithPrefix = "{'o.lang':'de'}";
     private Object collectionFilterNoPrefix = "{'lang':'de'}";
+
+    @Factory(dataProvider = "allMongoExecutableTypes")
+    public RiverMongoCollectionFilterTest(ExecutableType type) {
+        super(type);
+    }
 
     @BeforeMethod
     private void createDatabase() {

@@ -34,6 +34,7 @@ import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
 import com.mongodb.DB;
@@ -48,6 +49,11 @@ public class RiverMongoCannotStopTest extends RiverMongoDBTestAbstract {
 
     private DB mongoDB;
     private DBCollection mongoCollection;
+
+    @Factory(dataProvider = "allMongoExecutableTypes")
+    public RiverMongoCannotStopTest(ExecutableType type) {
+        super(type);
+    }
 
     @BeforeClass
     public void createDatabase() {

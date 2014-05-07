@@ -8,10 +8,12 @@ import org.bson.types.ObjectId
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract
+import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract.ExecutableType
 import org.elasticsearch.search.SearchHit
 import org.testng.Assert
 import org.testng.annotations.AfterClass
 import org.testng.annotations.BeforeClass
+import org.testng.annotations.Factory;
 import org.testng.annotations.Test
 
 import com.gmongo.GMongo
@@ -28,8 +30,10 @@ class RiverMongoAdvancedTransformationChildrenTest extends RiverMongoDBTestAbstr
 	private def db
 	private DBCollection dbCollection
 
-	protected RiverMongoAdvancedTransformationChildrenTest() {
-	}
+  @Factory(dataProvider = "allMongoExecutableTypes")
+	public RiverMongoAdvancedTransformationChildrenTest(ExecutableType type) {
+    super(type);
+  }
 
 	@BeforeClass
 	public void createDatabase() {

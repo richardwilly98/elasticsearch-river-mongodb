@@ -34,6 +34,7 @@ import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.elasticsearch.river.mongodb.Status;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 import org.testng.Assert;
+import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
 import com.google.common.collect.ImmutableMap;
@@ -50,6 +51,11 @@ public class RiverMongoInitialImportTest extends RiverMongoDBTestAbstract {
     public static final String TEST_MONGODB_RIVER_SIMPLE_SKIP_INITIAL_IMPORT_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-skip-initial-import.json";
     private DB mongoDB;
     private DBCollection mongoCollection;
+
+    @Factory(dataProvider = "allMongoExecutableTypes")
+    public RiverMongoInitialImportTest(ExecutableType type) {
+        super(type);
+    }
 
     @Test
     public void initialImport() throws Throwable {

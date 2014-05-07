@@ -27,6 +27,7 @@ import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
 import com.mongodb.DB;
@@ -42,6 +43,11 @@ public class RiverMongoImportAllCollectionsTest extends RiverMongoDBTestAbstract
     private DB mongoDB;
     private DBCollection mongoCollection;
     private DBCollection mongoCollection2;
+
+    @Factory(dataProvider = "allMongoExecutableTypes")
+    public RiverMongoImportAllCollectionsTest(ExecutableType type) {
+        super(type);
+    }
 
     @BeforeClass
     public void createDatabase() {

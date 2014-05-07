@@ -40,6 +40,7 @@ import org.elasticsearch.river.mongodb.gridfs.RiverMongoWithGridFSTest;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
 import com.mongodb.DB;
@@ -59,7 +60,9 @@ public class RiverMongoWithAliasTest extends RiverMongoDBTestAbstract {
     private DBCollection mongoCollection;
     private final String realIndex;
 
-    protected RiverMongoWithAliasTest() {
+    @Factory(dataProvider = "allMongoExecutableTypes")
+    public RiverMongoWithAliasTest(ExecutableType type) {
+        super(type);
         realIndex = "real-index-" + System.currentTimeMillis();
     }
 
