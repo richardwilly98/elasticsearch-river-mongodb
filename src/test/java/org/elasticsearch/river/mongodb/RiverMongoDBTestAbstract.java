@@ -562,4 +562,10 @@ public abstract class RiverMongoDBTestAbstract {
     protected String getIndex() {
         return index;
     }
+
+    /** Print a more useful string for each instance, in TestNG reports. */
+    @Override
+    public String toString() {
+        return executableType.name();
+    }
 }
