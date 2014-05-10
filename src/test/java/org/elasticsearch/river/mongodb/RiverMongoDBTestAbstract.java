@@ -176,14 +176,14 @@ public abstract class RiverMongoDBTestAbstract {
             suffix = suffix.substring(0, 34);
         }
         suffix = suffix + "-" + System.currentTimeMillis();
-        this.river = "r-" + suffix;
+        this.river = "r" + type.ordinal() + "-" + suffix;
         this.database = "d-" + suffix;
         if (isGridFS) {
             this.collection = "fs";
         } else {
             this.collection = "c-" + suffix;
         }
-        this.index = "i-" + suffix;
+        this.index = "i" + type.ordinal() + "-" + suffix;
     }
 
     @DataProvider(name = "allMongoExecutableTypes")
