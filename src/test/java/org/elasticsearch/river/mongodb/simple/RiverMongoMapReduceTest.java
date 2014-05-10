@@ -95,7 +95,7 @@ public class RiverMongoMapReduceTest extends RiverMongoDBTestAbstract {
             String map = "function() { emit(this.cust_id, this.amount); }";
             String reduce = "function (key, values) { return Array.sum( values ) }";
 
-            MapReduceCommand cmd = new MapReduceCommand(mongoCollection, map, reduce, "order_totals", MapReduceCommand.OutputType.REPLACE,
+            MapReduceCommand cmd = new MapReduceCommand(mongoCollection, map, reduce, outputCollection, MapReduceCommand.OutputType.REPLACE,
                     null);
 
             MapReduceOutput out = mongoCollection.mapReduce(cmd);
