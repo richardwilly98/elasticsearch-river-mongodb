@@ -286,6 +286,7 @@ public abstract class RiverMongoDBTestAbstract {
         }
 
         BasicDBList members = (BasicDBList) setting.get("members");
+        int numPrimaries = 0;
         for (Object m : members.toArray()) {
             BasicDBObject member = (BasicDBObject) m;
             logger.trace("Member: {}", member);
@@ -295,6 +296,13 @@ public abstract class RiverMongoDBTestAbstract {
             if (state != 1 && state != 2 && state != 7) {
                 return false;
             }
+            if (state == 1) {
+                ++numPrimaries;
+            }
+        }
+        if (numPrimaries != 1) {
+            logger.warn("Expected 1 primary, instead found " + numPrimaries);
+            return false;
         }
         return true;
     }
