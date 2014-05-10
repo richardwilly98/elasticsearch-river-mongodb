@@ -89,7 +89,8 @@ public class RiverMongoMapReduceTest extends RiverMongoDBTestAbstract {
             }
             Thread.sleep(wait);
             refreshIndex();
-            assertThat(getNode().client().admin().indices().prepareTypesExists(getIndex()).setTypes(mongoCollection.getName()).get()
+            assertThat(executableType.name() + " inputCollection is indexed",
+                    getNode().client().admin().indices().prepareTypesExists(getIndex()).setTypes(mongoCollection.getName()).get()
                     .isExists(), equalTo(true));
 
             String map = "function() { emit(this.cust_id, this.amount); }";
@@ -102,7 +103,8 @@ public class RiverMongoMapReduceTest extends RiverMongoDBTestAbstract {
             logger.debug("MapReduceOutput: {}", out);
             Thread.sleep(wait);
             refreshIndex();
-            assertThat(getNode().client().admin().indices().prepareTypesExists(getIndex()).setTypes(outputCollection).get().isExists(),
+            assertThat(executableType.name() + " outputCollection is indexed",
+                    getNode().client().admin().indices().prepareTypesExists(getIndex()).setTypes(outputCollection).get().isExists(),
                     equalTo(true));
 
             logger.debug("*** Index/type [{}/{}] count [{}]", getIndex(), mongoCollection.getName(),
@@ -111,9 +113,11 @@ public class RiverMongoMapReduceTest extends RiverMongoDBTestAbstract {
             logger.debug("*** Index/type [{}/{}] count [{}]", getIndex(), outputCollection, getNode().client().prepareCount(getIndex())
                     .setTypes(outputCollection).get().getCount());
 
-            assertThat(getNode().client().prepareCount(getIndex()).setTypes(mongoCollection.getName()).get().getCount(),
+            assertThat(executableType.name() + " inputCollection items indexed",
+                    getNode().client().prepareCount(getIndex()).setTypes(mongoCollection.getName()).get().getCount(),
                     equalTo(mongoCollection.count()));
-            assertThat(getNode().client().prepareCount(getIndex()).setTypes(outputCollection).get().getCount(), equalTo(mongoDB
+            assertThat(executableType.name() + " outputCollection items indexed",
+                    getNode().client().prepareCount(getIndex()).setTypes(outputCollection).get().getCount(), equalTo(mongoDB
                     .getCollection(outputCollection).count()));
         } catch (Throwable t) {
             logger.error("mapReduceTest failed.", t);
