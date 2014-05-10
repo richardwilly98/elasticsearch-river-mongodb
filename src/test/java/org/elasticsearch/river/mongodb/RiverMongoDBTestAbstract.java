@@ -154,7 +154,7 @@ public abstract class RiverMongoDBTestAbstract {
             new EnumMap<RiverMongoDBTestAbstract.ExecutableType, RiverMongoDBTestAbstract.MongoReplicaSet>(ExecutableType.class);
     private static Node node;
 
-    private final ExecutableType executableType;
+    protected final ExecutableType executableType;
     private final String river;
     private final String database;
     private final String collection;

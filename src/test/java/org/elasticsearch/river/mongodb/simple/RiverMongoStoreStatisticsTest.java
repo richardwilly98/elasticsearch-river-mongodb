@@ -44,8 +44,8 @@ public class RiverMongoStoreStatisticsTest extends RiverMongoDBTestAbstract {
 
     private DB mongoDB;
     private DBCollection mongoCollection;
-    private final String storeStatsIndex = "stats-index-" + System.currentTimeMillis();
-    private final String storeStatsType = "stats" + System.currentTimeMillis();
+    private final String storeStatsIndex = "stats" + executableType.ordinal() + "-index-" + System.currentTimeMillis();
+    private final String storeStatsType = "stats" + executableType.ordinal() + '-' + System.currentTimeMillis();
 
     @Factory(dataProvider = "allMongoExecutableTypes")
     public RiverMongoStoreStatisticsTest(ExecutableType type) {
