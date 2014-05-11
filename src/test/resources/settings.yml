@@ -27,5 +27,5 @@ plugins:
   lang-groovy: elasticsearch/elasticsearch-lang-groovy/2.0.0
 
 mongodb:
-  version: 2.6.0
+  version: 2.6.1
   use_dynamic_ports: false
