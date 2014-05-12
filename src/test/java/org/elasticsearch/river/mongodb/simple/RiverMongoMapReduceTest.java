@@ -45,7 +45,7 @@ public class RiverMongoMapReduceTest extends RiverMongoDBTestAbstract {
     private DBCollection mongoCollection;
     private DBCollection mongoCollection2;
 
-    @Factory(dataProvider = "allMongoExecutableTypes")
+    @Factory(dataProvider = "onlyVanillaMongo")
     public RiverMongoMapReduceTest(ExecutableType type) {
         super(type);
     }
