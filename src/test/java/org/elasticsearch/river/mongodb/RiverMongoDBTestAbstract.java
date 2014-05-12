@@ -193,6 +193,11 @@ public abstract class RiverMongoDBTestAbstract {
             .toArray(new Object[ExecutableType.values().length][]);
     }
 
+    @DataProvider(name = "onlyVanillaMongo")
+    public static Object[][] onlyVanillaMongo() {
+        return new Object[][] {{ ExecutableType.VANILLA }};
+    }
+
     @BeforeSuite
     public void beforeSuite() throws Exception {
         logger.debug("*** beforeSuite ***");
