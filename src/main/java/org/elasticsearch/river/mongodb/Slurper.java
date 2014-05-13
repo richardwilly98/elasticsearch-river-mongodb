@@ -402,6 +402,17 @@ class Slurper implements Runnable {
         }
 
         String objectId = getObjectIdFromOplogEntry(entry);
+        if (operation == Operation.DELETE) {
+            // Include only _id in data, as vanilla MongoDB does, so transformation scripts won't be broken by Toku
+            if (object.containsField(MongoDBRiver.MONGODB_ID_FIELD)) {
+                if (object.keySet().size() > 1) {
+                    entry.put(MongoDBRiver.OPLOG_OBJECT, object = new BasicDBObject(MongoDBRiver.MONGODB_ID_FIELD, objectId));
+                }
+            } else {
+                throw new NullPointerException(MongoDBRiver.MONGODB_ID_FIELD);
+            }
+        }
+
         if (definition.isMongoGridFS() && namespace.endsWith(MongoDBRiver.GRIDFS_FILES_SUFFIX)
                 && (operation == Operation.INSERT || operation == Operation.UPDATE)) {
             if (objectId == null) {
