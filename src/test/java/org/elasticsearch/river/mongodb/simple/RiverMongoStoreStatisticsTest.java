@@ -27,8 +27,8 @@ import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsReques
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
@@ -54,7 +54,7 @@ public class RiverMongoStoreStatisticsTest extends RiverMongoDBTestAbstract {
 
     @Test
     public void testStoreStatistics() throws Throwable {
-        logger.debug("Start testStoreStatistics");
+        logger.debug("Start testStoreStatistics ({})", executableType);
         try {
 
             DBObject dbObject1 = new BasicDBObject(ImmutableMap.of("name", "Richard"));
@@ -84,7 +84,7 @@ public class RiverMongoStoreStatisticsTest extends RiverMongoDBTestAbstract {
         }
     }
 
-    @BeforeTest
+    @BeforeClass
     void setUp() {
         createDatabase();
         createRiver();
@@ -113,7 +113,7 @@ public class RiverMongoStoreStatisticsTest extends RiverMongoDBTestAbstract {
         }
     }
 
-    @AfterTest
+    @AfterClass
     void cleanUp() {
         super.deleteRiver();
         Assert.assertTrue(getNode().client().admin().indices().prepareDelete(storeStatsIndex).get().isAcknowledged());
