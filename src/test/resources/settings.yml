@@ -31,5 +31,5 @@ mongodb:
   use_dynamic_ports: false
 
 tokumx:
-  version: 1.4.1
+  version: 1.4.2
   use_dynamic_ports: false
