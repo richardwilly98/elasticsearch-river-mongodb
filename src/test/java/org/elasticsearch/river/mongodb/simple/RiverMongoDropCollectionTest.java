@@ -31,6 +31,7 @@ import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
 import com.mongodb.DB;
@@ -47,14 +48,18 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAbstract {
     private DBCollection mongoCollection;
     protected boolean dropCollectionOption = true;
 
+    @Factory(dataProvider = "allMongoExecutableTypes")
+    public RiverMongoDropCollectionTest(ExecutableType type) {
+        super(type);
+    }
+
     @BeforeMethod
     public void createDatabase() {
         logger.debug("createDatabase {}", getDatabase());
         try {
             mongoDB = getMongo().getDB(getDatabase());
             mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
-            super.createRiver(TEST_SIMPLE_MONGODB_RIVER_DROP_COLLECTION_JSON, getRiver(), (Object) String.valueOf(getMongoPort1()),
-                    (Object) String.valueOf(getMongoPort2()), (Object) String.valueOf(getMongoPort3()), (Object) dropCollectionOption,
+            super.createRiver(TEST_SIMPLE_MONGODB_RIVER_DROP_COLLECTION_JSON, getRiver(), 3, (Object) dropCollectionOption,
                     (Object) getDatabase(), (Object) getCollection(), (Object) getIndex(), (Object) getDatabase());
             logger.info("Start createCollection");
             mongoCollection = mongoDB.createCollection(getCollection(), null);
@@ -207,7 +212,7 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAbstract {
     }
 
     private boolean databaseExists(String name) {
-        for (String databaseName : mongo.getDatabaseNames()) {
+        for (String databaseName : getMongo().getDatabaseNames()) {
             if (databaseName.equals(name)) {
                 return true;
             }

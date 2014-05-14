@@ -29,6 +29,7 @@ import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
 import com.mongodb.DB;
@@ -45,14 +46,18 @@ public class RiverMongoIncludeCollectionTest extends RiverMongoDBTestAbstract {
     private DBCollection mongoCollection;
     private String includeCollectionOption = "mycollection";
 
+    @Factory(dataProvider = "allMongoExecutableTypes")
+    public RiverMongoIncludeCollectionTest(ExecutableType type) {
+        super(type);
+    }
+
     @BeforeClass
     public void createDatabase() {
         logger.debug("createDatabase {}", getDatabase());
         try {
             mongoDB = getMongo().getDB(getDatabase());
             mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
-            super.createRiver(TEST_SIMPLE_MONGODB_RIVER_INCLUDE_COLLECTION_JSON, getRiver(), (Object) String.valueOf(getMongoPort1()),
-                    (Object) String.valueOf(getMongoPort2()), (Object) String.valueOf(getMongoPort3()), (Object) includeCollectionOption,
+            super.createRiver(TEST_SIMPLE_MONGODB_RIVER_INCLUDE_COLLECTION_JSON, getRiver(), 3, (Object) includeCollectionOption,
                     (Object) getDatabase(), (Object) getCollection(), (Object) getIndex(), (Object) getDatabase());
             logger.info("Start createCollection");
             mongoCollection = mongoDB.createCollection(getCollection(), null);

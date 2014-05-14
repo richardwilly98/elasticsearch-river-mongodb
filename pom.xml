@@ -156,7 +156,6 @@
 			<groupId>com.google.guava</groupId>
 			<artifactId>guava</artifactId>
 			<version>${guava.version}</version>
-			<scope>test</scope>
 			<exclusions>
 				<exclusion>
 					<groupId>com.google.code.findbugs</groupId>

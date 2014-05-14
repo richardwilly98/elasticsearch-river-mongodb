@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
-import org.bson.types.BSONTimestamp;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.action.bulk.BulkProcessor;
@@ -64,7 +63,6 @@ import com.mongodb.MongoClient;
 import com.mongodb.MongoException;
 import com.mongodb.ServerAddress;
 import com.mongodb.gridfs.GridFSDBFile;
-import com.mongodb.util.JSON;
 
 /**
  * @author richardwilly98 (Richard Louapre)
@@ -72,6 +70,7 @@ import com.mongodb.util.JSON;
  * @author aparo (Alberto Paro)
  * @author kryptt (Rodolfo Hansen)
  * @author benmccann (Ben McCann)
+ * @author kdkeck (Kevin Keck)
  */
 public class MongoDBRiver extends AbstractRiverComponent implements River {
 
@@ -81,6 +80,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     public final static String STATUS_FIELD = "status";
     public final static String DESCRIPTION = "MongoDB River Plugin";
     public final static String LAST_TIMESTAMP_FIELD = "_last_ts";
+    public final static String LAST_GTID_FIELD = "_last_gtid";
     public final static String MONGODB_LOCAL_DATABASE = "local";
     public final static String MONGODB_ADMIN_DATABASE = "admin";
     public final static String MONGODB_CONFIG_DATABASE = "config";
@@ -97,17 +97,22 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     public final static String OPLOG_UPDATE = "o2";
     public final static String OPLOG_OPERATION = "op";
     public final static String OPLOG_UPDATE_OPERATION = "u";
+    public final static String OPLOG_UPDATE_ROW_OPERATION = "ur";
     public final static String OPLOG_INSERT_OPERATION = "i";
     public final static String OPLOG_DELETE_OPERATION = "d";
     public final static String OPLOG_COMMAND_OPERATION = "c";
+    public final static String OPLOG_NOOP_OPERATION = "n";
     public final static String OPLOG_DROP_COMMAND_OPERATION = "drop";
     public final static String OPLOG_DROP_DATABASE_COMMAND_OPERATION = "dropDatabase";
     public final static String OPLOG_RENAME_COLLECTION_COMMAND_OPERATION = "renameCollection";
     public final static String OPLOG_TO = "to";
     public final static String OPLOG_TIMESTAMP = "ts";
     public final static String OPLOG_FROM_MIGRATE = "fromMigrate";
+    public static final String OPLOG_OPS = "ops";
+    public static final String OPLOG_CREATE_COMMAND = "create";
     public final static String GRIDFS_FILES_SUFFIX = ".files";
     public final static String GRIDFS_CHUNKS_SUFFIX = ".chunks";
+    public final static String INSERTION_ORDER_KEY = "$natural";
 
     static final ESLogger logger = ESLoggerFactory.getLogger(MongoDBRiver.class.getName());
 
@@ -410,7 +415,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
      * Get the latest timestamp for a given namespace.
      */
     @SuppressWarnings("unchecked")
-    public static BSONTimestamp getLastTimestamp(Client client, MongoDBRiverDefinition definition) {
+    public static Timestamp<?> getLastTimestamp(Client client, MongoDBRiverDefinition definition) {
 
         client.admin().indices().prepareRefresh(definition.getRiverIndexName()).get();
 
@@ -420,13 +425,12 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         if (lastTimestampResponse.isExists()) {
             Map<String, Object> mongodbState = (Map<String, Object>) lastTimestampResponse.getSourceAsMap().get(TYPE);
             if (mongodbState != null) {
-                String lastTimestamp = mongodbState.get(LAST_TIMESTAMP_FIELD).toString();
+                Timestamp<?> lastTimestamp = Timestamp.on(mongodbState);
                 if (lastTimestamp != null) {
                     if (logger.isDebugEnabled()) {
                         logger.debug("{} last timestamp: {}", definition.getMongoOplogNamespace(), lastTimestamp);
                     }
-                    return (BSONTimestamp) JSON.parse(lastTimestamp);
-
+                    return lastTimestamp;
                 }
             }
         } else {
@@ -443,20 +447,24 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
      * 
      * @param bulk
      */
-    static void setLastTimestamp(final MongoDBRiverDefinition definition, final BSONTimestamp time, final BulkProcessor bulkProcessor) {
+    static void setLastTimestamp(final MongoDBRiverDefinition definition, final Timestamp<?> time, final BulkProcessor bulkProcessor) {
         try {
             if (logger.isDebugEnabled()) {
-                logger.debug("setLastTimestamp [{}] [{}] [{}]", definition.getRiverName(), definition.getMongoOplogNamespace(),
-                        JSON.serialize(time));
+                logger.debug("setLastTimestamp [{}] [{}] [{}]", definition.getRiverName(), definition.getMongoOplogNamespace(), time);
             }
             bulkProcessor.add(indexRequest(definition.getRiverIndexName())
                     .type(definition.getRiverName())
                     .id(definition.getMongoOplogNamespace())
-                    .source(jsonBuilder().startObject().startObject(TYPE).field(LAST_TIMESTAMP_FIELD, JSON.serialize(time)).endObject()
-                            .endObject()));
+                    .source(source(time)));
         } catch (IOException e) {
             logger.error("error updating last timestamp for namespace {}", definition.getMongoOplogNamespace());
         }
+    }
+
+    private static XContentBuilder source(Timestamp<?> time) throws IOException {
+        XContentBuilder builder = jsonBuilder().startObject().startObject(TYPE);
+        time.saveFields(builder);
+        return builder.endObject().endObject();
     }
 
     public static long getIndexCount(Client client, MongoDBRiverDefinition definition) {
@@ -477,14 +485,14 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
         private final DBObject data;
         private final Operation operation;
-        private final BSONTimestamp oplogTimestamp;
+        private final Timestamp<?> oplogTimestamp;
         private final String collection;
 
         public QueueEntry(DBObject data, String collection) {
             this(null, Operation.INSERT, data, collection);
         }
 
-        public QueueEntry(BSONTimestamp oplogTimestamp, Operation oplogOperation, DBObject data, String collection) {
+        public QueueEntry(Timestamp<?> oplogTimestamp, Operation oplogOperation, DBObject data, String collection) {
             this.data = data;
             this.operation = oplogOperation;
             this.oplogTimestamp = oplogTimestamp;
@@ -507,7 +515,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             return operation;
         }
 
-        public BSONTimestamp getOplogTimestamp() {
+        public Timestamp<?> getOplogTimestamp() {
             return oplogTimestamp;
         }
 

@@ -5,6 +5,7 @@ import com.mongodb.BasicDBObject
 import com.mongodb.DBCollection
 import com.mongodb.WriteConcern
 import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract
+import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract.ExecutableType
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest
 import org.testng.annotations.*
 import org.testng.Assert
@@ -18,6 +19,11 @@ class RiverMongoDBGroovyTest extends RiverMongoDBTestAbstract {
 
 	private def db
 	private DBCollection dbCollection
+
+  @Factory(dataProvider = "allMongoExecutableTypes")
+  public RiverMongoDBGroovyTest(ExecutableType type) {
+    super(type);
+  }
 
 	@BeforeClass
 	public void createDatabase() {
@@ -37,8 +43,7 @@ class RiverMongoDBGroovyTest extends RiverMongoDBTestAbstract {
 		try {
 			// Create river
 			createRiver(
-					"/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river.json", river,
-					mongoPort1.toString(), mongoPort2.toString(), mongoPort3.toString(),
+					"/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river.json", river, 3,
 					database, collection, index
 					)
 

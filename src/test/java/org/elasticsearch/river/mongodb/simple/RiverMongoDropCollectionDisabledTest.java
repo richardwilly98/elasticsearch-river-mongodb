@@ -20,12 +20,15 @@ package org.elasticsearch.river.mongodb.simple;
 
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
 @Test
 public class RiverMongoDropCollectionDisabledTest extends RiverMongoDropCollectionTest {
 
-    protected RiverMongoDropCollectionDisabledTest() {
+    @Factory(dataProvider = "allMongoExecutableTypes")
+    public RiverMongoDropCollectionDisabledTest(ExecutableType type) {
+        super(type);
         dropCollectionOption = false;
     }
 

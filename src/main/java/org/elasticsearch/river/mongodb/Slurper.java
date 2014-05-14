@@ -6,7 +6,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.bson.BasicBSONObject;
-import org.bson.types.BSONTimestamp;
 import org.bson.types.ObjectId;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.base.CharMatcher;
@@ -56,6 +55,7 @@ class Slurper implements Runnable {
     private final String gridfsOplogNamespace;
     private final String cmdOplogNamespace;
     private final ImmutableList<String> oplogOperations = ImmutableList.of(MongoDBRiver.OPLOG_DELETE_OPERATION,
+            MongoDBRiver.OPLOG_UPDATE_ROW_OPERATION, // from TokuMX
             MongoDBRiver.OPLOG_UPDATE_OPERATION, MongoDBRiver.OPLOG_INSERT_OPERATION, MongoDBRiver.OPLOG_COMMAND_OPERATION);
     private final Client client;
     private Mongo mongo;
@@ -92,7 +92,7 @@ class Slurper implements Runnable {
                            // slurpedCollection
                 }
 
-                BSONTimestamp startTimestamp = null;
+                Timestamp<?> startTimestamp = null;
                 if (!definition.isSkipInitialImport()) {
                     if (!riverHasIndexedFromOplog() && definition.getInitialTimestamp() == null) {
                         if (!isIndexEmpty()) {
@@ -183,13 +183,13 @@ class Slurper implements Runnable {
      * @throws InterruptedException
      *             if the blocking queue stream is interrupted while waiting
      */
-    protected BSONTimestamp doInitialImport(DBCollection collection) throws InterruptedException {
+    protected Timestamp<?> doInitialImport(DBCollection collection) throws InterruptedException {
         // TODO: ensure the index type is empty
         // DBCollection slurpedCollection =
         // slurpedDb.getCollection(definition.getMongoCollection());
 
         logger.info("MongoDBRiver is beginning initial import of " + collection.getFullName());
-        BSONTimestamp startTimestamp = getCurrentOplogTimestamp();
+        Timestamp<?> startTimestamp = getCurrentOplogTimestamp();
         boolean inProgress = true;
         String lastId = null;
         while (inProgress) {
@@ -338,25 +338,29 @@ class Slurper implements Runnable {
         client.admin().indices().prepareUpdateSettings(name).setSettings(ImmutableMap.of("index.refresh_interval", value)).get();
     }
 
-    private BSONTimestamp getCurrentOplogTimestamp() {
-        return (BSONTimestamp) oplogCollection.find().sort(new BasicDBObject(MongoDBRiver.OPLOG_TIMESTAMP, -1)).limit(1).next()
-                .get(MongoDBRiver.OPLOG_TIMESTAMP);
+    private Timestamp<?> getCurrentOplogTimestamp() {
+        return Timestamp.on(oplogCollection.find().sort(new BasicDBObject(MongoDBRiver.INSERTION_ORDER_KEY, -1)).limit(1).next());
     }
 
     private DBCursor processFullOplog() throws InterruptedException, SlurperException {
-        BSONTimestamp currentTimestamp = getCurrentOplogTimestamp();
+        Timestamp<?> currentTimestamp = getCurrentOplogTimestamp();
         addInsertToStream(currentTimestamp, null);
         return oplogCursor(currentTimestamp);
     }
 
-    private BSONTimestamp processOplogEntry(final DBObject entry, final BSONTimestamp startTimestamp) throws InterruptedException {
+    private Timestamp<?> processOplogEntry(final DBObject entry, final Timestamp<?> startTimestamp) throws InterruptedException {
+        // To support transactions, TokuMX wraps one or more operations in a single oplog entry, in a list.
+        // As long as clients are not transaction-aware, we can pretty safely assume there will only be one operation in the list.
+        // Supporting genuine multi-operation transactions will require a bit more logic here.
+        flattenOps(entry);
+
         if (!isValidOplogEntry(entry, startTimestamp)) {
             return startTimestamp;
         }
         Operation operation = Operation.fromString(entry.get(MongoDBRiver.OPLOG_OPERATION).toString());
         String namespace = entry.get(MongoDBRiver.OPLOG_NAMESPACE).toString();
         String collection = null;
-        BSONTimestamp oplogTimestamp = (BSONTimestamp) entry.get(MongoDBRiver.OPLOG_TIMESTAMP);
+        Timestamp<?> oplogTimestamp = Timestamp.on(entry);
         DBObject object = (DBObject) entry.get(MongoDBRiver.OPLOG_OBJECT);
 
         if (definition.isImportAllCollections()) {
@@ -398,6 +402,17 @@ class Slurper implements Runnable {
         }
 
         String objectId = getObjectIdFromOplogEntry(entry);
+        if (operation == Operation.DELETE) {
+            // Include only _id in data, as vanilla MongoDB does, so transformation scripts won't be broken by Toku
+            if (object.containsField(MongoDBRiver.MONGODB_ID_FIELD)) {
+                if (object.keySet().size() > 1) {
+                    entry.put(MongoDBRiver.OPLOG_OBJECT, object = new BasicDBObject(MongoDBRiver.MONGODB_ID_FIELD, objectId));
+                }
+            } else {
+                throw new NullPointerException(MongoDBRiver.MONGODB_ID_FIELD);
+            }
+        }
+
         if (definition.isMongoGridFS() && namespace.endsWith(MongoDBRiver.GRIDFS_FILES_SUFFIX)
                 && (operation == Operation.INSERT || operation == Operation.UPDATE)) {
             if (objectId == null) {
@@ -437,7 +452,28 @@ class Slurper implements Runnable {
         return oplogTimestamp;
     }
 
-    private void processAdminCommandOplogEntry(final DBObject entry, final BSONTimestamp startTimestamp) throws InterruptedException {
+    @SuppressWarnings("unchecked")
+    private void flattenOps(DBObject entry) {
+        Object ops = entry.get(MongoDBRiver.OPLOG_OPS);
+        if (ops != null) {
+            try {
+                for (DBObject op : (List<DBObject>) ops) {
+                    String operation = (String) op.get(MongoDBRiver.OPLOG_OPERATION);
+                    if (operation.equals(MongoDBRiver.OPLOG_COMMAND_OPERATION)) {
+                        DBObject object = (DBObject) op.get(MongoDBRiver.OPLOG_OBJECT);
+                        if (object.containsField(MongoDBRiver.OPLOG_CREATE_COMMAND)) {
+                            continue;
+                        }
+                    }
+                    entry.putAll(op);
+                }
+            } catch (ClassCastException e) {
+                logger.error(e.toString(), e);
+            }
+        }
+    }
+
+    private void processAdminCommandOplogEntry(final DBObject entry, final Timestamp<?> startTimestamp) throws InterruptedException {
         if (logger.isTraceEnabled()) {
             logger.trace("processAdminCommandOplogEntry - [{}]", entry);
         }
@@ -462,7 +498,11 @@ class Slurper implements Runnable {
         return null;
     }
 
-    private boolean isValidOplogEntry(final DBObject entry, final BSONTimestamp startTimestamp) {
+    private boolean isValidOplogEntry(final DBObject entry, final Timestamp<?> startTimestamp) {
+        if (MongoDBRiver.OPLOG_NOOP_OPERATION.equals(entry.get(MongoDBRiver.OPLOG_OPERATION))) {
+            logger.debug("[No-op Oplog Entry] - can be ignored. {}", entry);
+            return false;
+        }
         String namespace = (String) entry.get(MongoDBRiver.OPLOG_NAMESPACE);
         // Initial support for sharded collection -
         // https://jira.mongodb.org/browse/SERVER-4333
@@ -477,8 +517,8 @@ class Slurper implements Runnable {
         }
 
         if (startTimestamp != null) {
-            BSONTimestamp oplogTimestamp = (BSONTimestamp) entry.get(MongoDBRiver.OPLOG_TIMESTAMP);
-            if (oplogTimestamp.compareTo(startTimestamp) < 0) {
+            Timestamp<?> oplogTimestamp = Timestamp.on(entry);
+            if (Timestamp.compare(oplogTimestamp, startTimestamp) < 0) {
                 logger.debug("[Invalid Oplog Entry] - entry timestamp [{}] before startTimestamp [{}]", entry, startTimestamp);
                 return false;
             }
@@ -573,21 +613,9 @@ class Slurper implements Runnable {
         return null;
     }
 
-    private DBObject getOplogFilter(final BSONTimestamp time) {
-        BasicDBObject filter = new BasicDBObject();
-
-        if (time == null) {
-            logger.info("No known previous slurping time for this collection");
-        } else {
-            filter.put(MongoDBRiver.OPLOG_TIMESTAMP, new BasicDBObject(QueryOperators.GTE, time));
-        }
-
-        return filter;
-    }
-
-    private DBCursor oplogCursor(final BSONTimestamp timestampOverride) throws SlurperException {
-        BSONTimestamp time = timestampOverride == null ? MongoDBRiver.getLastTimestamp(client, definition) : timestampOverride;
-        DBObject indexFilter = getOplogFilter(time);
+    private DBCursor oplogCursor(final Timestamp<?> timestampOverride) throws SlurperException {
+        Timestamp<?> time = timestampOverride == null ? MongoDBRiver.getLastTimestamp(client, definition) : timestampOverride;
+        DBObject indexFilter = time.getOplogFilter();
         if (indexFilter == null) {
             return null;
         }
@@ -604,7 +632,7 @@ class Slurper implements Runnable {
         return cursor;
     }
 
-    private void isRiverStale(DBCursor cursor, BSONTimestamp time) throws SlurperException {
+    private void isRiverStale(DBCursor cursor, Timestamp<?> time) throws SlurperException {
         if (cursor == null || time == null) {
             return;
         }
@@ -612,14 +640,14 @@ class Slurper implements Runnable {
             return;
         }
         DBObject entry = cursor.next();
-        BSONTimestamp oplogTimestamp = (BSONTimestamp) entry.get(MongoDBRiver.OPLOG_TIMESTAMP);
+        Timestamp<?> oplogTimestamp = Timestamp.on(entry);
         if (! time.equals(oplogTimestamp)) {
             MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.RIVER_STALE);
             throw new SlurperException("River out of sync with oplog.rs collection");
         }
     }
 
-    private void addQueryToStream(final Operation operation, final BSONTimestamp currentTimestamp, final DBObject update,
+    private void addQueryToStream(final Operation operation, final Timestamp<?> currentTimestamp, final DBObject update,
             final String collection) throws InterruptedException {
         if (logger.isTraceEnabled()) {
             logger.trace("addQueryToStream - operation [{}], currentTimestamp [{}], update [{}]", operation, currentTimestamp, update);
@@ -640,18 +668,18 @@ class Slurper implements Runnable {
         }
     }
 
-    private String addInsertToStream(final BSONTimestamp currentTimestamp, final DBObject data) throws InterruptedException {
+    private String addInsertToStream(final Timestamp<?> currentTimestamp, final DBObject data) throws InterruptedException {
         return addInsertToStream(currentTimestamp, data, definition.getMongoCollection());
     }
 
-    private String addInsertToStream(final BSONTimestamp currentTimestamp, final DBObject data, final String collection)
+    private String addInsertToStream(final Timestamp<?> currentTimestamp, final DBObject data, final String collection)
             throws InterruptedException {
         totalDocuments.incrementAndGet();
         addToStream(Operation.INSERT, currentTimestamp, data, collection);
         return data.containsField(MongoDBRiver.MONGODB_ID_FIELD) ? data.get(MongoDBRiver.MONGODB_ID_FIELD).toString() : null;
     }
 
-    private void addToStream(final Operation operation, final BSONTimestamp currentTimestamp, final DBObject data, final String collection)
+    private void addToStream(final Operation operation, final Timestamp<?> currentTimestamp, final DBObject data, final String collection)
             throws InterruptedException {
         if (logger.isTraceEnabled()) {
             logger.trace("addToStream - operation [{}], currentTimestamp [{}], data [{}], collection [{}]", operation, currentTimestamp,

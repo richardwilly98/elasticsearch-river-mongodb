@@ -16,44 +16,41 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.elasticsearch.river.mongodb.simple;
+package org.elasticsearch.river.mongodb.gridfs;
 
+import static org.elasticsearch.client.Requests.countRequest;
 import static org.elasticsearch.client.Requests.getRequest;
-import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath;
+import static org.elasticsearch.common.io.Streams.copyToBytesFromClasspath;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
-import org.elasticsearch.action.ActionFuture;
-import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
-import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
+import org.bson.types.ObjectId;
+import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.get.GetResponse;
-import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.index.query.QueryStringQueryBuilder;
-import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.river.mongodb.gridfs.RiverMongoWithGridFSTest;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
-import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
-import com.mongodb.DBObject;
 import com.mongodb.WriteConcern;
-import com.mongodb.WriteResult;
-import com.mongodb.util.JSON;
+import com.mongodb.gridfs.GridFS;
+import com.mongodb.gridfs.GridFSDBFile;
+import com.mongodb.gridfs.GridFSInputFile;
 
 @Test
-public class RiverMongoWithAliasTest extends RiverMongoDBTestAbstract {
+public class RiverMongoGridFSWithAliasTest extends RiverMongoGridFSTestAbstract {
 
     private DB mongoDB;
     private DBCollection mongoCollection;
     private final String realIndex;
 
-    @Factory(dataProvider = "allMongoExecutableTypes")
-    public RiverMongoWithAliasTest(ExecutableType type) {
-        super(type);
+    public RiverMongoGridFSWithAliasTest() {
+        super();
         realIndex = "real-" + getIndex();
     }
 
@@ -87,44 +84,69 @@ public class RiverMongoWithAliasTest extends RiverMongoDBTestAbstract {
     }
 
     @Test
-    public void simpleRiverWithAlias() throws Throwable {
-        logger.debug("Start simpleRiverWithAlias");
+    public void gridfsRiverWithAlias() throws Throwable {
+        logger.debug("Start gridfsRiverWithAlias");
         try {
             createAlias();
-            super.createRiver(TEST_MONGODB_RIVER_SIMPLE_JSON);
-            String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);
-            DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
-            WriteResult result = mongoCollection.insert(dbObject);
-            Thread.sleep(wait);
-            String id = dbObject.get("_id").toString();
-            logger.info("WriteResult: {}", result.toString());
-            ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices()
-                    .exists(new IndicesExistsRequest(getIndex()));
-            assertThat(response.actionGet().isExists(), equalTo(true));
-            refreshIndex();
-            SearchRequest search = getNode().client().prepareSearch(getIndex()).setQuery(new QueryStringQueryBuilder("Richard").defaultField("name"))
-                    .request();
-            SearchResponse searchResponse = getNode().client().search(search).actionGet();
-            assertThat(searchResponse.getHits().getTotalHits(), equalTo(1l));
+            super.createRiver(TEST_MONGODB_RIVER_GRIDFS_JSON);
+            byte[] content = copyToBytesFromClasspath(RiverMongoWithGridFSTest.TEST_ATTACHMENT_HTML);
+            logger.debug("Content in bytes: {}", content.length);
+            GridFS gridFS = new GridFS(mongoDB, getCollection());
+            GridFSInputFile in = gridFS.createFile(content);
+            in.setFilename("test-attachment.html");
+            in.setContentType("text/html");
+            in.save();
+            in.validate();
 
-            mongoCollection.remove(dbObject, WriteConcern.REPLICAS_SAFE);
-            Thread.sleep(wait);
+            String id = in.getId().toString();
+            logger.debug("GridFS in: {}", in);
+            logger.debug("Document created with id: {}", id);
 
+            GridFSDBFile out = gridFS.findOne(in.getFilename());
+            logger.debug("GridFS from findOne: {}", out);
+            out = gridFS.findOne(new ObjectId(id));
+            logger.debug("GridFS from findOne: {}", out);
+            Assert.assertEquals(out.getId(), in.getId());
+
+            Thread.sleep(wait);
             refreshIndex();
+
+            CountResponse countResponse = getNode().client().count(countRequest(getIndex())).actionGet();
+            logger.debug("Index total count: {}", countResponse.getCount());
+            assertThat(countResponse.getCount(), equalTo(1l));
+
             GetResponse getResponse = getNode().client().get(getRequest(getIndex()).id(id)).get();
             logger.debug("Get request for id {}: {}", id, getResponse.isExists());
+            assertThat(getResponse.isExists(), equalTo(true));
+//            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
+//            logger.debug("Index count for id {}: {}", id, countResponse.getCount());
+//            assertThat(countResponse.getCount(), equalTo(1l));
+
+            SearchResponse response = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.queryString("Aliquam")).execute()
+                    .actionGet();
+            logger.debug("SearchResponse {}", response.toString());
+            long totalHits = response.getHits().getTotalHits();
+            logger.debug("TotalHits: {}", totalHits);
+            assertThat(totalHits, equalTo(1l));
+
+            gridFS.remove(new ObjectId(id));
+
+            Thread.sleep(wait);
+            refreshIndex();
+
+            getResponse = getNode().client().get(getRequest(getIndex()).id(id)).get();
+            logger.debug("Get request for id {}: {}", id, getResponse.isExists());
             assertThat(getResponse.isExists(), equalTo(false));
-//            CountResponse countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
+//            countResponse = getNode().client().count(countRequest(getIndex()).query(fieldQuery("_id", id))).actionGet();
 //            logger.debug("Count after delete request: {}", countResponse.getCount());
 //            assertThat(countResponse.getCount(), equalTo(0L));
-
         } catch (Throwable t) {
-            logger.error("simpleRiverWithAlias failed.", t);
+            logger.error("gridfsRiverWithAlias failed.", t);
             t.printStackTrace();
             throw t;
         } finally {
-            deleteAlias();
             super.deleteRiver();
+            deleteAlias();
         }
     }
 }

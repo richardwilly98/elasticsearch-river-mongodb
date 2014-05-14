@@ -31,6 +31,7 @@ import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
 import com.mongodb.DB;
@@ -47,6 +48,11 @@ public class RiverMongoAdvancedTransformationGroovyScriptTest extends RiverMongo
     public static final String TEST_MONGODB_RIVER_WITH_ADVANCED_TRANSFORMATION_JSON = "/org/elasticsearch/river/mongodb/advanced/test-mongodb-river-with-advanced-transformation.json";
     private DB mongoDB;
     private DBCollection mongoCollection;
+
+    @Factory(dataProvider = "allMongoExecutableTypes")
+    public RiverMongoAdvancedTransformationGroovyScriptTest(ExecutableType type) {
+        super(type);
+    }
 
     @BeforeClass
     public void createDatabase() {
@@ -78,8 +84,7 @@ public class RiverMongoAdvancedTransformationGroovyScriptTest extends RiverMongo
             logger.debug("Create river {}", river);
             String script = "ctx.documents << [data: [id: 12345, name: '99'], operation: 'i'] ";
             script += "<< [data: [id: 6666, name: 'document-ignored'], ignore: true] ";
-            super.createRiver(TEST_MONGODB_RIVER_WITH_ADVANCED_TRANSFORMATION_JSON, river, String.valueOf(getMongoPort1()),
-                    String.valueOf(getMongoPort2()), String.valueOf(getMongoPort3()), (Object) "[]", getDatabase(), getCollection(),
+            super.createRiver(TEST_MONGODB_RIVER_WITH_ADVANCED_TRANSFORMATION_JSON, river, 3, (Object) "[]", getDatabase(), getCollection(),
                     GROOVY_SCRIPT_TYPE, script, index, getDatabase());
 
             String mongoDocument = copyToStringFromClasspath(TEST_SIMPLE_MONGODB_DOCUMENT_JSON);

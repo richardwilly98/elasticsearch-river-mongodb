@@ -18,6 +18,7 @@
  */
 package org.elasticsearch.river.mongodb;
 
+import static com.google.common.collect.ObjectArrays.concat;
 import static org.elasticsearch.client.Requests.clusterHealthRequest;
 import static org.elasticsearch.common.io.Streams.copyToStringFromClasspath;
 import static org.elasticsearch.common.settings.ImmutableSettings.settingsBuilder;
@@ -28,9 +29,12 @@ import static org.hamcrest.Matchers.equalTo;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.Validate;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.admin.indices.exists.types.TypesExistsResponse;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
@@ -52,12 +56,17 @@ import org.elasticsearch.plugins.PluginManager.OutputMode;
 import org.elasticsearch.river.RiverIndexName;
 import org.elasticsearch.river.RiverName;
 import org.elasticsearch.river.RiverSettings;
+import org.elasticsearch.river.mongodb.embed.TokuMXStarter;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 import org.elasticsearch.script.ScriptService;
 import org.testng.Assert;
 import org.testng.annotations.AfterSuite;
 import org.testng.annotations.BeforeSuite;
+import org.testng.annotations.DataProvider;
 
+import com.google.common.base.Function;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.CommandResult;
@@ -80,8 +89,47 @@ import de.flapdoodle.embed.mongo.config.Storage;
 import de.flapdoodle.embed.mongo.distribution.Versions;
 import de.flapdoodle.embed.process.distribution.GenericVersion;
 import de.flapdoodle.embed.process.runtime.Network;
+import de.flapdoodle.embed.process.runtime.Starter;
 
 public abstract class RiverMongoDBTestAbstract {
+
+    public static class MongoReplicaSet {
+
+        static class Member {
+            private IMongodConfig config;
+            private MongodExecutable executable;
+            private MongodProcess process;
+            private ServerAddress address;
+        }
+
+        private final ExecutableType type;
+        private final String version;
+        public final Mongo mongo;
+        private final DB mongoAdminDB;
+        private final ImmutableList<Member> members;
+
+        public MongoReplicaSet(ExecutableType type, String version, Mongo mongo, DB mongoAdminDB, ImmutableList<Member> members) {
+            this.type = type;
+            this.version = version;
+            this.mongo = mongo;
+            this.mongoAdminDB = mongoAdminDB;
+            this.members = members;
+        }
+    }
+
+    public static enum ExecutableType {
+        VANILLA("mongodb", true, MongodStarter.getDefaultInstance()), TOKUMX("tokumx", false, TokuMXStarter.getDefaultInstance());
+
+        public final String configKey;
+        public final boolean supportsGridFS;
+        public final Starter<IMongodConfig, MongodExecutable, MongodProcess> starter;
+
+        ExecutableType(String configKey, boolean supportsGridFS, Starter<IMongodConfig, MongodExecutable, MongodProcess> mongodStarter) {
+            this.configKey = configKey;
+            this.supportsGridFS = supportsGridFS;
+            this.starter = mongodStarter;
+        }
+    }
 
     public static final String TEST_MONGODB_RIVER_SIMPLE_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river.json";
     public static final String TEST_MONGODB_RIVER_SIMPLE_WITH_TYPE_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-with-type.json";
@@ -98,133 +146,121 @@ public abstract class RiverMongoDBTestAbstract {
 
     public static final String ADMIN_DATABASE_NAME = "admin";
     public static final String LOCAL_DATABASE_NAME = "local";
-    public static final String REPLICA_SET_NAME = "rep1";
+    //public static final String REPLICA_SET_NAME = "rep1";
     public static final String OPLOG_COLLECTION = "oplog.rs";
 
-    private IMongodConfig mongodConfig1;
-    private IMongodConfig mongodConfig2;
-    private IMongodConfig mongodConfig3;
-    private MongodExecutable mongodExe1;
-    private static int mongoPort1;
-    private static MongodProcess mongod1;
-    private MongodExecutable mongodExe2;
-    private static int mongoPort2;
-    private static MongodProcess mongod2;
-    private MongodExecutable mongodExe3;
-    private static int mongoPort3;
-    private static MongodProcess mongod3;
-    protected static Mongo mongo;
-    private DB mongoAdminDB;
-
+    private static Settings settings = loadSettings();
+    private static EnumMap<ExecutableType, MongoReplicaSet> replicaSets =
+            new EnumMap<RiverMongoDBTestAbstract.ExecutableType, RiverMongoDBTestAbstract.MongoReplicaSet>(ExecutableType.class);
     private static Node node;
-    private static Settings settings;
 
-    private boolean useDynamicPorts;
-    private String mongoVersion;
-
+    protected final ExecutableType executableType;
     private final String river;
     private final String database;
     private final String collection;
     private final String index;
 
-    protected RiverMongoDBTestAbstract(/*
-                                        * String river, String database, String
-                                        * collection, String index
-                                        */) {
-        // this.river = river;
-        // this.database = database;
-        // this.collection = collection;
-        // this.index = index;
-        this(false);
+    protected RiverMongoDBTestAbstract(boolean isGridFS) {
+        this(ExecutableType.VANILLA, isGridFS);
     }
 
-    protected RiverMongoDBTestAbstract(boolean isGridFS) {
+    protected RiverMongoDBTestAbstract(ExecutableType type) {
+        this(type, false);
+    }
+
+    protected RiverMongoDBTestAbstract(ExecutableType type, boolean isGridFS) {
+        Validate.isTrue(type.supportsGridFS || !isGridFS, "isGridFS is not supported by " + type);
+        this.executableType = type;
         String suffix = getClass().getSimpleName().toLowerCase();
         if (suffix.length() > 35) {
             suffix = suffix.substring(0, 34);
         }
         suffix = suffix + "-" + System.currentTimeMillis();
-        this.river = "r-" + suffix;
+        this.river = "r" + type.ordinal() + "-" + suffix;
         this.database = "d-" + suffix;
         if (isGridFS) {
             this.collection = "fs";
         } else {
             this.collection = "c-" + suffix;
         }
-        this.index = "i-" + suffix;
-        loadSettings();
+        this.index = "i" + type.ordinal() + "-" + suffix;
+    }
+
+    @DataProvider(name = "allMongoExecutableTypes")
+    public static Object[][] allMongoExecutableTypes() {
+        return Lists.transform(Arrays.asList(ExecutableType.values()), new Function<ExecutableType, Object[]>() {
+            @Override public Object[] apply(ExecutableType _) { return new Object[] { _ }; }})
+            .toArray(new Object[ExecutableType.values().length][]);
+    }
+
+    @DataProvider(name = "onlyVanillaMongo")
+    public static Object[][] onlyVanillaMongo() {
+        return new Object[][] {{ ExecutableType.VANILLA }};
     }
 
     @BeforeSuite
     public void beforeSuite() throws Exception {
         logger.debug("*** beforeSuite ***");
-        if (useDynamicPorts) {
-            mongoPort1 = Network.getFreeServerPort();
-            mongoPort2 = Network.getFreeServerPort();
-            mongoPort3 = Network.getFreeServerPort();
-        } else {
-            mongoPort1 = 37017;
-            mongoPort2 = 37018;
-            mongoPort3 = 37019;
-        }
         setupElasticsearchServer();
         initMongoInstances();
     }
 
-    private void loadSettings() {
-        settings = settingsBuilder().loadFromStream("settings.yml", ClassLoader.getSystemResourceAsStream("settings.yml")).build();
-
-        this.useDynamicPorts = settings.getAsBoolean("mongodb.use_dynamic_ports", Boolean.FALSE);
-        this.mongoVersion = settings.get("mongodb.version");
+    private static Settings loadSettings() {
+        return settingsBuilder().loadFromStream("settings.yml", ClassLoader.getSystemResourceAsStream("settings.yml")).build();
     }
 
     private void initMongoInstances() throws Exception {
-        logger.debug("*** initMongoInstances ***");
+        for (ExecutableType type : ExecutableType.values()) {
+            initMongoInstances(type);
+        }
+    }
+
+    private void initMongoInstances(ExecutableType type) throws Exception {
+        logger.debug("*** initMongoInstances(" + type + ") ***");
         CommandResult cr;
-
+        Settings rsSettings = settings.getByPrefix(type.configKey + '.');
+        int[] ports;
+        if (rsSettings.getAsBoolean("useDynamicPorts", false)) {
+            ports = new int[] { Network.getFreeServerPort(), Network.getFreeServerPort(), Network.getFreeServerPort() };
+        } else {
+            int start = 37017 + 10 * type.ordinal();
+            ports = new int[] { start, start + 1, start + 2 };
+        }
+        String replicaSetName = "es-test-" + type.configKey;
         // Create 3 mongod processes
-        MongodStarter starter = MongodStarter.getDefaultInstance();
-        Storage storage1 = new Storage("target/mongodb/1", REPLICA_SET_NAME, 20);
-        Storage storage2 = new Storage("target/mongodb/2", REPLICA_SET_NAME, 20);
-        Storage storage3 = new Storage("target/mongodb/3", REPLICA_SET_NAME, 20);
-
-        mongodConfig1 = new MongodConfigBuilder().version(Versions.withFeatures(new GenericVersion(mongoVersion)))
-                .net(new de.flapdoodle.embed.mongo.config.Net(mongoPort1, Network.localhostIsIPv6())).replication(storage1).build();
-        mongodExe1 = starter.prepare(mongodConfig1);
-        mongod1 = mongodExe1.start();
-
-        mongodConfig2 = new MongodConfigBuilder().version(Versions.withFeatures(new GenericVersion(mongoVersion)))
-                .net(new de.flapdoodle.embed.mongo.config.Net(mongoPort2, Network.localhostIsIPv6())).replication(storage2).build();
-        mongodExe2 = starter.prepare(mongodConfig2);
-        mongod2 = mongodExe2.start();
-
-        mongodConfig3 = new MongodConfigBuilder().version(Versions.withFeatures(new GenericVersion(mongoVersion)))
-                .net(new de.flapdoodle.embed.mongo.config.Net(mongoPort3, Network.localhostIsIPv6())).replication(storage3).build();
-        mongodExe3 = starter.prepare(mongodConfig3);
-        mongod3 = mongodExe3.start();
-        String server1 = Network.getLocalHost().getHostName() + ":" + mongodConfig1.net().getPort();
-        String server2 = Network.getLocalHost().getHostName() + ":" + mongodConfig2.net().getPort();
-        String server3 = Network.getLocalHost().getHostName() + ":" + mongodConfig3.net().getPort();
-        logger.debug("Server #1: {}", server1);
-        logger.debug("Server #2: {}", server2);
-        logger.debug("Server #3: {}", server3);
+        ImmutableList.Builder<MongoReplicaSet.Member> builder = ImmutableList.builder();
+        for (int i = 1; i <= 3; ++i) {
+            Storage storage = new Storage("target/" + replicaSetName + '/' + i, replicaSetName, 20);
+            MongoReplicaSet.Member member = new MongoReplicaSet.Member();
+            member.config = new MongodConfigBuilder().version(Versions.withFeatures(new GenericVersion(rsSettings.get("version"))))
+                .net(new de.flapdoodle.embed.mongo.config.Net(ports[i - 1], Network.localhostIsIPv6())).replication(storage).build();
+            logger.trace("replSetName in config: {}", member.config.replication().getReplSetName());
+            member.executable = type.starter.prepare(member.config);
+            member.process = member.executable.start();
+            member.address = new ServerAddress(Network.getLocalHost().getHostName(), member.config.net().getPort());
+            logger.debug("Server #" + i + ": {}", member.address);
+            builder.add(member);
+        }
+        ImmutableList<MongoReplicaSet.Member> members = builder.build();
         Thread.sleep(2000);
         MongoClientOptions mco = MongoClientOptions.builder().autoConnectRetry(true).connectTimeout(15000).socketTimeout(60000).build();
-        mongo = new MongoClient(new ServerAddress(Network.getLocalHost().getHostName(), mongodConfig1.net().getPort()), mco);
-        mongoAdminDB = mongo.getDB(ADMIN_DATABASE_NAME);
+        Mongo mongo = new MongoClient(new ServerAddress(Network.getLocalHost().getHostName(), ports[0]), mco);
+        DB mongoAdminDB = mongo.getDB(ADMIN_DATABASE_NAME);
 
         cr = mongoAdminDB.command(new BasicDBObject("isMaster", 1));
         logger.debug("isMaster: " + cr);
 
         // Initialize replica set
-        cr = mongoAdminDB.command(new BasicDBObject("replSetInitiate", (DBObject) JSON.parse("{'_id': '" + REPLICA_SET_NAME
-                + "', 'members': [{'_id': 0, 'host': '" + server1 + "'}, {'_id': 1, 'host': '" + server2 + "'}, {'_id': 2, 'host': '"
-                + server3 + "', 'arbiterOnly' : true}]} }")));
-        logger.debug("replSetInitiate: " + cr);
+        cr = mongoAdminDB.command(new BasicDBObject("replSetInitiate",
+                (DBObject) JSON.parse("{'_id': '" + replicaSetName + "', 'members': ["
+                + "{'_id': 0, 'host': '" + members.get(0).address.getHost() + ':' + members.get(0).address.getPort() + "'}, "
+                + "{'_id': 1, 'host': '" + members.get(1).address.getHost() + ':' + members.get(1).address.getPort() + "'}, "
+                + "{'_id': 2, 'host': '" + members.get(2).address.getHost() + ':' + members.get(2).address.getPort() + "', 'arbiterOnly' : true}]} }")));
+        logger.debug("replSetInitiate result: " + cr);
 
         Thread.sleep(5000);
         cr = mongoAdminDB.command(new BasicDBObject("replSetGetStatus", 1));
-        logger.trace("replSetGetStatus: {}", cr);
+        logger.trace("replSetGetStatus result: {}", cr);
 
         // Check replica set status before to proceed
         while (!isReplicaSetStarted(cr)) {
@@ -239,13 +275,14 @@ public abstract class RiverMongoDBTestAbstract {
 
         // Initialize a new client using all instances.
         List<ServerAddress> mongoServers = new ArrayList<ServerAddress>();
-        mongoServers.add(new ServerAddress(Network.getLocalHost().getHostName(), mongodConfig1.net().getPort()));
-        mongoServers.add(new ServerAddress(Network.getLocalHost().getHostName(), mongodConfig2.net().getPort()));
-        mongoServers.add(new ServerAddress(Network.getLocalHost().getHostName(), mongodConfig3.net().getPort()));
+        for (MongoReplicaSet.Member member : members) {
+            mongoServers.add(member.address);
+        }
         mongo = new MongoClient(mongoServers, mco);
         Assert.assertNotNull(mongo);
         mongo.setReadPreference(ReadPreference.secondaryPreferred());
         mongo.setWriteConcern(WriteConcern.REPLICAS_SAFE);
+        replicaSets.put(type, new MongoReplicaSet(type, rsSettings.get("version"), mongo, mongoAdminDB, members));
     }
 
     private boolean isReplicaSetStarted(BasicDBObject setting) {
@@ -254,6 +291,7 @@ public abstract class RiverMongoDBTestAbstract {
         }
 
         BasicDBList members = (BasicDBList) setting.get("members");
+        int numPrimaries = 0;
         for (Object m : members.toArray()) {
             BasicDBObject member = (BasicDBObject) m;
             logger.trace("Member: {}", member);
@@ -263,6 +301,13 @@ public abstract class RiverMongoDBTestAbstract {
             if (state != 1 && state != 2 && state != 7) {
                 return false;
             }
+            if (state == 1) {
+                ++numPrimaries;
+            }
+        }
+        if (numPrimaries != 1) {
+            logger.warn("Expected 1 primary, instead found " + numPrimaries);
+            return false;
         }
         return true;
     }
@@ -301,13 +346,21 @@ public abstract class RiverMongoDBTestAbstract {
         }
     }
 
-    protected String getJsonSettings(String jsonDefinition, Object... args) throws Exception {
+    protected String getJsonSettings(String jsonDefinition, int numPortArgs, Object... additionalArgs) throws Exception {
         logger.debug("Get river setting");
         String setting = copyToStringFromClasspath(jsonDefinition);
-        if (args != null) {
-            setting = String.format(setting, args);
+        switch(numPortArgs) {
+        case 0:
+            return additionalArgs == null ? setting : String.format(setting, additionalArgs);
+        case 1:
+            return String.format(setting, concat(String.valueOf(getMongoPort(1)), additionalArgs));
+        case 3:
+            List<String> ports = Arrays.asList(
+                    String.valueOf(getMongoPort(1)), String.valueOf(getMongoPort(2)), String.valueOf(getMongoPort(3)));
+            return String.format(setting, concat(ports.toArray(), additionalArgs, Object.class));
+        default:
+            throw new IllegalArgumentException("numPortArgs must be one of { 0, 1, 3 }");
         }
-        return setting;
     }
 
     protected void refreshIndex() {
@@ -329,9 +382,10 @@ public abstract class RiverMongoDBTestAbstract {
 
     }
 
-    protected void createRiver(String jsonDefinition, String river, Object... args) throws Exception {
+    /** Prepend MongoDB ports as first numPortArgs to format jsonDefinition with. */
+    protected void createRiver(String jsonDefinition, String river, int numPortArgs, Object... args) throws Exception {
         logger.info("Create river [{}]", river);
-        String settings = getJsonSettings(jsonDefinition, args);
+        String settings = getJsonSettings(jsonDefinition, numPortArgs, args);
         logger.info("River setting [{}]", settings);
         node.client().prepareIndex("_river", river, "_meta").setSource(settings).execute().actionGet();
         waitForGreenStatus();
@@ -353,17 +407,12 @@ public abstract class RiverMongoDBTestAbstract {
         }
     }
 
-    protected void createRiver(String jsonDefinition, Object... args) throws Exception {
-        createRiver(jsonDefinition, river, args);
-    }
-
     protected void createRiver(String jsonDefinition) throws Exception {
-        createRiver(jsonDefinition, database, collection, index);
+        createRiver(jsonDefinition, getDatabase(), getCollection(), getIndex());
     }
 
     protected void createRiver(String jsonDefinition, String database, String collection, String index) throws Exception {
-        createRiver(jsonDefinition, river, String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
-                String.valueOf(getMongoPort3()), database, collection, index);
+        createRiver(jsonDefinition, river, 3, database, collection, index);
     }
 
     protected void deleteIndex(String name) {
@@ -442,8 +491,7 @@ public abstract class RiverMongoDBTestAbstract {
             RiverName riverName = new RiverName("mongodb", river);
             // InputStream in =
             // getClass().getResourceAsStream("/org/elasticsearch/river/mongodb/test-mongodb-river-simple-definition.json");
-            String settings = getJsonSettings(jsonDefinition, String.valueOf(getMongoPort1()), String.valueOf(getMongoPort2()),
-                    String.valueOf(getMongoPort3()), database, collection, index);
+            String settings = getJsonSettings(jsonDefinition, 3, database, collection, index);
             InputStream in = new ByteArrayInputStream(settings.getBytes());
             RiverSettings riverSettings = new RiverSettings(ImmutableSettings.settingsBuilder().build(), XContentHelper.convertToMap(
                     Streams.copyToByteArray(in), false).v2());
@@ -467,21 +515,19 @@ public abstract class RiverMongoDBTestAbstract {
 
     private void shutdownMongoInstances() {
         logger.debug("*** shutdownMongoInstances ***");
-        mongo.close();
-        try {
-            logger.debug("Start shutdown {}", mongod1);
-            mongod1.stop();
-        } catch (Throwable t) {
+        for (MongoReplicaSet rs : replicaSets.values()) {
+            shutdownMongoInstances(rs);
         }
-        try {
-            logger.debug("Start shutdown {}", mongod2);
-            mongod2.stop();
-        } catch (Throwable t) {
-        }
-        try {
-            logger.debug("Start shutdown {}", mongod3);
-            mongod3.stop();
-        } catch (Throwable t) {
+    }
+
+    private void shutdownMongoInstances(MongoReplicaSet rs) {
+        rs.mongo.close();
+        for (MongoReplicaSet.Member member : rs.members) {
+            try {
+                logger.debug("Start shutdown {}", member);
+                member.process.stop();
+            } catch (Throwable t) {
+            }
         }
     }
 
@@ -490,8 +536,8 @@ public abstract class RiverMongoDBTestAbstract {
         node.close();
     }
 
-    protected static Mongo getMongo() {
-        return mongo;
+    protected Mongo getMongo() {
+        return replicaSets.get(executableType).mongo;
     }
 
     protected static Node getNode() {
@@ -502,16 +548,8 @@ public abstract class RiverMongoDBTestAbstract {
         return node.client().admin().indices();
     }
 
-    protected static int getMongoPort1() {
-        return mongoPort1;
-    }
-
-    protected static int getMongoPort2() {
-        return mongoPort2;
-    }
-
-    protected static int getMongoPort3() {
-        return mongoPort3;
+    private int getMongoPort(int n) {
+        return replicaSets.get(executableType).members.get(n - 1).address.getPort();
     }
 
     protected String getRiver() {
@@ -528,5 +566,11 @@ public abstract class RiverMongoDBTestAbstract {
 
     protected String getIndex() {
         return index;
+    }
+
+    /** Print a more useful string for each instance, in TestNG reports. */
+    @Override
+    public String toString() {
+        return executableType.name();
     }
 }

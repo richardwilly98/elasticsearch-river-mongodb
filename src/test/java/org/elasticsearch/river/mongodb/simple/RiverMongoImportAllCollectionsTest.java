@@ -27,6 +27,7 @@ import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
 import com.mongodb.DB;
@@ -43,6 +44,11 @@ public class RiverMongoImportAllCollectionsTest extends RiverMongoDBTestAbstract
     private DBCollection mongoCollection;
     private DBCollection mongoCollection2;
 
+    @Factory(dataProvider = "allMongoExecutableTypes")
+    public RiverMongoImportAllCollectionsTest(ExecutableType type) {
+        super(type);
+    }
+
     @BeforeClass
     public void createDatabase() {
         logger.debug("createDatabase {}", getDatabase());
@@ -54,8 +60,7 @@ public class RiverMongoImportAllCollectionsTest extends RiverMongoDBTestAbstract
             Assert.assertNotNull(mongoCollection);
             mongoCollection2 = mongoDB.createCollection("collection-" + System.currentTimeMillis(), null);
             Assert.assertNotNull(mongoCollection2);
-            createRiver(TEST_MONGODB_RIVER_IMPORT_ALL_COLLECTION_JSON, getRiver(), String.valueOf(getMongoPort1()),
-                    String.valueOf(getMongoPort2()), String.valueOf(getMongoPort3()), getDatabase(), getIndex());
+            createRiver(TEST_MONGODB_RIVER_IMPORT_ALL_COLLECTION_JSON, getRiver(), 3, getDatabase(), getIndex());
         } catch (Throwable t) {
             logger.error("createDatabase failed.", t);
         }

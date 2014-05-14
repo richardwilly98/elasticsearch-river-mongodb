@@ -18,6 +18,7 @@ import javax.net.ssl.X509TrustManager;
 
 import org.bson.BasicBSONObject;
 import org.bson.types.BSONTimestamp;
+import org.bson.types.Binary;
 import org.elasticsearch.common.Preconditions;
 import org.elasticsearch.common.collect.Maps;
 import org.elasticsearch.common.logging.ESLogger;
@@ -128,7 +129,7 @@ public class MongoDBRiverDefinition {
     private final Set<String> excludeFields;
     private final Set<String> includeFields;
     private final String includeCollection;
-    private final BSONTimestamp initialTimestamp;
+    private final Timestamp<?> initialTimestamp;
     private final String script;
     private final String scriptType;
     private final boolean advancedTransformation;
@@ -176,7 +177,7 @@ public class MongoDBRiverDefinition {
         private Set<String> excludeFields = null;
         private Set<String> includeFields = null;
         private String includeCollection = "";
-        private BSONTimestamp initialTimestamp = null;
+        private Timestamp<?> initialTimestamp = null;
         private String script = null;
         private String scriptType = null;
         private boolean advancedTransformation = false;
@@ -310,8 +311,13 @@ public class MongoDBRiverDefinition {
             return this;
         }
 
+        public Builder initialTimestamp(Binary initialTimestamp) {
+            this.initialTimestamp = new Timestamp.GTID(initialTimestamp.getData(), null);
+            return this;
+        }
+
         public Builder initialTimestamp(BSONTimestamp initialTimestamp) {
-            this.initialTimestamp = initialTimestamp;
+            this.initialTimestamp = new Timestamp.BSON(initialTimestamp);
             return this;
         }
 
@@ -954,7 +960,7 @@ public class MongoDBRiverDefinition {
         return includeCollection;
     }
 
-    public BSONTimestamp getInitialTimestamp() {
+    public Timestamp<?> getInitialTimestamp() {
         return initialTimestamp;
     }
 

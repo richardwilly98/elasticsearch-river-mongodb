@@ -29,3 +29,7 @@ plugins:
 mongodb:
   version: 2.6.1
   use_dynamic_ports: false
+
+tokumx:
+  version: 1.4.2
+  use_dynamic_ports: false

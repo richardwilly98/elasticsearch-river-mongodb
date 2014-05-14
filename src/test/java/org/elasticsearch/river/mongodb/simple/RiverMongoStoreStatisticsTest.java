@@ -27,8 +27,9 @@ import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsReques
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
 import com.google.common.collect.ImmutableMap;
@@ -43,12 +44,17 @@ public class RiverMongoStoreStatisticsTest extends RiverMongoDBTestAbstract {
 
     private DB mongoDB;
     private DBCollection mongoCollection;
-    private final String storeStatsIndex = "stats-index-" + System.currentTimeMillis();
-    private final String storeStatsType = "stats" + System.currentTimeMillis();
+    private final String storeStatsIndex = "stats" + executableType.ordinal() + "-index-" + System.currentTimeMillis();
+    private final String storeStatsType = "stats" + executableType.ordinal() + '-' + System.currentTimeMillis();
+
+    @Factory(dataProvider = "allMongoExecutableTypes")
+    public RiverMongoStoreStatisticsTest(ExecutableType type) {
+        super(type);
+    }
 
     @Test
     public void testStoreStatistics() throws Throwable {
-        logger.debug("Start testStoreStatistics");
+        logger.debug("Start testStoreStatistics ({})", executableType);
         try {
 
             DBObject dbObject1 = new BasicDBObject(ImmutableMap.of("name", "Richard"));
@@ -78,7 +84,7 @@ public class RiverMongoStoreStatisticsTest extends RiverMongoDBTestAbstract {
         }
     }
 
-    @BeforeTest
+    @BeforeClass
     void setUp() {
         createDatabase();
         createRiver();
@@ -99,7 +105,7 @@ public class RiverMongoStoreStatisticsTest extends RiverMongoDBTestAbstract {
 
     private void createRiver() {
         try {
-            super.createRiver(TEST_MONGODB_RIVER_STORE_STATISTICS_JSON, getRiver(), (Object) String.valueOf(getMongoPort1()),
+            super.createRiver(TEST_MONGODB_RIVER_STORE_STATISTICS_JSON, getRiver(), 1,
                     (Object) storeStatsIndex, (Object) storeStatsType, (Object) getDatabase(), (Object) getCollection(),
                     (Object) getIndex(), (Object) getDatabase());
 
@@ -107,7 +113,7 @@ public class RiverMongoStoreStatisticsTest extends RiverMongoDBTestAbstract {
         }
     }
 
-    @AfterTest
+    @AfterClass
     void cleanUp() {
         super.deleteRiver();
         Assert.assertTrue(getNode().client().admin().indices().prepareDelete(storeStatsIndex).get().isAcknowledged());

@@ -21,6 +21,9 @@ public enum Operation {
                     return operation;
                 }
             }
+            if (MongoDBRiver.OPLOG_UPDATE_ROW_OPERATION.equalsIgnoreCase(value)) {
+                return Operation.UPDATE;
+            }
         }
         return Operation.UNKNOWN;
     }

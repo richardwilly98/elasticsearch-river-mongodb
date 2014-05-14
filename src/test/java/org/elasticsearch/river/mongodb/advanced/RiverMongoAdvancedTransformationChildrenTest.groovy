@@ -8,10 +8,12 @@ import org.bson.types.ObjectId
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract
+import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract.ExecutableType
 import org.elasticsearch.search.SearchHit
 import org.testng.Assert
 import org.testng.annotations.AfterClass
 import org.testng.annotations.BeforeClass
+import org.testng.annotations.Factory;
 import org.testng.annotations.Test
 
 import com.gmongo.GMongo
@@ -28,8 +30,10 @@ class RiverMongoAdvancedTransformationChildrenTest extends RiverMongoDBTestAbstr
 	private def db
 	private DBCollection dbCollection
 
-	protected RiverMongoAdvancedTransformationChildrenTest() {
-	}
+  @Factory(dataProvider = "allMongoExecutableTypes")
+	public RiverMongoAdvancedTransformationChildrenTest(ExecutableType type) {
+    super(type);
+  }
 
 	@BeforeClass
 	public void createDatabase() {
@@ -63,12 +67,11 @@ class RiverMongoAdvancedTransformationChildrenTest extends RiverMongoDBTestAbstr
 					.preparePutMapping(index)
 					.setType("tweet")
 					.setSource(
-					getJsonSettings("/org/elasticsearch/river/mongodb/advanced/tweets-mapping.json"))
+					getJsonSettings("/org/elasticsearch/river/mongodb/advanced/tweets-mapping.json", 0))
 					.execute().actionGet()
 
 			createRiver(
-					RiverMongoAdvancedTransformationGroovyScriptTest.TEST_MONGODB_RIVER_WITH_ADVANCED_TRANSFORMATION_JSON, river,
-					mongoPort1.toString(), mongoPort2.toString(), mongoPort3.toString(),
+					RiverMongoAdvancedTransformationGroovyScriptTest.TEST_MONGODB_RIVER_WITH_ADVANCED_TRANSFORMATION_JSON, river, 3,
 					"[\"author\"]",
 					database, collection, RiverMongoAdvancedTransformationGroovyScriptTest.GROOVY_SCRIPT_TYPE, GROOVY_SCRIPT, index, database
 					)
