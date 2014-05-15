@@ -122,6 +122,13 @@ class Slurper implements Runnable {
                     }
                     while (cursor.hasNext()) {
                         DBObject item = cursor.next();
+                        // TokuMX secondaries can have ops in the oplog that have not yet been applied
+                        // We need to wait until they have been applied before processing them
+                        Object applied = item.get("a");
+                        if (applied != null && !applied.equals(Boolean.TRUE)) {
+                            logger.debug("Encountered oplog entry with a:false, ts:" + item.get("ts"));
+                            break;
+                        }
                         startTimestamp = processOplogEntry(item, startTimestamp);
                     }
                     logger.debug("Before waiting for 500 ms");
