@@ -206,7 +206,10 @@ class Slurper implements Runnable {
                     updateIndexRefresh(definition.getIndexName(), -1L);
                 }
                 if (!definition.isMongoGridFS()) {
-                    logger.info("Collection {} - count: {}", collection.getName(), collection.count());
+                    if (logger.isTraceEnabled()) {
+                        // Note: collection.count() is expensive on TokuMX
+                        logger.trace("Collection {} - count: {}", collection.getName(), collection.count());
+                    }
                     long count = 0;
                     cursor = collection.find(getFilterForInitialImport(definition.getMongoCollectionFilter(), lastId));
                     while (cursor.hasNext()) {
@@ -215,12 +218,12 @@ class Slurper implements Runnable {
                         if (cursor.hasNext()) {
                             lastId = addInsertToStream(null, applyFieldFilter(object), collection.getName());
                         } else {
-                            logger.debug("Last entry for initial import - add timestamp: {}", startTimestamp);
+                            logger.debug("Last entry for initial import of {} - add timestamp: {}", collection.getFullName(), startTimestamp);
                             lastId = addInsertToStream(startTimestamp, applyFieldFilter(object), collection.getName());
                         }
                     }
                     inProgress = false;
-                    logger.info("Number documents indexed: {}", count);
+                    logger.info("Number of documents indexed in initial import of {}: {}", collection.getFullName(), count);
                 } else {
                     // TODO: To be optimized.
                     // https://github.com/mongodb/mongo-java-driver/pull/48#issuecomment-25241988
@@ -237,7 +240,7 @@ class Slurper implements Runnable {
                             if (cursor.hasNext()) {
                                 lastId = addInsertToStream(null, file);
                             } else {
-                                logger.debug("Last entry for initial import - add timestamp: {}", startTimestamp);
+                                logger.debug("Last entry for initial import of {} - add timestamp: {}", collection.getFullName(), startTimestamp);
                                 lastId = addInsertToStream(startTimestamp, file);
                             }
                         }
@@ -245,8 +248,8 @@ class Slurper implements Runnable {
                     inProgress = false;
                 }
             } catch (MongoException.CursorNotFound e) {
-                logger.info("Initial import - Cursor {} has been closed. About to open a new cusor.", cursor.getCursorId());
-                logger.debug("Total document inserted [{}]", totalDocuments.get());
+                logger.debug("Initial import - Cursor {} has been closed. About to open a new cursor.", cursor.getCursorId());
+                logger.debug("Total documents inserted so far by river {}: {}", definition.getRiverName(), totalDocuments.get());
             } finally {
                 if (cursor != null) {
                     logger.trace("Closing initial import cursor");
@@ -279,7 +282,7 @@ class Slurper implements Runnable {
         oplogDb = mongo.getDB(MongoDBRiver.MONGODB_LOCAL_DATABASE);
 
         if (!definition.getMongoAdminUser().isEmpty() && !definition.getMongoAdminPassword().isEmpty()) {
-            logger.info("Authenticate {} with {}", MongoDBRiver.MONGODB_ADMIN_DATABASE, definition.getMongoAdminUser());
+            logger.debug("Authenticate {} with {}", MongoDBRiver.MONGODB_ADMIN_DATABASE, definition.getMongoAdminUser());
 
             CommandResult cmd = adminDb.authenticateCommand(definition.getMongoAdminUser(), definition.getMongoAdminPassword()
                     .toCharArray());
@@ -292,7 +295,7 @@ class Slurper implements Runnable {
         }
 
         if (!definition.getMongoLocalUser().isEmpty() && !definition.getMongoLocalPassword().isEmpty() && !oplogDb.isAuthenticated()) {
-            logger.info("Authenticate {} with {}", MongoDBRiver.MONGODB_LOCAL_DATABASE, definition.getMongoLocalUser());
+            logger.debug("Authenticate {} with {}", MongoDBRiver.MONGODB_LOCAL_DATABASE, definition.getMongoLocalUser());
             CommandResult cmd = oplogDb.authenticateCommand(definition.getMongoLocalUser(), definition.getMongoLocalPassword()
                     .toCharArray());
             if (!cmd.ok()) {
@@ -428,10 +431,10 @@ class Slurper implements Runnable {
             GridFS grid = new GridFS(mongo.getDB(definition.getMongoDb()), collection);
             GridFSDBFile file = grid.findOne(new ObjectId(objectId));
             if (file != null) {
-                logger.info("Caught file: {} - {}", file.getId(), file.getFilename());
+                logger.trace("Caught file: {} - {}", file.getId(), file.getFilename());
                 object = file;
             } else {
-                logger.warn("Cannot find file from id: {}", objectId);
+                logger.error("Cannot find file from id: {}", objectId);
             }
         }
 
@@ -446,7 +449,7 @@ class Slurper implements Runnable {
         } else {
             if (operation == Operation.UPDATE) {
                 DBObject update = (DBObject) entry.get(MongoDBRiver.OPLOG_UPDATE);
-                logger.debug("Updated item: {}", update);
+                logger.trace("Updated item: {}", update);
                 addQueryToStream(operation, oplogTimestamp, update, collection);
             } else {
                 if (operation == Operation.INSERT) {
@@ -501,13 +504,13 @@ class Slurper implements Runnable {
         if (namespace.startsWith(definition.getMongoDb()) && CharMatcher.is('.').countIn(namespace) == 1) {
             return namespace.substring(definition.getMongoDb().length() + 1);
         }
-        logger.info("Cannot get collection from namespace [{}]", namespace);
+        logger.error("Cannot get collection from namespace [{}]", namespace);
         return null;
     }
 
     private boolean isValidOplogEntry(final DBObject entry, final Timestamp<?> startTimestamp) {
         if (MongoDBRiver.OPLOG_NOOP_OPERATION.equals(entry.get(MongoDBRiver.OPLOG_OPERATION))) {
-            logger.debug("[No-op Oplog Entry] - can be ignored. {}", entry);
+            logger.trace("[No-op Oplog Entry] - can be ignored. {}", entry);
             return false;
         }
         String namespace = (String) entry.get(MongoDBRiver.OPLOG_NAMESPACE);
@@ -515,7 +518,7 @@ class Slurper implements Runnable {
         // https://jira.mongodb.org/browse/SERVER-4333
         // Not interested in operation from migration or sharding
         if (entry.containsField(MongoDBRiver.OPLOG_FROM_MIGRATE) && ((BasicBSONObject) entry).getBoolean(MongoDBRiver.OPLOG_FROM_MIGRATE)) {
-            logger.debug("[Invalid Oplog Entry] - from migration or sharding operation. Can be ignored. {}", entry);
+            logger.trace("[Invalid Oplog Entry] - from migration or sharding operation. Can be ignored. {}", entry);
             return false;
         }
         // Not interested by chunks - skip all
@@ -526,7 +529,7 @@ class Slurper implements Runnable {
         if (startTimestamp != null) {
             Timestamp<?> oplogTimestamp = Timestamp.on(entry);
             if (Timestamp.compare(oplogTimestamp, startTimestamp) < 0) {
-                logger.debug("[Invalid Oplog Entry] - entry timestamp [{}] before startTimestamp [{}]", entry, startTimestamp);
+                logger.error("[Invalid Oplog Entry] - entry timestamp [{}] before startTimestamp [{}]", entry, startTimestamp);
                 return false;
             }
         }
@@ -554,12 +557,12 @@ class Slurper implements Runnable {
             }
         }
         if (!validNamespace) {
-            logger.debug("[Invalid Oplog Entry] - namespace [{}] is not valid", namespace);
+            logger.trace("[Invalid Oplog Entry] - namespace [{}] is not valid", namespace);
             return false;
         }
         String operation = (String) entry.get(MongoDBRiver.OPLOG_OPERATION);
         if (!oplogOperations.contains(operation)) {
-            logger.debug("[Invalid Oplog Entry] - operation [{}] is not valid", operation);
+            logger.trace("[Invalid Oplog Entry] - operation [{}] is not valid", operation);
             return false;
         }
 
@@ -568,7 +571,7 @@ class Slurper implements Runnable {
             DBObject object = (DBObject) entry.get(MongoDBRiver.OPLOG_OBJECT);
             BasicDBObject filter = definition.getMongoOplogFilter();
             if (!filterMatch(filter, object)) {
-                logger.debug("[Invalid Oplog Entry] - filter [{}] does not match object [{}]", filter, object);
+                logger.trace("[Invalid Oplog Entry] - filter [{}] does not match object [{}]", filter, object);
                 return false;
             }
         }
