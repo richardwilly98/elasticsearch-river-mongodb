@@ -157,7 +157,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 return;
             }
             if (status == Status.STOPPED) {
-                logger.debug("Cannot start river {}. It is currently disabled", riverName.getName());
+                logger.info("Cannot start river {}. It is currently disabled", riverName.getName());
                 startInvoked = true;
                 return;
             }
@@ -191,7 +191,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                     // listener here, and only start sampling when the
                     // block is removed...
                 } else {
-                    logger.warn("failed to create index [{}], disabling river...", e, definition.getIndexName());
+                    logger.error("failed to create index [{}], disabling river...", e, definition.getIndexName());
                     return;
                 }
             }
@@ -407,7 +407,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 .startObject("contentType").field("type", "string").endObject().startObject("md5").field("type", "string").endObject()
                 .startObject("length").field("type", "long").endObject().startObject("chunkSize").field("type", "long").endObject()
                 .endObject().endObject().endObject();
-        logger.info("Mapping: {}", mapping.string());
+        logger.info("GridFS Mapping: {}", mapping.string());
         return mapping;
     }
 
@@ -427,8 +427,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             if (mongodbState != null) {
                 Timestamp<?> lastTimestamp = Timestamp.on(mongodbState);
                 if (lastTimestamp != null) {
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("{} last timestamp: {}", definition.getMongoOplogNamespace(), lastTimestamp);
+                    if (logger.isTraceEnabled()) {
+                        logger.trace("{} last timestamp: {}", definition.getMongoOplogNamespace(), lastTimestamp);
                     }
                     return lastTimestamp;
                 }
@@ -449,8 +449,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
      */
     static void setLastTimestamp(final MongoDBRiverDefinition definition, final Timestamp<?> time, final BulkProcessor bulkProcessor) {
         try {
-            if (logger.isDebugEnabled()) {
-                logger.debug("setLastTimestamp [{}] [{}] [{}]", definition.getRiverName(), definition.getMongoOplogNamespace(), time);
+            if (logger.isTraceEnabled()) {
+                logger.trace("setLastTimestamp [{}] [{}] [{}]", definition.getRiverName(), definition.getMongoOplogNamespace(), time);
             }
             bulkProcessor.add(indexRequest(definition.getRiverIndexName())
                     .type(definition.getRiverName())
