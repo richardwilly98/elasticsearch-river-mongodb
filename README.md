@@ -79,7 +79,7 @@ Import data from mongo console:
 
 Query index:
 
-	curl -XGET 'http://localhost:9200/testmongo/_search?q=firstName:John'
+	curl -XGET 'http://localhost:9200/mongoindex/_search?q=firstName:John'
 
 	curl -XPUT 'http://localhost:9200/_river/mongodb/_meta' -d '{ 
 		"type": "mongodb", 
