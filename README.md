@@ -6,30 +6,30 @@ See the [wiki](https://github.com/richardwilly98/elasticsearch-river-mongodb/wik
 
 In order to install the plugin, simply run: ```bin/plugin --install com.github.richardwilly98.elasticsearch/elasticsearch-river-mongodb/2.0.0```
 
-| MongoDB River Plugin     | ElasticSearch    | MongoDB |
-|--------------------------|------------------|---------|
-| master                   | 1.0.0            | 2.4.9   |
-| 2.0.0                    | 1.0.0            | 2.4.9   |
-| 1.7.4                    | 0.90.10          | 2.4.8   |
-| 1.7.3                    | 0.90.7           | 2.4.8   |
-| 1.7.2                    | 0.90.5           | 2.4.8   |
-| 1.7.1                    | 0.90.5           | 2.4.6   |
-| 1.7.0                    | 0.90.3           | 2.4.5   |
-| 1.6.11                   | 0.90.2           | 2.4.5   |
-| 1.6.9                    | 0.90.1           | 2.4.4   |
-| 1.6.8                    | 0.90.0           | 2.4.3   |
-| 1.6.7                    | 0.90.0           | 2.4.3   |
-| 1.6.6                    | 0.90.0           | 2.4.3   |
-| 1.6.5                    | 0.20.6           | 2.4.1   |
-| 1.6.4                    | 0.20.5           | 2.2.3   |
-| 1.6.2                    | 0.20.1           | 2.2.2   |
-| 1.6.0                    | 0.20.1 -> master | 2.2.2   |
-| 1.5.0                    | 0.19.11          | 2.2.1   |
-| 1.4.0                    | 0.19.8           | 2.0.5   |
-| 1.3.0                    | 0.19.4           |         |
-| 1.2.0                    | 0.19.0           |         |
-| 1.1.0                    | 0.19.0           | 2.0.2   |
-| 1.0.0                    | 0.18             |         |
+| MongoDB River Plugin     | ElasticSearch    | MongoDB       |
+|--------------------------|------------------|---------------|
+| master                   | 1.1.1            | 2.4.9 -> 2.6.1|
+| 2.0.0                    | 1.0.0            | 2.4.9         |
+| 1.7.4                    | 0.90.10          | 2.4.8         |
+| 1.7.3                    | 0.90.7           | 2.4.8         |
+| 1.7.2                    | 0.90.5           | 2.4.8         |
+| 1.7.1                    | 0.90.5           | 2.4.6         |
+| 1.7.0                    | 0.90.3           | 2.4.5         |
+| 1.6.11                   | 0.90.2           | 2.4.5         |
+| 1.6.9                    | 0.90.1           | 2.4.4         |
+| 1.6.8                    | 0.90.0           | 2.4.3         |
+| 1.6.7                    | 0.90.0           | 2.4.3         |
+| 1.6.6                    | 0.90.0           | 2.4.3         |
+| 1.6.5                    | 0.20.6           | 2.4.1         |
+| 1.6.4                    | 0.20.5           | 2.2.3         |
+| 1.6.2                    | 0.20.1           | 2.2.2         |
+| 1.6.0                    | 0.20.1 -> master | 2.2.2         |
+| 1.5.0                    | 0.19.11          | 2.2.1         |
+| 1.4.0                    | 0.19.8           | 2.0.5         |
+| 1.3.0                    | 0.19.4           |               |
+| 1.2.0                    | 0.19.0           |               |
+| 1.1.0                    | 0.19.0           | 2.0.2         |
+| 1.0.0                    | 0.18             |               |
 
 Build status
 -------
@@ -44,66 +44,66 @@ The latest version monitors the oplog capped collection and supports attachment 
 
 Configure the river using the definition described in the [wiki](https://github.com/richardwilly98/elasticsearch-river-mongodb/wiki):
 
-	curl -XPUT 'http://localhost:9200/_river/mongodb/_meta' -d '{
-		"type": "mongodb", 
-		"mongodb": { 
-			"db": "DATABASE_NAME", 
-			"collection": "COLLECTION", 
-			"gridfs": true
-		}, 
-		"index": { 
-			"name": "ES_INDEX_NAME", 
-			"type": "ES_TYPE_NAME" 
-		}
-	}'
+  curl -XPUT 'http://localhost:9200/_river/mongodb/_meta' -d '{
+    "type": "mongodb", 
+    "mongodb": { 
+      "db": "DATABASE_NAME", 
+      "collection": "COLLECTION", 
+      "gridfs": true
+    }, 
+    "index": { 
+      "name": "ES_INDEX_NAME", 
+      "type": "ES_TYPE_NAME" 
+    }
+  }'
 
 Example:
 
-	curl -XPUT 'http://localhost:9200/_river/mongodb/_meta' -d '{ 
-		"type": "mongodb", 
-		"mongodb": { 
-			"db": "testmongo", 
-			"collection": "person"
-		}, 
-		"index": {
-			"name": "mongoindex", 
-			"type": "person" 
-		}
-	}'
+  curl -XPUT 'http://localhost:9200/_river/mongodb/_meta' -d '{ 
+    "type": "mongodb", 
+    "mongodb": { 
+      "db": "testmongo", 
+      "collection": "person"
+    }, 
+    "index": {
+      "name": "mongoindex", 
+      "type": "person" 
+    }
+  }'
 
 Import data from mongo console:
 
-	use testmongo
-	var p = {firstName: "John", lastName: "Doe"}
-	db.person.save(p)
+  use testmongo
+  var p = {firstName: "John", lastName: "Doe"}
+  db.person.save(p)
 
 Query index:
 
-	curl -XGET 'http://localhost:9200/mongoindex/_search?q=firstName:John'
+  curl -XGET 'http://localhost:9200/mongoindex/_search?q=firstName:John'
 
-	curl -XPUT 'http://localhost:9200/_river/mongodb/_meta' -d '{ 
-		"type": "mongodb", 
-		"mongodb": { 
-			"db": "testmongo", 
-			"collection": "fs", 
-			"gridfs": true 
-		}, 
-		"index": {
-			"name": "mongoindex", 
-			"type": "files" 
-		}
-	}'
+  curl -XPUT 'http://localhost:9200/_river/mongodb/_meta' -d '{ 
+    "type": "mongodb", 
+    "mongodb": { 
+      "db": "testmongo", 
+      "collection": "fs", 
+      "gridfs": true 
+    }, 
+    "index": {
+      "name": "mongoindex", 
+      "type": "files" 
+    }
+  }'
 
 Import binary content in mongo:
 
-	%MONGO_HOME%\bin>mongofiles.exe --host localhost:27017 --db testmongo --collection fs put test-document-2.pdf
-	connected to: localhost:27017
-	added file: { _id: ObjectId('4f230588a7da6e94984d88a1'), filename: "test-document-2.pdf", chunkSize: 262144, uploadDate: new Date(1327695240206), md5: "c2f251205576566826f86cd969158f24", length: 173293 }
-	done!
+  %MONGO_HOME%\bin>mongofiles.exe --host localhost:27017 --db testmongo --collection fs put test-document-2.pdf
+  connected to: localhost:27017
+  added file: { _id: ObjectId('4f230588a7da6e94984d88a1'), filename: "test-document-2.pdf", chunkSize: 262144, uploadDate: new Date(1327695240206), md5: "c2f251205576566826f86cd969158f24", length: 173293 }
+  done!
 
 Query index:
 
-	curl -XGET 'http://localhost:9200/files/4f230588a7da6e94984d88a1?pretty=true'
+  curl -XGET 'http://localhost:9200/files/4f230588a7da6e94984d88a1?pretty=true'
 
 Admin URL: http://localhost:9200/_plugin/river-mongodb/
 
@@ -207,7 +207,7 @@ Changelog
 
 #### 1.6.6 
 - Support for Elasticsearch 0.90.0 and MongoDB 2.4.3
-- MongoDB driver 2.11.1 (use of MongoClient)	
+- MongoDB driver 2.11.1 (use of MongoClient)  
 
 #### 1.6.5 
 - Add support for _parent, _routing (see issue #64)
