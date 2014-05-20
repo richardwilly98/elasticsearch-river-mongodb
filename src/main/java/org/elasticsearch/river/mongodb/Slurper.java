@@ -396,10 +396,17 @@ class Slurper implements Runnable {
         }
 
         if (logger.isTraceEnabled()) {
-            logger.trace("MongoDB object deserialized: {}", object.toString());
+            String deserialized = object.toString();
+            if (deserialized.length() < 400) {
+                logger.trace("MongoDB object deserialized: {}", deserialized);
+            } else {
+                logger.trace("MongoDB object deserialized is {} characters long", deserialized.length());
+            }
             logger.trace("collection: {}", collection);
             logger.trace("oplog entry - namespace [{}], operation [{}]", namespace, operation);
-            logger.trace("oplog processing item {}", entry);
+            if (deserialized.length() < 400) {
+                logger.trace("oplog processing item {}", entry);
+            }
         }
 
         String objectId = getObjectIdFromOplogEntry(entry);
@@ -692,8 +699,14 @@ class Slurper implements Runnable {
     private void addToStream(final Operation operation, final Timestamp<?> currentTimestamp, final DBObject data, final String collection)
             throws InterruptedException {
         if (logger.isTraceEnabled()) {
-            logger.trace("addToStream - operation [{}], currentTimestamp [{}], data [{}], collection [{}]", operation, currentTimestamp,
-                    data, collection);
+            String dataString = data.toString();
+            if (dataString.length() > 400) {
+                logger.trace("addToStream - operation [{}], currentTimestamp [{}], data (_id:[{}], serialized length:{}), collection [{}]",
+                        operation, currentTimestamp, data.get("_id"), dataString.length(), collection);
+            } else {
+                logger.trace("addToStream - operation [{}], currentTimestamp [{}], data [{}], collection [{}]",
+                        operation, currentTimestamp, dataString, collection);
+            }
         }
 
         if (operation == Operation.DROP_DATABASE) {
