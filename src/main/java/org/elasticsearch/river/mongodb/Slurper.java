@@ -61,7 +61,7 @@ class Slurper implements Runnable {
     private Mongo mongo;
     private DB slurpedDb;
     private DB oplogDb;
-    private DBCollection oplogCollection;
+    private DBCollection oplogCollection, oplogRefsCollection;
     private final AtomicLong totalDocuments = new AtomicLong();
 
     public Slurper(List<ServerAddress> mongoServers, MongoDBRiverDefinition definition, SharedContext context, Client client) {
@@ -310,6 +310,7 @@ class Slurper implements Runnable {
             return false;
         }
         oplogCollection = oplogDb.getCollection(MongoDBRiver.OPLOG_COLLECTION);
+        oplogRefsCollection = oplogDb.getCollection(MongoDBRiver.OPLOG_REFS_COLLECTION);
 
         slurpedDb = mongo.getDB(definition.getMongoDb());
         if (!definition.getMongoAdminUser().isEmpty() && !definition.getMongoAdminPassword().isEmpty() && adminDb.isAuthenticated()) {
@@ -405,10 +406,17 @@ class Slurper implements Runnable {
         }
 
         if (logger.isTraceEnabled()) {
-            logger.trace("MongoDB object deserialized: {}", object.toString());
+            String deserialized = object.toString();
+            if (deserialized.length() < 400) {
+                logger.trace("MongoDB object deserialized: {}", deserialized);
+            } else {
+                logger.trace("MongoDB object deserialized is {} characters long", deserialized.length());
+            }
             logger.trace("collection: {}", collection);
             logger.trace("oplog entry - namespace [{}], operation [{}]", namespace, operation);
-            logger.trace("oplog processing item {}", entry);
+            if (deserialized.length() < 400) {
+                logger.trace("oplog processing item {}", entry);
+            }
         }
 
         String objectId = getObjectIdFromOplogEntry(entry);
@@ -464,7 +472,8 @@ class Slurper implements Runnable {
 
     @SuppressWarnings("unchecked")
     private void flattenOps(DBObject entry) {
-        Object ops = entry.get(MongoDBRiver.OPLOG_OPS);
+        Object ref = entry.removeField(MongoDBRiver.OPLOG_REF);
+        Object ops = ref == null ? entry.removeField(MongoDBRiver.OPLOG_OPS) : getRefOps(ref);
         if (ops != null) {
             try {
                 for (DBObject op : (List<DBObject>) ops) {
@@ -481,6 +490,14 @@ class Slurper implements Runnable {
                 logger.error(e.toString(), e);
             }
         }
+    }
+
+    private Object getRefOps(Object ref) {
+        // db.oplog.refs.find({_id: {$gte: {oid: %ref%}}}).limit(1)
+        DBObject query = new BasicDBObject(MongoDBRiver.MONGODB_ID_FIELD, new BasicDBObject(QueryOperators.GTE,
+                new BasicDBObject(MongoDBRiver.MONGODB_OID_FIELD, ref)));
+        DBObject oplog = oplogRefsCollection.findOne(query);
+        return oplog == null ? null : oplog.get("ops");
     }
 
     private void processAdminCommandOplogEntry(final DBObject entry, final Timestamp<?> startTimestamp) throws InterruptedException {
@@ -692,8 +709,14 @@ class Slurper implements Runnable {
     private void addToStream(final Operation operation, final Timestamp<?> currentTimestamp, final DBObject data, final String collection)
             throws InterruptedException {
         if (logger.isTraceEnabled()) {
-            logger.trace("addToStream - operation [{}], currentTimestamp [{}], data [{}], collection [{}]", operation, currentTimestamp,
-                    data, collection);
+            String dataString = data.toString();
+            if (dataString.length() > 400) {
+                logger.trace("addToStream - operation [{}], currentTimestamp [{}], data (_id:[{}], serialized length:{}), collection [{}]",
+                        operation, currentTimestamp, data.get("_id"), dataString.length(), collection);
+            } else {
+                logger.trace("addToStream - operation [{}], currentTimestamp [{}], data [{}], collection [{}]",
+                        operation, currentTimestamp, dataString, collection);
+            }
         }
 
         if (operation == Operation.DROP_DATABASE) {

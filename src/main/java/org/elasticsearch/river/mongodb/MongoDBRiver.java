@@ -85,11 +85,14 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     public final static String MONGODB_ADMIN_DATABASE = "admin";
     public final static String MONGODB_CONFIG_DATABASE = "config";
     public final static String MONGODB_ID_FIELD = "_id";
+    public final static String MONGODB_OID_FIELD = "oid";
+    public final static String MONGODB_SEQ_FIELD = "seq";
     public final static String MONGODB_IN_OPERATOR = "$in";
     public final static String MONGODB_OR_OPERATOR = "$or";
     public final static String MONGODB_AND_OPERATOR = "$and";
     public final static String MONGODB_NATURAL_OPERATOR = "$natural";
     public final static String OPLOG_COLLECTION = "oplog.rs";
+    public final static String OPLOG_REFS_COLLECTION = "oplog.refs";
     public final static String OPLOG_NAMESPACE = "ns";
     public final static String OPLOG_NAMESPACE_COMMAND = "$cmd";
     public final static String OPLOG_ADMIN_COMMAND = "admin." + OPLOG_NAMESPACE_COMMAND;
@@ -110,6 +113,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     public final static String OPLOG_FROM_MIGRATE = "fromMigrate";
     public static final String OPLOG_OPS = "ops";
     public static final String OPLOG_CREATE_COMMAND = "create";
+    public static final String OPLOG_REF = "ref";
     public final static String GRIDFS_FILES_SUFFIX = ".files";
     public final static String GRIDFS_CHUNKS_SUFFIX = ".chunks";
     public final static String INSERTION_ORDER_KEY = "$natural";
