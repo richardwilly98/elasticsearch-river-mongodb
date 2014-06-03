@@ -635,6 +635,11 @@ class Slurper implements Runnable {
             options = options | Bytes.QUERYOPTION_OPLOGREPLAY;
         }
         DBCursor cursor = oplogCollection.find(indexFilter).setOptions(options);
+
+        // Toku sometimes gets stuck without this hint:
+        if (indexFilter.containsField(MongoDBRiver.MONGODB_ID_FIELD)) {
+            cursor = cursor.hint("_id_");
+        }
         isRiverStale(cursor, time);
         return cursor;
     }
