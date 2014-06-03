@@ -627,13 +627,11 @@ class Slurper implements Runnable {
             return null;
         }
 
-        int options = Bytes.QUERYOPTION_TAILABLE | Bytes.QUERYOPTION_AWAITDATA | Bytes.QUERYOPTION_NOTIMEOUT;
-
+        int options = Bytes.QUERYOPTION_TAILABLE | Bytes.QUERYOPTION_AWAITDATA | Bytes.QUERYOPTION_NOTIMEOUT
         // Using OPLOGREPLAY to improve performance:
         // https://jira.mongodb.org/browse/JAVA-771
-        if (indexFilter.containsField(MongoDBRiver.OPLOG_TIMESTAMP)) {
-            options = options | Bytes.QUERYOPTION_OPLOGREPLAY;
-        }
+                | Bytes.QUERYOPTION_OPLOGREPLAY;
+
         DBCursor cursor = oplogCollection.find(indexFilter).setOptions(options);
 
         // Toku sometimes gets stuck without this hint:
