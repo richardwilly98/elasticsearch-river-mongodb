@@ -65,8 +65,9 @@ import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.DataProvider;
 
 import com.google.common.base.Function;
+import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
+import com.google.common.collect.Iterables;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.CommandResult;
@@ -87,7 +88,9 @@ import de.flapdoodle.embed.mongo.config.IMongodConfig;
 import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
 import de.flapdoodle.embed.mongo.config.Storage;
 import de.flapdoodle.embed.mongo.distribution.Versions;
+import de.flapdoodle.embed.process.distribution.BitSize;
 import de.flapdoodle.embed.process.distribution.GenericVersion;
+import de.flapdoodle.embed.process.distribution.Platform;
 import de.flapdoodle.embed.process.runtime.Network;
 import de.flapdoodle.embed.process.runtime.Starter;
 
@@ -118,15 +121,18 @@ public abstract class RiverMongoDBTestAbstract {
     }
 
     public static enum ExecutableType {
-        VANILLA("mongodb", true, MongodStarter.getDefaultInstance()), TOKUMX("tokumx", false, TokuMXStarter.getDefaultInstance());
+        VANILLA("mongodb", true, true, MongodStarter.getDefaultInstance()), TOKUMX("tokumx", tokuIsSupported(), false, TokuMXStarter.getDefaultInstance());
 
         public final String configKey;
+        public final boolean isSupported;
         public final boolean supportsGridFS;
         public final Starter<IMongodConfig, MongodExecutable, MongodProcess> starter;
 
-        ExecutableType(String configKey, boolean supportsGridFS, Starter<IMongodConfig, MongodExecutable, MongodProcess> mongodStarter) {
+        ExecutableType(String configKey, boolean isSupported, boolean supportsGridFS, 
+                Starter<IMongodConfig, MongodExecutable, MongodProcess> mongodStarter) {
             this.configKey = configKey;
             this.supportsGridFS = supportsGridFS;
+            this.isSupported = isSupported;
             this.starter = mongodStarter;
         }
     }
@@ -186,11 +192,21 @@ public abstract class RiverMongoDBTestAbstract {
         this.index = "i" + type.ordinal() + "-" + suffix;
     }
 
+    private static Iterable<ExecutableType> supportedExecutableTypes() {
+        return Iterables.filter(Arrays.asList(ExecutableType.values()), new Predicate<ExecutableType>() {
+            @Override public boolean apply(ExecutableType _) { return _.isSupported; }});
+    }
+
+    private static boolean tokuIsSupported() {
+        return Platform.detect() == Platform.Linux && BitSize.detect() == BitSize.B64;
+    }
+
+    /** Only include TOKUMX if on a supported platform */
     @DataProvider(name = "allMongoExecutableTypes")
     public static Object[][] allMongoExecutableTypes() {
-        return Lists.transform(Arrays.asList(ExecutableType.values()), new Function<ExecutableType, Object[]>() {
-            @Override public Object[] apply(ExecutableType _) { return new Object[] { _ }; }})
-            .toArray(new Object[ExecutableType.values().length][]);
+        return Iterables.toArray(Iterables.transform(supportedExecutableTypes(), new Function<ExecutableType, Object[]>() {
+            @Override public Object[] apply(ExecutableType _) { return new Object[] { _ }; }}),
+            Object[].class);
     }
 
     @DataProvider(name = "onlyVanillaMongo")
@@ -210,7 +226,7 @@ public abstract class RiverMongoDBTestAbstract {
     }
 
     private void initMongoInstances() throws Exception {
-        for (ExecutableType type : ExecutableType.values()) {
+        for (ExecutableType type : supportedExecutableTypes()) {
             initMongoInstances(type);
         }
     }
