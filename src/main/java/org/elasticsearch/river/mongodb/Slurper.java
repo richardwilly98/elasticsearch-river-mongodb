@@ -122,6 +122,13 @@ class Slurper implements Runnable {
                     }
                     while (cursor.hasNext()) {
                         DBObject item = cursor.next();
+                        // TokuMX secondaries can have ops in the oplog that have not yet been applied
+                        // We need to wait until they have been applied before processing them
+                        Object applied = item.get("a");
+                        if (applied != null && !applied.equals(Boolean.TRUE)) {
+                            logger.debug("Encountered oplog entry with a:false, ts:" + item.get("ts"));
+                            break;
+                        }
                         startTimestamp = processOplogEntry(item, startTimestamp);
                     }
                     logger.debug("Before waiting for 500 ms");
@@ -620,14 +627,17 @@ class Slurper implements Runnable {
             return null;
         }
 
-        int options = Bytes.QUERYOPTION_TAILABLE | Bytes.QUERYOPTION_AWAITDATA | Bytes.QUERYOPTION_NOTIMEOUT;
-
+        int options = Bytes.QUERYOPTION_TAILABLE | Bytes.QUERYOPTION_AWAITDATA | Bytes.QUERYOPTION_NOTIMEOUT
         // Using OPLOGREPLAY to improve performance:
         // https://jira.mongodb.org/browse/JAVA-771
-        if (indexFilter.containsField(MongoDBRiver.OPLOG_TIMESTAMP)) {
-            options = options | Bytes.QUERYOPTION_OPLOGREPLAY;
-        }
+                | Bytes.QUERYOPTION_OPLOGREPLAY;
+
         DBCursor cursor = oplogCollection.find(indexFilter).setOptions(options);
+
+        // Toku sometimes gets stuck without this hint:
+        if (indexFilter.containsField(MongoDBRiver.MONGODB_ID_FIELD)) {
+            cursor = cursor.hint("_id_");
+        }
         isRiverStale(cursor, time);
         return cursor;
     }
