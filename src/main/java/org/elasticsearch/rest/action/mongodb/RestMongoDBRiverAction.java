@@ -18,15 +18,15 @@ import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.RestStatus;
-import org.elasticsearch.rest.XContentRestResponse;
-import org.elasticsearch.rest.XContentThrowableRestResponse;
-import org.elasticsearch.rest.action.support.RestXContentBuilder;
+import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.river.RiverIndexName;
 import org.elasticsearch.river.RiverSettings;
 import org.elasticsearch.river.mongodb.MongoDBRiver;
 import org.elasticsearch.river.mongodb.MongoDBRiverDefinition;
 import org.elasticsearch.river.mongodb.Status;
 import org.elasticsearch.river.mongodb.Timestamp;
+import org.elasticsearch.river.mongodb.rest.XContentThrowableRestResponse;
+import org.elasticsearch.river.mongodb.rest.action.support.RestXContentBuilder;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 import org.elasticsearch.search.SearchHit;
 
@@ -105,7 +105,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
             List<Map<String, Object>> rivers = getRivers();
             XContentBuilder builder = RestXContentBuilder.restContentBuilder(request);
             builder.value(rivers);
-            channel.sendResponse(new XContentRestResponse(request, RestStatus.OK, builder));
+            channel.sendResponse(new BytesRestResponse(RestStatus.OK, builder));
         } catch (Throwable e) {
             errorResponse(request, channel, e);
         }
@@ -117,7 +117,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
             builder.startObject();
             builder.field("success", true);
             builder.endObject();
-            channel.sendResponse(new XContentRestResponse(request, status, builder));
+            channel.sendResponse(new BytesRestResponse(status, builder));
         } catch (IOException e) {
             errorResponse(request, channel, e);
         }
@@ -130,7 +130,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
             builder.field("success", false);
             builder.field("error", error);
             builder.endObject();
-            channel.sendResponse(new XContentRestResponse(request, status, builder));
+            channel.sendResponse(new BytesRestResponse(status, builder));
         } catch (IOException e) {
             errorResponse(request, channel, e);
         }

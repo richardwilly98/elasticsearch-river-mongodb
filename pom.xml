@@ -43,16 +43,16 @@
 	</parent>
 
 	<properties>
-		<elasticsearch.version>1.1.1</elasticsearch.version>
-		<mongo-java-driver.version>2.11.4</mongo-java-driver.version>
-		<de.flapdoodle.embed.version>1.39.0</de.flapdoodle.embed.version>
-		<de.flapdoodle.embed.mongo.version>1.46.0</de.flapdoodle.embed.mongo.version>
+		<elasticsearch.version>1.2.1</elasticsearch.version>
+		<mongo-java-driver.version>2.12.2</mongo-java-driver.version>
+		<de.flapdoodle.embed.version>1.36</de.flapdoodle.embed.version>
+		<de.flapdoodle.embed.mongo.version>1.42</de.flapdoodle.embed.mongo.version>
 		<hamcrest.version>1.3</hamcrest.version>
 		<log4j.version>1.2.17</log4j.version>
 		<testng.version>6.8.8</testng.version>
 		<groovy.version>2.1.0</groovy.version>
 		<gmongo.version>1.3</gmongo.version>
-		<guava.version>16.0.1</guava.version>
+		<guava.version>17.0</guava.version>
 	</properties>
 
 	<profiles>
@@ -80,6 +80,13 @@
 			</build>
 		</profile>
 	</profiles>
+	<repositories>
+		<repository>
+			<id>sonatype-releases</id>
+			<name>Sonatype Releases Repository</name>
+			<url>http://oss.sonatype.org/content/repositories/releases</url>
+		</repository>
+	</repositories>
 
 	<dependencies>
 		<dependency>
