@@ -1,35 +1,36 @@
 MongoDB River Plugin for ElasticSearch
 ==================================
 
-This plugin uses MongoDB as datasource to store data in ElasticSearch. Filtering and transformation are also possible. 
+This plugin uses MongoDB or the TokuMX fork of MongoDB as datasource to store data in ElasticSearch.
+Filtering and transformation are also possible. 
 See the [wiki](https://github.com/richardwilly98/elasticsearch-river-mongodb/wiki) for more details.
 
 In order to install the plugin, simply run: ```bin/plugin --install com.github.richardwilly98.elasticsearch/elasticsearch-river-mongodb/2.0.0```
 
-| MongoDB River Plugin     | ElasticSearch    | MongoDB       |
-|--------------------------|------------------|---------------|
-| master                   | 1.1.1            | 2.4.9 -> 2.6.1|
-| 2.0.0                    | 1.0.0            | 2.4.9         |
-| 1.7.4                    | 0.90.10          | 2.4.8         |
-| 1.7.3                    | 0.90.7           | 2.4.8         |
-| 1.7.2                    | 0.90.5           | 2.4.8         |
-| 1.7.1                    | 0.90.5           | 2.4.6         |
-| 1.7.0                    | 0.90.3           | 2.4.5         |
-| 1.6.11                   | 0.90.2           | 2.4.5         |
-| 1.6.9                    | 0.90.1           | 2.4.4         |
-| 1.6.8                    | 0.90.0           | 2.4.3         |
-| 1.6.7                    | 0.90.0           | 2.4.3         |
-| 1.6.6                    | 0.90.0           | 2.4.3         |
-| 1.6.5                    | 0.20.6           | 2.4.1         |
-| 1.6.4                    | 0.20.5           | 2.2.3         |
-| 1.6.2                    | 0.20.1           | 2.2.2         |
-| 1.6.0                    | 0.20.1 -> master | 2.2.2         |
-| 1.5.0                    | 0.19.11          | 2.2.1         |
-| 1.4.0                    | 0.19.8           | 2.0.5         |
-| 1.3.0                    | 0.19.4           |               |
-| 1.2.0                    | 0.19.0           |               |
-| 1.1.0                    | 0.19.0           | 2.0.2         |
-| 1.0.0                    | 0.18             |               |
+| MongoDB River Plugin     | ElasticSearch    | MongoDB       | TokuMX        |
+|--------------------------|------------------|---------------|---------------|
+| master                   | 1.1.1            | 2.4.9 -> 2.6.1| 1.5.0         |
+| 2.0.0                    | 1.0.0            | 2.4.9         |               |
+| 1.7.4                    | 0.90.10          | 2.4.8         |               |
+| 1.7.3                    | 0.90.7           | 2.4.8         |               |
+| 1.7.2                    | 0.90.5           | 2.4.8         |               |
+| 1.7.1                    | 0.90.5           | 2.4.6         |               |
+| 1.7.0                    | 0.90.3           | 2.4.5         |               |
+| 1.6.11                   | 0.90.2           | 2.4.5         |               |
+| 1.6.9                    | 0.90.1           | 2.4.4         |               |
+| 1.6.8                    | 0.90.0           | 2.4.3         |               |
+| 1.6.7                    | 0.90.0           | 2.4.3         |               |
+| 1.6.6                    | 0.90.0           | 2.4.3         |               |
+| 1.6.5                    | 0.20.6           | 2.4.1         |               |
+| 1.6.4                    | 0.20.5           | 2.2.3         |               |
+| 1.6.2                    | 0.20.1           | 2.2.2         |               |
+| 1.6.0                    | 0.20.1 -> master | 2.2.2         |               |
+| 1.5.0                    | 0.19.11          | 2.2.1         |               |
+| 1.4.0                    | 0.19.8           | 2.0.5         |               |
+| 1.3.0                    | 0.19.4           |               |               |
+| 1.2.0                    | 0.19.0           |               |               |
+| 1.1.0                    | 0.19.0           | 2.0.2         |               |
+| 1.0.0                    | 0.18             |               |               |
 
 Build status
 -------
