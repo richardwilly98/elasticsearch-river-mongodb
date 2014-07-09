@@ -359,6 +359,7 @@
 										<versionRange>[3.0,)</versionRange>
 										<goals>
 											<goal>compile</goal>
+											<goal>testCompile</goal>
 										</goals>
 									</pluginExecutionFilter>
 									<action>
@@ -367,15 +368,9 @@
 								</pluginExecution>
 								<pluginExecution>
 									<pluginExecutionFilter>
-										<groupId>
-											org.codehaus.mojo
-										</groupId>
-										<artifactId>
-											build-helper-maven-plugin
-										</artifactId>
-										<versionRange>
-											[1.5,)
-										</versionRange>
+										<groupId>org.codehaus.mojo</groupId>
+										<artifactId>build-helper-maven-plugin</artifactId>
+										<versionRange>[1.5,)</versionRange>
 										<goals>
 											<goal>add-source</goal>
 											<goal>add-test-source</goal>
