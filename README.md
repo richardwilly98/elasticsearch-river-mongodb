@@ -228,6 +228,18 @@ Changelog
 - Script filters
 - MongoDB driver 2.10.1 (use of MongoClient)
 
+Developing in Eclipse
+---------------------
+
+Install the m2eclipse plugin:
+* Work with: --All Available Sites--
+* Under Collaboration choose the m2e plugins
+
+[Install the testng eclipse plugin](http://testng.org/doc/download.html)
+
+Run `mvn eclipse:eclipse`
+
+Import the project with `File > Import > Maven > Existing Maven Projects`
 
 
 [![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/richardwilly98/elasticsearch-river-mongodb/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
