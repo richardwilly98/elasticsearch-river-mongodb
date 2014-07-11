@@ -36,6 +36,12 @@
 		</developer>
 	</developers>
 
+	<parent>
+		<groupId>org.sonatype.oss</groupId>
+		<artifactId>oss-parent</artifactId>
+		<version>7</version>
+	</parent>
+
 	<properties>
 		<elasticsearch.version>1.2.1</elasticsearch.version>
 		<mongo-java-driver.version>2.12.2</mongo-java-driver.version>
@@ -74,6 +80,13 @@
 			</build>
 		</profile>
 	</profiles>
+	<repositories>
+		<repository>
+			<id>sonatype-releases</id>
+			<name>Sonatype Releases Repository</name>
+			<url>https://oss.sonatype.org/content/repositories/releases</url>
+		</repository>
+	</repositories>
 
 	<dependencies>
 		<dependency>
