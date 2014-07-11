@@ -21,10 +21,12 @@ index:
 cluster:
 	name: es-test-cluster
 	
+script.disable_dynamic: false
+
 plugins:
   mapper-attachments: elasticsearch/elasticsearch-mapper-attachments/2.0.0
-  lang-javascript: elasticsearch/elasticsearch-lang-javascript/2.1.0
-  lang-groovy: elasticsearch/elasticsearch-lang-groovy/2.0.0
+  lang-javascript: elasticsearch/elasticsearch-lang-javascript/2.2.0
+  lang-groovy: elasticsearch/elasticsearch-lang-groovy/2.2.0
 
 mongodb:
   version: 2.6.3
