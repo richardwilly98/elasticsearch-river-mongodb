@@ -102,7 +102,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
 
     private void list(RestRequest request, RestChannel channel) {
         try {
-            List<Map<String, Object>> rivers = getRivers();
+            List<Map<String, Object>> rivers = getRivers(request.paramAsInt("from", 0), request.paramAsInt("size", 10));
             XContentBuilder builder = RestXContentBuilder.restContentBuilder(request);
             builder.value(rivers);
             channel.sendResponse(new BytesRestResponse(RestStatus.OK, builder));
@@ -145,9 +145,9 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
         }
     }
 
-    private List<Map<String, Object>> getRivers() {
+    private List<Map<String, Object>> getRivers(int from, int size) {
         SearchResponse searchResponse = client.prepareSearch(riverIndexName)
-                .setQuery(QueryBuilders.queryString(MongoDBRiver.TYPE).defaultField("type")).get();
+                .setQuery(QueryBuilders.queryString(MongoDBRiver.TYPE).defaultField("type")).setFrom(from).setSize(size).get();
         long totalHits = searchResponse.getHits().totalHits();
         logger.trace("totalHits: {}", totalHits);
         List<Map<String, Object>> rivers = new ArrayList<Map<String, Object>>();
