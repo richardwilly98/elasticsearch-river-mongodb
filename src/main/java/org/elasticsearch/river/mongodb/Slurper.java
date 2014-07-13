@@ -122,8 +122,10 @@ class Slurper implements Runnable {
                     }
                     while (cursor.hasNext()) {
                         DBObject item = cursor.next();
-                        // TokuMX secondaries can have ops in the oplog that have not yet been applied
-                        // We need to wait until they have been applied before processing them
+                        // TokuMX secondaries can have ops in the oplog that
+                        // have not yet been applied
+                        // We need to wait until they have been applied before
+                        // processing them
                         Object applied = item.get("a");
                         if (applied != null && !applied.equals(Boolean.TRUE)) {
                             logger.debug("Encountered oplog entry with a:false, ts:" + item.get("ts"));
@@ -356,9 +358,12 @@ class Slurper implements Runnable {
     }
 
     private Timestamp<?> processOplogEntry(final DBObject entry, final Timestamp<?> startTimestamp) throws InterruptedException {
-        // To support transactions, TokuMX wraps one or more operations in a single oplog entry, in a list.
-        // As long as clients are not transaction-aware, we can pretty safely assume there will only be one operation in the list.
-        // Supporting genuine multi-operation transactions will require a bit more logic here.
+        // To support transactions, TokuMX wraps one or more operations in a
+        // single oplog entry, in a list.
+        // As long as clients are not transaction-aware, we can pretty safely
+        // assume there will only be one operation in the list.
+        // Supporting genuine multi-operation transactions will require a bit
+        // more logic here.
         flattenOps(entry);
 
         if (!isValidOplogEntry(entry, startTimestamp)) {
@@ -410,7 +415,8 @@ class Slurper implements Runnable {
 
         String objectId = getObjectIdFromOplogEntry(entry);
         if (operation == Operation.DELETE) {
-            // Include only _id in data, as vanilla MongoDB does, so transformation scripts won't be broken by Toku
+            // Include only _id in data, as vanilla MongoDB does, so
+            // transformation scripts won't be broken by Toku
             if (object.containsField(MongoDBRiver.MONGODB_ID_FIELD)) {
                 if (object.keySet().size() > 1) {
                     entry.put(MongoDBRiver.OPLOG_OBJECT, object = new BasicDBObject(MongoDBRiver.MONGODB_ID_FIELD, objectId));
@@ -622,6 +628,9 @@ class Slurper implements Runnable {
 
     private DBCursor oplogCursor(final Timestamp<?> timestampOverride) throws SlurperException {
         Timestamp<?> time = timestampOverride == null ? MongoDBRiver.getLastTimestamp(client, definition) : timestampOverride;
+        if (time == null) {
+            return null;
+        }
         DBObject indexFilter = time.getOplogFilter();
         if (indexFilter == null) {
             return null;
@@ -651,7 +660,7 @@ class Slurper implements Runnable {
         }
         DBObject entry = cursor.next();
         Timestamp<?> oplogTimestamp = Timestamp.on(entry);
-        if (! time.equals(oplogTimestamp)) {
+        if (!time.equals(oplogTimestamp)) {
             MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.RIVER_STALE);
             throw new SlurperException("River out of sync with oplog.rs collection");
         }
@@ -686,7 +695,11 @@ class Slurper implements Runnable {
             throws InterruptedException {
         totalDocuments.incrementAndGet();
         addToStream(Operation.INSERT, currentTimestamp, data, collection);
-        return data.containsField(MongoDBRiver.MONGODB_ID_FIELD) ? data.get(MongoDBRiver.MONGODB_ID_FIELD).toString() : null;
+        if (data == null) {
+            return null;
+        } else {
+            return data.containsField(MongoDBRiver.MONGODB_ID_FIELD) ? data.get(MongoDBRiver.MONGODB_ID_FIELD).toString() : null;
+        }
     }
 
     private void addToStream(final Operation operation, final Timestamp<?> currentTimestamp, final DBObject data, final String collection)
@@ -697,8 +710,12 @@ class Slurper implements Runnable {
         }
 
         if (operation == Operation.DROP_DATABASE) {
+            logger.info("addToStream - Operation.DROP_DATABASE, currentTimestamp [{}], data [{}], collection [{}]", currentTimestamp,
+                    data, collection);
             if (definition.isImportAllCollections()) {
                 for (String name : slurpedDb.getCollectionNames()) {
+                    logger.info("addToStream - isImportAllCollections - Operation.DROP_DATABASE, currentTimestamp [{}], data [{}], collection [{}]", currentTimestamp,
+                            data, name);
                     context.getStream().put(new MongoDBRiver.QueueEntry(currentTimestamp, Operation.DROP_COLLECTION, data, name));
                 }
             } else {
