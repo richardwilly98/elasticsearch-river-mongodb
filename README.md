@@ -9,7 +9,7 @@ In order to install the plugin, simply run: ```bin/plugin --install com.github.r
 
 | MongoDB River Plugin     | ElasticSearch    | MongoDB       | TokuMX        |
 |--------------------------|------------------|---------------|---------------|
-| master                   | 1.1.1            | 2.4.9 -> 2.6.1| 1.5.0         |
+| master                   | 1.2.2            | 2.4.9 -> 2.6.1| 1.5.0         |
 | 2.0.0                    | 1.0.0            | 2.4.9         |               |
 | 1.7.4                    | 0.90.10          | 2.4.8         |               |
 | 1.7.3                    | 0.90.7           | 2.4.8         |               |
