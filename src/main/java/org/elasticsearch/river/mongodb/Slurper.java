@@ -101,8 +101,10 @@ class Slurper implements Runnable {
                         }
                         if (definition.isImportAllCollections()) {
                             for (String name : slurpedDb.getCollectionNames()) {
-                                DBCollection collection = slurpedDb.getCollection(name);
-                                startTimestamp = doInitialImport(collection);
+                                if (name.length() < 7 || !name.substring(0, 7).equals("system.")) {
+                                    DBCollection collection = slurpedDb.getCollection(name);
+                                    startTimestamp = doInitialImport(collection);
+                                }
                             }
                         } else {
                             DBCollection collection = slurpedDb.getCollection(definition.getMongoCollection());
