@@ -228,6 +228,25 @@ Changelog
 - Script filters
 - MongoDB driver 2.10.1 (use of MongoClient)
 
+
+Building from master
+-------
+
+Install Maven (e.g `brew install maven`). Be sure `mvn` command is available.
+
+Clone the repository:
+
+    git clone https://github.com/richardwilly98/elasticsearch-river-mongodb.git
+
+Execute installation script (inside the dir where you cloned the project):
+
+    ./elasticsearch-river-mongodb/install-local.sh
+
+If your elasticsearch is not installed in `/usr/share/elasticsearch` you can set it `ES_HOME`. eg:
+
+    ES_HOME=/usr/local/Cellar/elasticsearch/1.1.1/ ./elasticsearch-river-mongodb/install-local.sh
+
+
 Developing in Eclipse
 ---------------------
 
