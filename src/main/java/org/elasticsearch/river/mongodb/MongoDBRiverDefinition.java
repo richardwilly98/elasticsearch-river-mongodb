@@ -51,6 +51,8 @@ public class MongoDBRiverDefinition {
     public final static int DEFAULT_BULK_ACTIONS = 1000;
     public final static TimeValue DEFAULT_FLUSH_INTERVAL = TimeValue.timeValueMillis(10);
     public final static ByteSizeValue DEFAULT_BULK_SIZE = new ByteSizeValue(5, ByteSizeUnit.MB);
+    public final static int DEFAULT_CONNECT_TIMEOUT = 30000;
+    public final static int DEFAULT_SOCKET_TIMEOUT = 60000;
 
     // fields
     public final static String DB_FIELD = "db";
@@ -59,7 +61,7 @@ public class MongoDBRiverDefinition {
     public final static String PORT_FIELD = "port";
     public final static String OPTIONS_FIELD = "options";
     public final static String SECONDARY_READ_PREFERENCE_FIELD = "secondary_read_preference";
-    public final static String CONNECTION_TIMEOUT = "connect_timeout";
+    public final static String CONNECT_TIMEOUT = "connect_timeout";
     public final static String SOCKET_TIMEOUT = "socket_timeout";
     public final static String SSL_CONNECTION_FIELD = "ssl";
     public final static String SSL_VERIFY_CERT_FIELD = "ssl_verify_certificate";
@@ -506,7 +508,7 @@ public class MongoDBRiverDefinition {
             }
             builder.mongoServers(mongoServers);
 
-            MongoClientOptions.Builder mongoClientOptionsBuilder = MongoClientOptions.builder().autoConnectRetry(true)
+            MongoClientOptions.Builder mongoClientOptionsBuilder = MongoClientOptions.builder()/*.autoConnectRetry(true)*/
                     .socketKeepAlive(true);
 
             // MongoDB options
@@ -515,8 +517,8 @@ public class MongoDBRiverDefinition {
                 logger.trace("mongoOptionsSettings: " + mongoOptionsSettings);
                 builder.mongoSecondaryReadPreference(XContentMapValues.nodeBooleanValue(
                         mongoOptionsSettings.get(SECONDARY_READ_PREFERENCE_FIELD), false));
-                builder.connectTimeout(XContentMapValues.nodeIntegerValue(mongoOptionsSettings.get(CONNECTION_TIMEOUT), 0));
-                builder.socketTimeout(XContentMapValues.nodeIntegerValue(mongoOptionsSettings.get(SOCKET_TIMEOUT), 0));
+                builder.connectTimeout(XContentMapValues.nodeIntegerValue(mongoOptionsSettings.get(CONNECT_TIMEOUT), DEFAULT_CONNECT_TIMEOUT));
+                builder.socketTimeout(XContentMapValues.nodeIntegerValue(mongoOptionsSettings.get(SOCKET_TIMEOUT), DEFAULT_SOCKET_TIMEOUT));
                 builder.dropCollection(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(DROP_COLLECTION_FIELD), false));
                 builder.mongoUseSSL(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(SSL_CONNECTION_FIELD), false));
                 builder.mongoSSLVerifyCertificate(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(SSL_VERIFY_CERT_FIELD), true));

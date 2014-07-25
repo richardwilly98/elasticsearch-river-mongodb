@@ -67,7 +67,7 @@ public class MongoDBRiverDefinitionTest {
             Assert.assertEquals("mydatabase", definition.getMongoDb());
             Assert.assertEquals("mycollection", definition.getMongoCollection());
             Assert.assertEquals("myindex", definition.getIndexName());
-            Assert.assertEquals(0, definition.getSocketTimeout());
+            Assert.assertEquals(MongoDBRiverDefinition.DEFAULT_SOCKET_TIMEOUT, definition.getSocketTimeout());
             Assert.assertEquals(11000, definition.getConnectTimeout());
             Assert.assertEquals(riverName.getName(), definition.getRiverName());
             Assert.assertFalse(definition.isStoreStatistics());
@@ -100,7 +100,7 @@ public class MongoDBRiverDefinitionTest {
             Assert.assertEquals("mydatabase", definition.getMongoDb());
             Assert.assertEquals("mycollection", definition.getMongoCollection());
             Assert.assertEquals("myindex", definition.getIndexName());
-            Assert.assertEquals(0, definition.getSocketTimeout());
+            Assert.assertEquals(MongoDBRiverDefinition.DEFAULT_SOCKET_TIMEOUT, definition.getSocketTimeout());
             Assert.assertEquals(11000, definition.getConnectTimeout());
             Assert.assertEquals(riverName.getName(), definition.getRiverName());
 

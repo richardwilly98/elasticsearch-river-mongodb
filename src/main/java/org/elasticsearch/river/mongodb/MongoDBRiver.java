@@ -61,6 +61,7 @@ import com.mongodb.DBObject;
 import com.mongodb.Mongo;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoException;
+import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 import com.mongodb.gridfs.GridFSDBFile;
 
@@ -266,7 +267,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                         .put("metrics", 0).put("network", 0).put("opcounters", 0).put("opcountersRepl", 0).put("recordStats", 0)
                         .put("repl", 0).build()).get();
         logger.trace("About to execute: {}", command);
-        CommandResult cr = adminDb.command(command);
+        CommandResult cr = adminDb.command(command, ReadPreference.primary());
         logger.trace("Command executed return : {}", cr);
 
         logger.info("MongoDB version - {}", cr.get("version"));
