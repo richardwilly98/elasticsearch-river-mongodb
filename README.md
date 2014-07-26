@@ -43,8 +43,10 @@ Modified to get the same structure as the other Elasticsearch rivers (like [Couc
 
 The latest version monitors the oplog capped collection and supports attachment (GridFS).
 
-Configure the river using the definition described in the [wiki](https://github.com/richardwilly98/elasticsearch-river-mongodb/wiki):
+Configure the river using the definition described in the [wiki](https://github.com/richardwilly98/elasticsearch-river-mongodb/wiki):  
 
+
+```bash
   curl -XPUT 'http://localhost:9200/_river/mongodb/_meta' -d '{
     "type": "mongodb", 
     "mongodb": { 
@@ -57,9 +59,11 @@ Configure the river using the definition described in the [wiki](https://github.
       "type": "ES_TYPE_NAME" 
     }
   }'
+```
 
 Example:
 
+```bash
   curl -XPUT 'http://localhost:9200/_river/mongodb/_meta' -d '{ 
     "type": "mongodb", 
     "mongodb": { 
@@ -71,17 +75,23 @@ Example:
       "type": "person" 
     }
   }'
+```
 
 Import data from mongo console:
 
+```bash
   use testmongo
   var p = {firstName: "John", lastName: "Doe"}
   db.person.save(p)
+```
 
 Query index:
 
+```bash
   curl -XGET 'http://localhost:9200/mongoindex/_search?q=firstName:John'
+```
 
+```bash
   curl -XPUT 'http://localhost:9200/_river/mongodb/_meta' -d '{ 
     "type": "mongodb", 
     "mongodb": { 
@@ -94,19 +104,24 @@ Query index:
       "type": "files" 
     }
   }'
+```
 
 Import binary content in mongo:
 
+```
   %MONGO_HOME%\bin>mongofiles.exe --host localhost:27017 --db testmongo --collection fs put test-document-2.pdf
   connected to: localhost:27017
   added file: { _id: ObjectId('4f230588a7da6e94984d88a1'), filename: "test-document-2.pdf", chunkSize: 262144, uploadDate: new Date(1327695240206), md5: "c2f251205576566826f86cd969158f24", length: 173293 }
   done!
+```
 
 Query index:
 
+```bash
   curl -XGET 'http://localhost:9200/files/4f230588a7da6e94984d88a1?pretty=true'
+```
 
-Admin URL: http://localhost:9200/_plugin/river-mongodb/
+Admin URL: `http://localhost:9200/_plugin/river-mongodb/`
 
 See more details check the [wiki](https://github.com/richardwilly98/elasticsearch-river-mongodb/wiki)
 
