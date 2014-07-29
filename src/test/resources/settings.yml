@@ -24,7 +24,7 @@ cluster:
 script.disable_dynamic: false
 
 plugins:
-  mapper-attachments: elasticsearch/elasticsearch-mapper-attachments/2.0.0
+  mapper-attachments: elasticsearch/elasticsearch-mapper-attachments/2.2.0
   lang-javascript: elasticsearch/elasticsearch-lang-javascript/2.2.0
   lang-groovy: elasticsearch/elasticsearch-lang-groovy/2.2.0
 
