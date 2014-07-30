@@ -62,6 +62,7 @@ class Slurper implements Runnable {
     private DB slurpedDb;
     private DB oplogDb;
     private DBCollection oplogCollection;
+    private DBCollection oplogRefsCollection;
     private final AtomicLong totalDocuments = new AtomicLong();
 
     public Slurper(List<ServerAddress> mongoServers, MongoDBRiverDefinition definition, SharedContext context, Client client) {
@@ -311,6 +312,9 @@ class Slurper implements Runnable {
             return false;
         }
         oplogCollection = oplogDb.getCollection(MongoDBRiver.OPLOG_COLLECTION);
+        if (collections.contains(MongoDBRiver.OPLOG_REFS_COLLECTION)) {
+            oplogRefsCollection = oplogDb.getCollection(MongoDBRiver.OPLOG_REFS_COLLECTION);
+        }
 
         slurpedDb = mongo.getDB(definition.getMongoDb());
         if (!definition.getMongoAdminUser().isEmpty() && !definition.getMongoAdminPassword().isEmpty() && adminDb.isAuthenticated()) {
@@ -359,14 +363,50 @@ class Slurper implements Runnable {
         return oplogCursor(currentTimestamp);
     }
 
+    private Timestamp<?> processOpWithOps(final DBObject entry, final Timestamp<?> startTimestamp, List<DBObject> ops) throws InterruptedException {
+        Timestamp<?> ret = startTimestamp;
+        DBObject entryCopy = new BasicDBObject();
+        for (String key : entryCopy.keySet()) {
+            if (!key.equals(MongoDBRiver.OPLOG_OPS)) {
+                entryCopy.put(key, entry.get(key));
+            }
+        }
+        for (DBObject op : ops) {
+            DBObject newOp = new BasicDBObject();
+            newOp.putAll(entryCopy);
+            newOp.putAll(op);
+            ret = processOplogEntry(newOp, ret);
+        }
+        return ret;
+    }
+
     private Timestamp<?> processOplogEntry(final DBObject entry, final Timestamp<?> startTimestamp) throws InterruptedException {
-        // To support transactions, TokuMX wraps one or more operations in a
-        // single oplog entry, in a list.
-        // As long as clients are not transaction-aware, we can pretty safely
-        // assume there will only be one operation in the list.
-        // Supporting genuine multi-operation transactions will require a bit
-        // more logic here.
-        flattenOps(entry);
+        // Support entries from TokuMX which wraps one or more operations in a
+        // single oplog entry, in a list or references them to ops that are
+        // stored in another collection.
+        try {
+            List<DBObject> ops = (List<DBObject>) entry.get(MongoDBRiver.OPLOG_OPS);
+            if (ops != null) {
+                return processOpWithOps(entry, startTimestamp, ops);
+            }
+            Object ref = entry.get(MongoDBRiver.OPLOG_REF);
+            if (ref != null) {
+                Timestamp<?> ret = startTimestamp;
+                DBCursor cursor = oplogRefsCollection.find(new BasicDBObject("_id.oid", ref)).sort(new BasicDBObject("$natural", 1));
+                try {
+                    while (cursor.hasNext()) {
+                        DBObject refOp = cursor.next();
+                        ops = (List<DBObject>) refOp.get(MongoDBRiver.OPLOG_OPS);
+                        ret = processOpWithOps(entry, ret, ops);
+                    }
+                } finally {
+                    cursor.close();
+                }
+                return ret;
+            }
+        } catch (ClassCastException e) {
+            logger.error(e.toString(), e);
+        }
 
         if (!isValidOplogEntry(entry, startTimestamp)) {
             return startTimestamp;
@@ -467,27 +507,6 @@ class Slurper implements Runnable {
         return oplogTimestamp;
     }
 
-    @SuppressWarnings("unchecked")
-    private void flattenOps(DBObject entry) {
-        Object ops = entry.get(MongoDBRiver.OPLOG_OPS);
-        if (ops != null) {
-            try {
-                for (DBObject op : (List<DBObject>) ops) {
-                    String operation = (String) op.get(MongoDBRiver.OPLOG_OPERATION);
-                    if (operation.equals(MongoDBRiver.OPLOG_COMMAND_OPERATION)) {
-                        DBObject object = (DBObject) op.get(MongoDBRiver.OPLOG_OBJECT);
-                        if (object.containsField(MongoDBRiver.OPLOG_CREATE_COMMAND)) {
-                            continue;
-                        }
-                    }
-                    entry.putAll(op);
-                }
-            } catch (ClassCastException e) {
-                logger.error(e.toString(), e);
-            }
-        }
-    }
-
     private void processAdminCommandOplogEntry(final DBObject entry, final Timestamp<?> startTimestamp) throws InterruptedException {
         if (logger.isTraceEnabled()) {
             logger.trace("processAdminCommandOplogEntry - [{}]", entry);
@@ -524,6 +543,10 @@ class Slurper implements Runnable {
         // Not interested in operation from migration or sharding
         if (entry.containsField(MongoDBRiver.OPLOG_FROM_MIGRATE) && ((BasicBSONObject) entry).getBoolean(MongoDBRiver.OPLOG_FROM_MIGRATE)) {
             logger.debug("[Invalid Oplog Entry] - from migration or sharding operation. Can be ignored. {}", entry);
+            return false;
+        }
+        // TokuMX sometimes has entries without a namespace, such as ones to keep the oplog alive
+        if (namespace == null) {
             return false;
         }
         // Not interested by chunks - skip all
