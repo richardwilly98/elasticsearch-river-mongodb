@@ -24,3 +24,7 @@ eclipse-build
 !/.settings/org.eclipse.jdt.ui.prefs
 !/.settings/org.eclipse.jdt.groovy.core.prefs
 bin
+
+# intellij ignores
+*.iml
+/.idea
