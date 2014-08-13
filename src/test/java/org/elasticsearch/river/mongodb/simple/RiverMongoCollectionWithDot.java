@@ -83,7 +83,7 @@ public class RiverMongoCollectionWithDot extends RiverMongoDBTestAbstract {
             createDatabase(database, collection);
 
             DBObject dbObject  = new BasicDBObject("name", "richard-" + timestamp);
-//            WriteResult result = mongoCollection.insert(dbObject);
+            mongoCollection.insert(dbObject);
             Thread.sleep(wait);
             String id = dbObject.get("_id").toString();
 

@@ -12,13 +12,12 @@ import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
-//import org.elasticsearch.index.query.FieldQueryBuilder;
 import org.elasticsearch.rest.BaseRestHandler;
+import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.RestStatus;
-import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.river.RiverIndexName;
 import org.elasticsearch.river.RiverSettings;
 import org.elasticsearch.river.mongodb.MongoDBRiver;
@@ -45,29 +44,29 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
     }
 
     @Override
-    public void handleRequest(RestRequest request, RestChannel channel) {
+    protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
         String uri = request.uri();
         logger.debug("uri: {}", uri);
         logger.debug("action: {}", request.param("action"));
 
         if (uri.endsWith("list")) {
-            list(request, channel);
+            list(request, channel, client);
             return;
         } else if (uri.endsWith("start")) {
-            start(request, channel);
+            start(request, channel, client);
             return;
         } else if (uri.endsWith("stop")) {
-            stop(request, channel);
+            stop(request, channel, client);
             return;
         } else if (uri.endsWith("delete")) {
-            delete(request, channel);
+            delete(request, channel, client);
             return;
         }
 
         respondError(request, channel, "action not found: " + uri, RestStatus.OK);
     }
 
-    private void delete(RestRequest request, RestChannel channel) {
+    private void delete(RestRequest request, RestChannel channel, Client client) {
         String river = request.param("river");
         if (river == null || river.isEmpty()) {
             respondError(request, channel, "Parameter 'river' is required", RestStatus.BAD_REQUEST);
@@ -80,7 +79,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
         respondSuccess(request, channel, RestStatus.OK);
     }
 
-    private void start(RestRequest request, RestChannel channel) {
+    private void start(RestRequest request, RestChannel channel, Client client) {
         String river = request.param("river");
         if (river == null || river.isEmpty()) {
             respondError(request, channel, "Parameter 'river' is required", RestStatus.BAD_REQUEST);
@@ -90,7 +89,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
         respondSuccess(request, channel, RestStatus.OK);
     }
 
-    private void stop(RestRequest request, RestChannel channel) {
+    private void stop(RestRequest request, RestChannel channel, Client client) {
         String river = request.param("river");
         if (river == null || river.isEmpty()) {
             respondError(request, channel, "Parameter 'river' is required", RestStatus.BAD_REQUEST);
@@ -100,9 +99,9 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
         respondSuccess(request, channel, RestStatus.OK);
     }
 
-    private void list(RestRequest request, RestChannel channel) {
+    private void list(RestRequest request, RestChannel channel, Client client) {
         try {
-            List<Map<String, Object>> rivers = getRivers(request.paramAsInt("from", 0), request.paramAsInt("size", 10));
+            List<Map<String, Object>> rivers = getRivers(request.paramAsInt("from", 0), request.paramAsInt("size", 10), client);
             XContentBuilder builder = RestXContentBuilder.restContentBuilder(request);
             builder.value(rivers);
             channel.sendResponse(new BytesRestResponse(RestStatus.OK, builder));
@@ -145,7 +144,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
         }
     }
 
-    private List<Map<String, Object>> getRivers(int from, int size) {
+    private List<Map<String, Object>> getRivers(int from, int size, Client client) {
         SearchResponse searchResponse = client.prepareSearch(riverIndexName)
                 .setQuery(QueryBuilders.queryString(MongoDBRiver.TYPE).defaultField("type")).setFrom(from).setSize(size).get();
         long totalHits = searchResponse.getHits().totalHits();

@@ -178,7 +178,7 @@ class Indexer implements Runnable {
                 }
                 try {
                     ExecutableScript executableScript = scriptService.executable(definition.getScriptType(), definition.getScript(),
-                            ImmutableMap.of("logger", logger));
+                            ScriptService.ScriptType.INLINE, ImmutableMap.of("logger", logger));
                     executableScript.setNextVar("ctx", ctx);
                     executableScript.run();
                     // we need to unwrap the context object...
@@ -329,7 +329,7 @@ class Indexer implements Runnable {
                 ctx.put("documents", documents);
                 try {
                     ExecutableScript executableScript = scriptService.executable(definition.getScriptType(), definition.getScript(),
-                            ImmutableMap.of("logger", logger));
+                            ScriptService.ScriptType.INLINE, ImmutableMap.of("logger", logger));
                     if (logger.isTraceEnabled()) {
                         logger.trace("Script to be executed: {} - {}", definition.getScriptType(), definition.getScript());
                         logger.trace("Context before script executed: {}", ctx);
