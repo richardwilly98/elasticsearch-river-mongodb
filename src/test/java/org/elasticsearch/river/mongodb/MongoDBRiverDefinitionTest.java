@@ -182,6 +182,40 @@ public class MongoDBRiverDefinitionTest {
     }
 
     @Test
+    public void testLoadMongoDBRiverDefinitionIssue307IsMongosTrue() {
+        try {
+            RiverName riverName = new RiverName("mongodb", "mongodb-" + System.currentTimeMillis());
+            InputStream in = getClass().getResourceAsStream("/org/elasticsearch/river/mongodb/test-mongodb-river-definition-307.json");
+            RiverSettings riverSettings = new RiverSettings(ImmutableSettings.settingsBuilder().build(), XContentHelper.convertToMap(
+                    Streams.copyToByteArray(in), false).v2());
+            ScriptService scriptService = null;
+            MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName.name(),
+                    RiverIndexName.Conf.DEFAULT_INDEX_NAME, riverSettings, scriptService);
+            Assert.assertNotNull(definition);
+            Assert.assertTrue(definition.isMongos());
+        } catch (Throwable t) {
+            Assert.fail("testLoadMongoDBRiverDefinitionIssue307IsMongosTrue failed", t);
+        }
+    }
+
+    @Test
+    public void testLoadMongoDBRiverDefinitionIssue307IsMongosNull() {
+        try {
+            RiverName riverName = new RiverName("mongodb", "mongodb-" + System.currentTimeMillis());
+            InputStream in = getClass().getResourceAsStream("/org/elasticsearch/river/mongodb/test-mongodb-river-definition.json");
+            RiverSettings riverSettings = new RiverSettings(ImmutableSettings.settingsBuilder().build(), XContentHelper.convertToMap(
+                    Streams.copyToByteArray(in), false).v2());
+            ScriptService scriptService = null;
+            MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName.name(),
+                    RiverIndexName.Conf.DEFAULT_INDEX_NAME, riverSettings, scriptService);
+            Assert.assertNotNull(definition);
+            Assert.assertNull(definition.isMongos());
+        } catch (Throwable t) {
+            Assert.fail("testLoadMongoDBRiverDefinitionIssue307IsMongosNull failed", t);
+        }
+    }
+
+    @Test
     public void testLoadMongoDBRiverDefinitionStoreStatistics() {
         try {
             RiverName riverName = new RiverName("mongodb", "mongodb-" + System.currentTimeMillis());

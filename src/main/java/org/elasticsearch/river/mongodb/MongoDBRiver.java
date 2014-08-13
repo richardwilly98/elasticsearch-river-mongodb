@@ -256,40 +256,44 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     }
 
     private boolean isMongos() {
-        DB adminDb = getAdminDb();
-        if (adminDb == null) {
-            return false;
-        }
-        logger.trace("Found {} database", MONGODB_ADMIN_DATABASE);
-        DBObject command = BasicDBObjectBuilder.start(
-                ImmutableMap.builder().put("serverStatus", 1).put("asserts", 0).put("backgroundFlushing", 0).put("connections", 0)
-                        .put("cursors", 0).put("dur", 0).put("extra_info", 0).put("globalLock", 0).put("indexCounters", 0).put("locks", 0)
-                        .put("metrics", 0).put("network", 0).put("opcounters", 0).put("opcountersRepl", 0).put("recordStats", 0)
-                        .put("repl", 0).build()).get();
-        logger.trace("About to execute: {}", command);
-        CommandResult cr = adminDb.command(command, ReadPreference.primary());
-        logger.trace("Command executed return : {}", cr);
+        if (definition.isMongos() != null) {
+            return definition.isMongos().booleanValue();
+        } else {
+            DB adminDb = getAdminDb();
+            if (adminDb == null) {
+                return false;
+            }
+            logger.trace("Found {} database", MONGODB_ADMIN_DATABASE);
+            DBObject command = BasicDBObjectBuilder.start(
+                    ImmutableMap.builder().put("serverStatus", 1).put("asserts", 0).put("backgroundFlushing", 0).put("connections", 0)
+                            .put("cursors", 0).put("dur", 0).put("extra_info", 0).put("globalLock", 0).put("indexCounters", 0)
+                            .put("locks", 0).put("metrics", 0).put("network", 0).put("opcounters", 0).put("opcountersRepl", 0)
+                            .put("recordStats", 0).put("repl", 0).build()).get();
+            logger.trace("About to execute: {}", command);
+            CommandResult cr = adminDb.command(command, ReadPreference.primary());
+            logger.trace("Command executed return : {}", cr);
 
-        logger.info("MongoDB version - {}", cr.get("version"));
-        if (logger.isTraceEnabled()) {
-            logger.trace("serverStatus: {}", cr);
-        }
+            logger.info("MongoDB version - {}", cr.get("version"));
+            if (logger.isTraceEnabled()) {
+                logger.trace("serverStatus: {}", cr);
+            }
 
-        if (!cr.ok()) {
-            logger.warn("serverStatus returns error: {}", cr.getErrorMessage());
-            return false;
-        }
+            if (!cr.ok()) {
+                logger.warn("serverStatus returns error: {}", cr.getErrorMessage());
+                return false;
+            }
 
-        if (cr.get("process") == null) {
-            logger.warn("serverStatus.process return null.");
-            return false;
+            if (cr.get("process") == null) {
+                logger.warn("serverStatus.process return null.");
+                return false;
+            }
+            String process = cr.get("process").toString().toLowerCase();
+            if (logger.isTraceEnabled()) {
+                logger.trace("process: {}", process);
+            }
+            // Fix for https://jira.mongodb.org/browse/SERVER-9160
+            return (process.contains("mongos"));
         }
-        String process = cr.get("process").toString().toLowerCase();
-        if (logger.isTraceEnabled()) {
-            logger.trace("process: {}", process);
-        }
-        // Fix for https://jira.mongodb.org/browse/SERVER-9160
-        return (process.contains("mongos"));
     }
 
     private DB getAdminDb() {
@@ -453,10 +457,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             if (logger.isDebugEnabled()) {
                 logger.debug("setLastTimestamp [{}] [{}] [{}]", definition.getRiverName(), definition.getMongoOplogNamespace(), time);
             }
-            bulkProcessor.add(indexRequest(definition.getRiverIndexName())
-                    .type(definition.getRiverName())
-                    .id(definition.getMongoOplogNamespace())
-                    .source(source(time)));
+            bulkProcessor.add(indexRequest(definition.getRiverIndexName()).type(definition.getRiverName())
+                    .id(definition.getMongoOplogNamespace()).source(source(time)));
         } catch (IOException e) {
             logger.error("error updating last timestamp for namespace {}", definition.getMongoOplogNamespace());
         }

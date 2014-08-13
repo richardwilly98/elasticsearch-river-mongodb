@@ -65,6 +65,7 @@ public class MongoDBRiverDefinition {
     public final static String SOCKET_TIMEOUT = "socket_timeout";
     public final static String SSL_CONNECTION_FIELD = "ssl";
     public final static String SSL_VERIFY_CERT_FIELD = "ssl_verify_certificate";
+    public final static String IS_MONGOS_FIELD = "is_mongos";
     public final static String DROP_COLLECTION_FIELD = "drop_collection";
     public final static String EXCLUDE_FIELDS_FIELD = "exclude_fields";
     public final static String INCLUDE_FIELDS_FIELD = "include_fields";
@@ -128,6 +129,7 @@ public class MongoDBRiverDefinition {
     private final boolean mongoUseSSL;
     private final boolean mongoSSLVerifyCertificate;
     private final boolean dropCollection;
+    private final Boolean isMongos;
     private final Set<String> excludeFields;
     private final Set<String> includeFields;
     private final String includeCollection;
@@ -176,6 +178,7 @@ public class MongoDBRiverDefinition {
         private boolean mongoUseSSL = false;
         private boolean mongoSSLVerifyCertificate = false;
         private boolean dropCollection = false;
+        private Boolean isMongos = null;
         private Set<String> excludeFields = null;
         private Set<String> includeFields = null;
         private String includeCollection = "";
@@ -290,6 +293,11 @@ public class MongoDBRiverDefinition {
 
         public Builder dropCollection(boolean dropCollection) {
             this.dropCollection = dropCollection;
+            return this;
+        }
+
+        public Builder isMongos(Boolean isMongos) {
+            this.isMongos = isMongos;
             return this;
         }
 
@@ -508,8 +516,14 @@ public class MongoDBRiverDefinition {
             }
             builder.mongoServers(mongoServers);
 
-            MongoClientOptions.Builder mongoClientOptionsBuilder = MongoClientOptions.builder()/*.autoConnectRetry(true)*/
-                    .socketKeepAlive(true);
+            MongoClientOptions.Builder mongoClientOptionsBuilder = MongoClientOptions.builder()/*
+                                                                                                * .
+                                                                                                * autoConnectRetry
+                                                                                                * (
+                                                                                                * true
+                                                                                                * )
+                                                                                                */
+            .socketKeepAlive(true);
 
             // MongoDB options
             if (mongoSettings.containsKey(OPTIONS_FIELD)) {
@@ -517,9 +531,14 @@ public class MongoDBRiverDefinition {
                 logger.trace("mongoOptionsSettings: " + mongoOptionsSettings);
                 builder.mongoSecondaryReadPreference(XContentMapValues.nodeBooleanValue(
                         mongoOptionsSettings.get(SECONDARY_READ_PREFERENCE_FIELD), false));
-                builder.connectTimeout(XContentMapValues.nodeIntegerValue(mongoOptionsSettings.get(CONNECT_TIMEOUT), DEFAULT_CONNECT_TIMEOUT));
+                builder.connectTimeout(XContentMapValues.nodeIntegerValue(mongoOptionsSettings.get(CONNECT_TIMEOUT),
+                        DEFAULT_CONNECT_TIMEOUT));
                 builder.socketTimeout(XContentMapValues.nodeIntegerValue(mongoOptionsSettings.get(SOCKET_TIMEOUT), DEFAULT_SOCKET_TIMEOUT));
                 builder.dropCollection(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(DROP_COLLECTION_FIELD), false));
+                String isMongos = XContentMapValues.nodeStringValue(mongoOptionsSettings.get(IS_MONGOS_FIELD), null);
+                if (isMongos != null) {
+                    builder.isMongos(Boolean.valueOf(isMongos));
+                }
                 builder.mongoUseSSL(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(SSL_CONNECTION_FIELD), false));
                 builder.mongoSSLVerifyCertificate(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(SSL_VERIFY_CERT_FIELD), true));
                 builder.advancedTransformation(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(ADVANCED_TRANSFORMATION_FIELD),
@@ -850,6 +869,7 @@ public class MongoDBRiverDefinition {
         this.mongoUseSSL = builder.mongoUseSSL;
         this.mongoSSLVerifyCertificate = builder.mongoSSLVerifyCertificate;
         this.dropCollection = builder.dropCollection;
+        this.isMongos = builder.isMongos;
         this.excludeFields = builder.excludeFields;
         this.includeFields = builder.includeFields;
         this.includeCollection = builder.includeCollection;
@@ -948,6 +968,10 @@ public class MongoDBRiverDefinition {
 
     public boolean isDropCollection() {
         return dropCollection;
+    }
+
+    public Boolean isMongos() {
+        return isMongos;
     }
 
     public Set<String> getExcludeFields() {
