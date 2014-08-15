@@ -526,6 +526,10 @@ class Slurper implements Runnable {
     }
 
     private boolean isValidOplogEntry(final DBObject entry, final Timestamp<?> startTimestamp) {
+        if (!entry.containsField(MongoDBRiver.OPLOG_OPERATION)) {
+            logger.trace("[Empty Oplog Entry] - can be ignored. {}", entry);
+            return false;
+        }
         if (MongoDBRiver.OPLOG_NOOP_OPERATION.equals(entry.get(MongoDBRiver.OPLOG_OPERATION))) {
             logger.trace("[No-op Oplog Entry] - can be ignored. {}", entry);
             return false;
