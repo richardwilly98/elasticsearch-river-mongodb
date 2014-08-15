@@ -138,10 +138,10 @@ class Slurper implements Runnable {
                     logger.info("Cursor {} has been closed. About to open a new cusor.", cursor.getCursorId());
                     logger.debug("Total document inserted [{}]", totalDocuments.get());
                 } catch (SlurperException sEx) {
-                    logger.warn("Exception in slurper", sEx);
+                    logger.error("Exception in slurper", sEx);
                     break;
                 } catch (Exception ex) {
-                    logger.warn("Exception while looping in cursor", ex);
+                    logger.error("Exception while looping in cursor", ex);
                     Thread.currentThread().interrupt();
                     break;
                 } finally {
