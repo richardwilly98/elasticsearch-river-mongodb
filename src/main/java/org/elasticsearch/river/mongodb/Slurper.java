@@ -33,6 +33,7 @@ import com.mongodb.ServerAddress;
 import com.mongodb.gridfs.GridFS;
 import com.mongodb.gridfs.GridFSDBFile;
 import com.mongodb.gridfs.GridFSFile;
+import com.mongodb.util.JSONSerializers;
 
 class Slurper implements Runnable {
 
@@ -527,11 +528,11 @@ class Slurper implements Runnable {
 
     private boolean isValidOplogEntry(final DBObject entry, final Timestamp<?> startTimestamp) {
         if (!entry.containsField(MongoDBRiver.OPLOG_OPERATION)) {
-            logger.trace("[Empty Oplog Entry] - can be ignored. {}", entry);
+            logger.trace("[Empty Oplog Entry] - can be ignored. {}", JSONSerializers.getStrict().serialize(entry));
             return false;
         }
         if (MongoDBRiver.OPLOG_NOOP_OPERATION.equals(entry.get(MongoDBRiver.OPLOG_OPERATION))) {
-            logger.trace("[No-op Oplog Entry] - can be ignored. {}", entry);
+            logger.trace("[No-op Oplog Entry] - can be ignored. {}", JSONSerializers.getStrict().serialize(entry));
             return false;
         }
         String namespace = (String) entry.get(MongoDBRiver.OPLOG_NAMESPACE);
@@ -539,7 +540,7 @@ class Slurper implements Runnable {
         // https://jira.mongodb.org/browse/SERVER-4333
         // Not interested in operation from migration or sharding
         if (entry.containsField(MongoDBRiver.OPLOG_FROM_MIGRATE) && ((BasicBSONObject) entry).getBoolean(MongoDBRiver.OPLOG_FROM_MIGRATE)) {
-            logger.trace("[Invalid Oplog Entry] - from migration or sharding operation. Can be ignored. {}", entry);
+            logger.trace("[Invalid Oplog Entry] - from migration or sharding operation. Can be ignored. {}", JSONSerializers.getStrict().serialize(entry));
             return false;
         }
         // Not interested by chunks - skip all
@@ -550,7 +551,8 @@ class Slurper implements Runnable {
         if (startTimestamp != null) {
             Timestamp<?> oplogTimestamp = Timestamp.on(entry);
             if (Timestamp.compare(oplogTimestamp, startTimestamp) < 0) {
-                logger.error("[Invalid Oplog Entry] - entry timestamp [{}] before startTimestamp [{}]", entry, startTimestamp);
+                logger.error("[Invalid Oplog Entry] - entry timestamp [{}] before startTimestamp [{}]",
+                        JSONSerializers.getStrict().serialize(entry), startTimestamp);
                 return false;
             }
         }
