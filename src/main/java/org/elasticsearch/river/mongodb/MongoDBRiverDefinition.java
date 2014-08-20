@@ -3,12 +3,7 @@ package org.elasticsearch.river.mongodb;
 import java.net.UnknownHostException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import javax.net.SocketFactory;
 import javax.net.ssl.SSLContext;
@@ -77,6 +72,7 @@ public class MongoDBRiverDefinition {
     public final static String SKIP_INITIAL_IMPORT_FIELD = "skip_initial_import";
     public final static String PARENT_TYPES_FIELD = "parent_types";
     public final static String STORE_STATISTICS_FIELD = "store_statistics";
+    public final static String IMPORT_COLLECTIONS_FIELD = "import_collections";
     public final static String IMPORT_ALL_COLLECTIONS_FIELD = "import_all_collections";
     public final static String DISABLE_INDEX_REFRESH_FIELD = "disable_index_refresh";
     public final static String FILTER_FIELD = "filter";
@@ -143,6 +139,8 @@ public class MongoDBRiverDefinition {
     private final String statisticsIndexName;
     private final String statisticsTypeName;
     private final boolean importAllCollections;
+    private final boolean isImportCollections;
+    private final List<String> importCollections;
     private final boolean disableIndexRefresh;
     // index
     private final String indexName;
@@ -192,6 +190,8 @@ public class MongoDBRiverDefinition {
         private String statisticsIndexName;
         private String statisticsTypeName;
         private boolean importAllCollections;
+        private boolean isImportCollections;
+        private List<String> importCollections;
         private boolean disableIndexRefresh;
 
         // index
@@ -366,6 +366,12 @@ public class MongoDBRiverDefinition {
             return this;
         }
 
+        public Builder importCollections(List<String> importCollections) {
+            this.importCollections = importCollections;
+            this.isImportCollections = importCollections.size() > 0;
+            return this;
+        }
+
         public Builder script(String script) {
             this.script = script;
             return this;
@@ -470,7 +476,7 @@ public class MongoDBRiverDefinition {
 
     @SuppressWarnings("unchecked")
     public synchronized static MongoDBRiverDefinition parseSettings(String riverName, String riverIndexName, RiverSettings settings,
-            ScriptService scriptService) {
+                                                                    ScriptService scriptService) {
 
         logger.info("Parse river settings for {}", riverName);
         Preconditions.checkNotNull(riverName, "No riverName specified");
@@ -523,7 +529,7 @@ public class MongoDBRiverDefinition {
                                                                                                 * true
                                                                                                 * )
                                                                                                 */
-            .socketKeepAlive(true);
+                    .socketKeepAlive(true);
 
             // MongoDB options
             if (mongoSettings.containsKey(OPTIONS_FIELD)) {
@@ -591,8 +597,16 @@ public class MongoDBRiverDefinition {
                 }
                 // builder.storeStatistics(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(STORE_STATISTICS_FIELD),
                 // false));
-                builder.importAllCollections(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(IMPORT_ALL_COLLECTIONS_FIELD),
-                        false));
+                boolean isImportAllCollections = XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(IMPORT_ALL_COLLECTIONS_FIELD), false);
+                builder.importAllCollections(isImportAllCollections);
+                if(!isImportAllCollections) {
+                    String collectionsStr = XContentMapValues.nodeStringValue(mongoOptionsSettings.get(IMPORT_COLLECTIONS_FIELD), "");
+                    if(collectionsStr.length() > 0) {
+                        collectionsStr = collectionsStr.replaceAll("\\s+","");
+                        List collections = new ArrayList<String>(Arrays.asList(collectionsStr.split(",")));
+                        builder.importCollections(collections);
+                    }
+                }
                 builder.disableIndexRefresh(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(DISABLE_INDEX_REFRESH_FIELD), false));
                 builder.includeCollection(XContentMapValues.nodeStringValue(mongoOptionsSettings.get(INCLUDE_COLLECTION_FIELD), ""));
 
@@ -883,6 +897,8 @@ public class MongoDBRiverDefinition {
         this.statisticsIndexName = builder.statisticsIndexName;
         this.statisticsTypeName = builder.statisticsTypeName;
         this.importAllCollections = builder.importAllCollections;
+        this.importCollections = builder.importCollections;
+        this.isImportCollections = builder.isImportCollections;
         this.disableIndexRefresh = builder.disableIndexRefresh;
 
         // index
@@ -1024,6 +1040,14 @@ public class MongoDBRiverDefinition {
 
     public boolean isImportAllCollections() {
         return importAllCollections;
+    }
+
+    public boolean isImportCollections() {
+        return isImportCollections;
+    }
+
+    public List<String> getImportCollections() {
+        return importCollections;
     }
 
     public boolean isDisableIndexRefresh() {

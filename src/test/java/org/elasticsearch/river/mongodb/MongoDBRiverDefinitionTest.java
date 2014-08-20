@@ -175,6 +175,7 @@ public class MongoDBRiverDefinitionTest {
                     RiverIndexName.Conf.DEFAULT_INDEX_NAME, riverSettings, scriptService);
             Assert.assertNotNull(definition);
             Assert.assertTrue(definition.isImportAllCollections());
+            Assert.assertTrue(definition.isImportCollections());
             Assert.assertTrue(definition.isDropCollection());
         } catch (Throwable t) {
             Assert.fail("testLoadMongoDBRiverDefinitionIssue177 failed", t);

@@ -449,8 +449,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     /**
      * Adds an index request operation to a bulk request, updating the last
      * timestamp for a given namespace (ie: host:dbName.collectionName)
-     * 
-     * @param bulk
+     *
+     * @param definition
+     * @param time
+     * @param bulkProcessor
      */
     static void setLastTimestamp(final MongoDBRiverDefinition definition, final Timestamp<?> time, final BulkProcessor bulkProcessor) {
         try {
@@ -472,7 +474,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
     public static long getIndexCount(Client client, MongoDBRiverDefinition definition) {
         if (client.admin().indices().prepareExists(definition.getIndexName()).get().isExists()) {
-            if (definition.isImportAllCollections()) {
+            if (definition.isImportAllCollections() || definition.isImportCollections()) {
                 return client.prepareCount(definition.getIndexName()).execute().actionGet().getCount();
             } else {
                 if (client.admin().indices().prepareTypesExists(definition.getIndexName()).setTypes(definition.getTypeName()).get()

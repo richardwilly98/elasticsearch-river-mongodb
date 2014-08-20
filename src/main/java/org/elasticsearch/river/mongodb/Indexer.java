@@ -114,7 +114,7 @@ class Indexer implements Runnable {
 
         Timestamp<?> lastTimestamp = entry.getOplogTimestamp();
         String type;
-        if (definition.isImportAllCollections()) {
+        if (definition.isImportAllCollections() || definition.isImportCollections()) {
             type = entry.getCollection();
         } else {
             type = definition.getTypeName();
@@ -401,7 +401,6 @@ class Indexer implements Runnable {
      * Map a DBObject for indexing
      * 
      * @param base
-     * @param mapData
      */
     private Map<String, Object> createObjectMap(DBObject base) {
         Map<String, Object> mapData = new HashMap<String, Object>();
