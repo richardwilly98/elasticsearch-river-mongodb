@@ -425,14 +425,6 @@ class Indexer implements Runnable {
      * @param ref
      * @return
      */
-//    private Map<String, Object> convertDbRef(DBRef ref) {
-//        Map<String, Object> obj = new HashMap<String, Object>();
-//        obj.put("id", ref.getId());
-//        obj.put("ref", ref.getRef());
-//
-//        return obj;
-//    }
-
     private Map<String, Object> convertDbRef(DBRef ref) {
         return createObjectMap(ref.fetch());
     }
