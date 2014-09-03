@@ -277,7 +277,7 @@ Install the m2eclipse plugin:
 
 [Install the testng eclipse plugin](http://testng.org/doc/download.html)
 
-Run `mvn eclipse:eclipse`
+Run `mvn eclipse:eclipse -DdownloadSources=true`
 
 Import the project with `File > Import > Maven > Existing Maven Projects`
 
