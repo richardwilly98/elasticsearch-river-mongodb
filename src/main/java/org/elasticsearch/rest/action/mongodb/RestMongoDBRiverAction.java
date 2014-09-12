@@ -50,7 +50,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
         logger.debug("action: {}", request.param("action"));
 
         if (uri.indexOf("list") > -1) {
-            list(request, channel);
+            list(request, channel, client);
             return;
         } else if (uri.endsWith("start")) {
             start(request, channel, client);
@@ -101,7 +101,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
 
     private void list(RestRequest request, RestChannel channel, Client client) {
         try {
-            Map<String, Object> rivers = getRivers(request.paramAsInt("page", 1), request.paramAsInt("count", 10));
+            Map<String, Object> rivers = getRivers(request.paramAsInt("page", 1), request.paramAsInt("count", 10), client);
             XContentBuilder builder = RestXContentBuilder.restContentBuilder(request);
             builder.value(rivers);
             channel.sendResponse(new BytesRestResponse(RestStatus.OK, builder));
@@ -144,7 +144,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
         }
     }
 
-    private Map<String, Object> getRivers(int page, int count) {
+    private Map<String, Object> getRivers(int page, int count, Client client) {
     	int from = (page - 1) * count;
         SearchResponse searchResponse = client.prepareSearch(riverIndexName)
                 .setQuery(QueryBuilders.queryString(MongoDBRiver.TYPE).defaultField("type")).setFrom(from).setSize(count).get();
