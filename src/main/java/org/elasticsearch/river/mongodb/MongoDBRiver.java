@@ -298,7 +298,11 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
     private DB getAdminDb() {
         if (adminDb == null) {
-            adminDb = getMongoClient().getDB(MONGODB_ADMIN_DATABASE);
+        	if(!definition.getMongoAdminAuthDatabase().isEmpty()) {
+	        	adminDb = getMongoClient().getDB(definition.getMongoAdminAuthDatabase());
+        	} else {
+            	adminDb = getMongoClient().getDB(MONGODB_ADMIN_DATABASE);
+            }
             if (logger.isTraceEnabled()) {
                 logger.trace("MongoAdminUser: {} - authenticated: {}", definition.getMongoAdminUser(), adminDb.isAuthenticated());
             }
@@ -317,6 +321,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                     logger.warn("getAdminDb() failed", mEx);
                 }
             }
+            adminDb = adminDb.getMongo().getDB(MONGODB_ADMIN_DATABASE);
         }
         if (adminDb == null) {
             throw new ElasticsearchException(String.format("Could not get %s database from MongoDB", MONGODB_ADMIN_DATABASE));
