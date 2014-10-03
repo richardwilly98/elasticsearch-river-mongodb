@@ -268,8 +268,10 @@ class Slurper implements Runnable {
         if (id == null) {
             return filter;
         } else {
+        	logger.info("--------"+MongoDBRiver.MONGODB_ID_FIELD+"-----"+new BasicBSONObject(QueryOperators.GT, id))
             BasicDBObject filterId = new BasicDBObject(MongoDBRiver.MONGODB_ID_FIELD, new BasicBSONObject(QueryOperators.GT, id));
-            if (filter == null) {
+            log.info("-------"+filter+"-------"+id+"--------"+filterid);
+        	if (filter == null) {
                 return filterId;
             } else {
                 List<BasicDBObject> values = ImmutableList.of(filter, filterId);
