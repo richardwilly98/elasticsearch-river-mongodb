@@ -1,6 +1,9 @@
 package org.elasticsearch.river.mongodb;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
@@ -17,6 +20,7 @@ import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.river.mongodb.util.MongoDBHelper;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 
+import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.Bytes;
 import com.mongodb.CommandResult;
@@ -63,6 +67,9 @@ class Slurper implements Runnable {
     private DB oplogDb;
     private DBCollection oplogCollection;
     private final AtomicLong totalDocuments = new AtomicLong();
+    private static Map<String,String> categoryMap = new HashMap<String,String>();
+    private static Map<String,String> typeMap = new HashMap<String,String>();
+
 
     public Slurper(List<ServerAddress> mongoServers, MongoDBRiverDefinition definition, SharedContext context, Client client) {
         this.definition = definition;
@@ -83,6 +90,36 @@ class Slurper implements Runnable {
         }
     }
 
+    private static void initializeMap(DBCollection parentCollection){
+		
+		DBCursor dbCursor = parentCollection.find();
+		
+		while(dbCursor.hasNext()){
+			
+			DBObject dbObject = dbCursor.next();
+			categoryMap.put(dbObject.get("id").toString(), dbObject.get("title").toString());
+			
+			BasicDBList subCategoryList = (BasicDBList)dbObject.get("sub_categories");
+			BasicDBObject[] subCatDBObjects =  subCategoryList.toArray(new BasicDBObject[0]);
+			for(BasicDBObject basicDBObject:subCatDBObjects){
+				categoryMap.put(basicDBObject.get("id").toString(), basicDBObject.get("title").toString());
+				
+				BasicDBList TypeList = (BasicDBList)basicDBObject.get("types");
+				BasicDBObject[] typeDBObjects =  TypeList.toArray(new BasicDBObject[0]);
+				for(BasicDBObject basicDBObject1:typeDBObjects){
+					typeMap.put(basicDBObject1.get("id").toString(), basicDBObject1.get("name").toString());
+				}
+			}
+
+			BasicDBList parentTypeList = (BasicDBList)dbObject.get("types");
+			BasicDBObject[] ParentTypeDBObjects =  parentTypeList.toArray(new BasicDBObject[0]);
+			for(BasicDBObject basicDBObject:ParentTypeDBObjects){
+				typeMap.put(basicDBObject.get("id").toString(), basicDBObject.get("name").toString());
+			}
+			
+		}
+	}
+    
     @Override
     public void run() {
         while (context.getStatus() == Status.RUNNING) {
@@ -268,9 +305,7 @@ class Slurper implements Runnable {
         if (id == null) {
             return filter;
         } else {
-        	logger.info("--------"+MongoDBRiver.MONGODB_ID_FIELD+"-----"+new BasicBSONObject(QueryOperators.GT, id))
             BasicDBObject filterId = new BasicDBObject(MongoDBRiver.MONGODB_ID_FIELD, new BasicBSONObject(QueryOperators.GT, id));
-            log.info("-------"+filter+"-------"+id+"--------"+filterid);
         	if (filter == null) {
                 return filterId;
             } else {
@@ -708,6 +743,39 @@ class Slurper implements Runnable {
 
     private void addToStream(final Operation operation, final Timestamp<?> currentTimestamp, final DBObject data, final String collection)
             throws InterruptedException {
+        
+    	if(collection.equals("catalog")){
+    	if(categoryMap.size() == 0){
+    		DBCollection categoryCollection = slurpedDb.getCollection("categories");
+    		initializeMap(categoryCollection);
+
+    	}
+
+    	BasicDBList categoryList = (BasicDBList) data.get("categories");
+		Object[] categoryArray = categoryList.toArray();
+		List<Map> categoryAddList = new ArrayList<Map>();
+		for(Object obj:categoryArray){
+			Integer i = new Double(obj.toString()).intValue();
+			Map<String,String> addCategoryMap = new HashMap<String,String>();
+			addCategoryMap.put("id", i.toString());
+			addCategoryMap.put("category_name", categoryMap.get(i.toString()));
+			categoryAddList.add(addCategoryMap);
+		}
+		data.put("categories", categoryAddList);
+		
+		BasicDBList typeList = (BasicDBList) data.get("types");
+		Object[] typeArray = typeList.toArray();
+		List<Map> typeAddList = new ArrayList<Map>();
+		for(Object obj:typeArray){
+			Integer i = new Double(obj.toString()).intValue();
+			Map<String,String> addTypeMap = new HashMap<String,String>();
+			addTypeMap.put("id", i.toString());
+			addTypeMap.put("product_type", typeMap.get(i.toString()));
+			typeAddList.add(addTypeMap);
+		}
+		data.put("types", typeAddList);
+    	}
+		
         if (logger.isTraceEnabled()) {
             logger.trace("addToStream - operation [{}], currentTimestamp [{}], data [{}], collection [{}]", operation, currentTimestamp,
                     data, collection);
