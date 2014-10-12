@@ -2,12 +2,12 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<name>elasticsearch-river-mongodb</name>
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>com.github.richardwilly98.elasticsearch</groupId>
+	<groupId>com.github.deepakr199.elasticsearch</groupId>
 	<artifactId>elasticsearch-river-mongodb</artifactId>
-	<version>2.0.2-SNAPSHOT</version>
+	<version>2.0.1</version>
 	<packaging>jar</packaging>
 	<description>MongoDB River for ElasticSearch</description>
-	<url>https://github.com/richardwilly98/elasticsearch-river-mongodb</url>
+	<url>https://github.com/deepakr199/elasticsearch-river-mongodb</url>
 	<inceptionYear>2010</inceptionYear>
 
 	<licenses>
@@ -18,9 +18,9 @@
 		</license>
 	</licenses>
 	<scm>
-		<url>https://github.com/richardwilly98/elasticsearch-river-mongodb</url>
-		<connection>scm:git:git@github.com:richardwilly98/elasticsearch-river-mongodb.git</connection>
-		<developerConnection>scm:git:git@github.com:richardwilly98/elasticsearch-river-mongodb.git</developerConnection>
+		<url>https://github.com/deepakr199/elasticsearch-river-mongodb</url>
+		<connection>scm:git:git@github.com:deepakr199/elasticsearch-river-mongodb.git</connection>
+		<developerConnection>scm:git:git@github.com:deepakr199/elasticsearch-river-mongodb.git</developerConnection>
 	</scm>
 	<issueManagement>
 		<system>GitHub</system>
@@ -330,7 +330,7 @@
 					</execution>
 				</executions>
 			</plugin>
-			<plugin>
+<!-- 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-gpg-plugin</artifactId>
 				<version>1.4</version>
@@ -343,7 +343,7 @@
 						</goals>
 					</execution>
 				</executions>
-			</plugin>
+			</plugin> -->
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>buildnumber-maven-plugin</artifactId>
