@@ -95,10 +95,10 @@ class Slurper implements Runnable {
 		DBCursor dbCursor = parentCollection.find();
 		
 		while(dbCursor.hasNext()){
-			
+
 			DBObject dbObject = dbCursor.next();
 			categoryMap.put(dbObject.get("id").toString(), dbObject.get("title").toString());
-			
+			if(dbObject.get("sub_categories") != null){
 			BasicDBList subCategoryList = (BasicDBList)dbObject.get("sub_categories");
 			BasicDBObject[] subCatDBObjects =  subCategoryList.toArray(new BasicDBObject[0]);
 			for(BasicDBObject basicDBObject:subCatDBObjects){
@@ -115,6 +115,7 @@ class Slurper implements Runnable {
 			BasicDBObject[] ParentTypeDBObjects =  parentTypeList.toArray(new BasicDBObject[0]);
 			for(BasicDBObject basicDBObject:ParentTypeDBObjects){
 				typeMap.put(basicDBObject.get("id").toString(), basicDBObject.get("name").toString());
+			}
 			}
 			
 		}
@@ -741,9 +742,10 @@ class Slurper implements Runnable {
         }
     }
 
-    private void addToStream(final Operation operation, final Timestamp<?> currentTimestamp, final DBObject data, final String collection)
+    private boolean addToStream(final Operation operation, final Timestamp<?> currentTimestamp, final DBObject data, final String collection)
             throws InterruptedException {
-        
+    	
+    	int condition = 0;
     	if(collection.equals("catalog")){
     	if(categoryMap.size() == 0){
     		DBCollection categoryCollection = slurpedDb.getCollection("categories");
@@ -760,6 +762,9 @@ class Slurper implements Runnable {
 			addCategoryMap.put("id", i.toString());
 			addCategoryMap.put("category_name", categoryMap.get(i.toString()));
 			categoryAddList.add(addCategoryMap);
+			if(categoryMap.get(i.toString()) == null){
+				condition = 1;
+			}
 		}
 		data.put("categories", categoryAddList);
 		
@@ -772,10 +777,18 @@ class Slurper implements Runnable {
 			addTypeMap.put("id", i.toString());
 			addTypeMap.put("product_type", typeMap.get(i.toString()));
 			typeAddList.add(addTypeMap);
+			if(typeMap.get(i.toString()) == null){
+				condition = 1;
+			}
+
 		}
 		data.put("types", typeAddList);
     	}
 		
+    	if(condition == 1){
+    		return false;
+    	}
+    	
         if (logger.isTraceEnabled()) {
             logger.trace("addToStream - operation [{}], currentTimestamp [{}], data [{}], collection [{}]", operation, currentTimestamp,
                     data, collection);
@@ -796,6 +809,7 @@ class Slurper implements Runnable {
         } else {
             context.getStream().put(new MongoDBRiver.QueueEntry(currentTimestamp, operation, data, collection));
         }
+    return true;
     }
 
 }
