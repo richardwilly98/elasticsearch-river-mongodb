@@ -280,13 +280,13 @@ class Slurper implements Runnable {
 
     protected boolean assignCollections() {
     	DB adminDb;
-    	if(!definition.getMongoAdminAuthDatabase().isEmpty()) {
+    	if (!definition.getMongoAdminAuthDatabase().isEmpty()) {
 	    	adminDb = mongo.getDB(definition.getMongoAdminAuthDatabase());
     	} else {
 	    	adminDb = mongo.getDB(MongoDBRiver.MONGODB_ADMIN_DATABASE);
     	}
     	
-    	if(!definition.getMongoLocalAuthDatabase().isEmpty()) {
+    	if (!definition.getMongoLocalAuthDatabase().isEmpty()) {
     		logger.info("Local DB auth against "+definition.getMongoLocalAuthDatabase()+" user: "+definition.getMongoLocalUser());
 	    	oplogDb = mongo.getDB(definition.getMongoLocalAuthDatabase());
     	} else {

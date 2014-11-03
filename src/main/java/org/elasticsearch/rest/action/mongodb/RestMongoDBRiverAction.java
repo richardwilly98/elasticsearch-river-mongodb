@@ -49,7 +49,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
         logger.debug("uri: {}", uri);
         logger.debug("action: {}", request.param("action"));
 
-        if (uri.indexOf("list") > -1) {
+        if (request.path().endsWith("list")) {
             list(request, channel);
             return;
         } else if (uri.endsWith("start")) {
@@ -145,7 +145,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
     }
 
     private Map<String, Object> getRivers(int page, int count) {
-    	int from = (page - 1) * count;
+        int from = (page - 1) * count;
         SearchResponse searchResponse = client.prepareSearch(riverIndexName)
                 .setQuery(QueryBuilders.queryString(MongoDBRiver.TYPE).defaultField("type")).setFrom(from).setSize(count).get();
         long totalHits = searchResponse.getHits().totalHits();

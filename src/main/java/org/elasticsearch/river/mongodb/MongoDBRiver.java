@@ -298,10 +298,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
     private DB getAdminDb() {
         if (adminDb == null) {
-        	if(!definition.getMongoAdminAuthDatabase().isEmpty()) {
-	        	adminDb = getMongoClient().getDB(definition.getMongoAdminAuthDatabase());
+        	if (!definition.getMongoAdminAuthDatabase().isEmpty()) {
+	            adminDb = getMongoClient().getDB(definition.getMongoAdminAuthDatabase());
         	} else {
-            	adminDb = getMongoClient().getDB(MONGODB_ADMIN_DATABASE);
+                adminDb = getMongoClient().getDB(MONGODB_ADMIN_DATABASE);
             }
             if (logger.isTraceEnabled()) {
                 logger.trace("MongoAdminUser: {} - authenticated: {}", definition.getMongoAdminUser(), adminDb.isAuthenticated());
