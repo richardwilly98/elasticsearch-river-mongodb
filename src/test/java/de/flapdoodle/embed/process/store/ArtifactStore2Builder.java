@@ -20,7 +20,6 @@
  */
 package de.flapdoodle.embed.process.store;
 
-import java.util.Map;
 import java.util.logging.Logger;
 
 import de.flapdoodle.embed.process.builder.AbstractBuilder;
@@ -28,7 +27,6 @@ import de.flapdoodle.embed.process.builder.IProperty;
 import de.flapdoodle.embed.process.builder.TypedProperty;
 import de.flapdoodle.embed.process.config.store.IDownloadConfig;
 import de.flapdoodle.embed.process.config.store.ILibraryStore;
-import de.flapdoodle.embed.process.distribution.Platform;
 import de.flapdoodle.embed.process.extract.ITempNaming;
 import de.flapdoodle.embed.process.io.directories.IDirectory;
 
