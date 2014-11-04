@@ -17,9 +17,8 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.testng.util.Strings;
-
 import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
 
 import de.flapdoodle.embed.process.config.store.IDownloadConfig;
 import de.flapdoodle.embed.process.config.store.ITimeoutConfig;
