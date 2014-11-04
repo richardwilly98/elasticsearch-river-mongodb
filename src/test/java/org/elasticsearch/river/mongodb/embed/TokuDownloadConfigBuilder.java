@@ -9,7 +9,7 @@ import de.flapdoodle.embed.process.io.progress.StandardConsoleProgressListener;
 
 public class TokuDownloadConfigBuilder extends de.flapdoodle.embed.process.config.store.DownloadConfigBuilder {
 
-    private static final String DEFAULT_DOWNLOAD_PATH = "http://www.tokutek.com/download.php?download_file=";
+    private static final String DEFAULT_DOWNLOAD_PATH = "http://www.tokutek.com/tokumx-for-mongodb/tokumx-community-edition-download/?file=";
 
     public TokuDownloadConfigBuilder packageResolverForCommand(Command command) {
         Validate.isTrue(command == Command.MongoD, "Only command de.flapdoodle.embed.mongo.Command.MongoD is currently supported");
@@ -27,10 +27,8 @@ public class TokuDownloadConfigBuilder extends de.flapdoodle.embed.process.confi
         progressListener().setDefault(new StandardConsoleProgressListener());
         artifactStorePath().setDefault(new UserHome(".embedmongo"));
         downloadPrefix().setDefault(new DownloadPrefix("embedtokumx-download"));
-        userAgent()
-                .setDefault(
-                        new UserAgent(
-                                "Mozilla/5.0 (compatible; elasticsearch-river-mongodb tests; https://github.com/richardwilly98/elasticsearch-river-mongodb/pull/248)"));
+        userAgent().setDefault(new UserAgent(
+            "Mozilla/5.0 (compatible; elasticsearch-river-mongodb tests; https://github.com/richardwilly98/elasticsearch-river-mongodb)"));
         return this;
     }
 }
