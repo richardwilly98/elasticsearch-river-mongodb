@@ -17,9 +17,6 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.google.common.base.Joiner;
-import com.google.common.base.Strings;
-
 import de.flapdoodle.embed.process.config.store.IDownloadConfig;
 import de.flapdoodle.embed.process.config.store.ITimeoutConfig;
 import de.flapdoodle.embed.process.distribution.Distribution;
@@ -90,7 +87,7 @@ public class TokuDownloader implements IDownloader {
       BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(ret));
 
       URL url2 = new URL("http://www.tokutek.com/download.php?df=1");
-      if (!Strings.isNullOrEmpty(refresh)) {
+      if (refresh != null && !refresh.isEmpty()) {
         Matcher m = REFRESH_HEADER_PATTERN.matcher(refresh);
         if (m.matches()) {
           url2 = new URL(url, m.group(1));
@@ -103,7 +100,14 @@ public class TokuDownloader implements IDownloader {
       openConnection.setConnectTimeout(timeoutConfig.getConnectionTimeout());
       openConnection.setReadTimeout(timeoutConfig.getReadTimeout());
       if (!cookies.isEmpty()) {
-        openConnection.setRequestProperty("Cookie", Joiner.on("; ").join(cookies));
+        StringBuilder cookie = new StringBuilder();
+        for (HttpCookie c : cookies) {
+          if (cookie.length() > 0) {
+            cookie.append("; ");
+          }
+          cookie.append(c);
+        }
+        openConnection.setRequestProperty("Cookie", cookie.toString());
       }
 
       InputStream downloadStream = openConnection.getInputStream();
