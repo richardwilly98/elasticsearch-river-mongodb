@@ -487,7 +487,7 @@ public class MongoDBRiverDefinition {
     public synchronized static MongoDBRiverDefinition parseSettings(String riverName, String riverIndexName, RiverSettings settings,
             ScriptService scriptService) {
 
-        logger.info("Parse river settings for {}", riverName);
+        logger.trace("Parse river settings for {}", riverName);
         Preconditions.checkNotNull(riverName, "No riverName specified");
         Preconditions.checkNotNull(riverIndexName, "No riverIndexName specified");
         Preconditions.checkNotNull(settings, "No settings specified");
@@ -512,7 +512,7 @@ public class MongoDBRiverDefinition {
                     for (Map<String, Object> feed : feeds) {
                         mongoHost = XContentMapValues.nodeStringValue(feed.get(HOST_FIELD), null);
                         mongoPort = XContentMapValues.nodeIntegerValue(feed.get(PORT_FIELD), DEFAULT_DB_PORT);
-                        logger.info("Server: " + mongoHost + " - " + mongoPort);
+                        logger.trace("Server: " + mongoHost + " - " + mongoPort);
                         try {
                             mongoServers.add(new ServerAddress(mongoHost, mongoPort));
                         } catch (UnknownHostException uhEx) {
@@ -573,13 +573,13 @@ public class MongoDBRiverDefinition {
                 if (mongoOptionsSettings.containsKey(PARENT_TYPES_FIELD)) {
                     Set<String> parentTypes = new HashSet<String>();
                     Object parentTypesSettings = mongoOptionsSettings.get(PARENT_TYPES_FIELD);
-                    logger.debug("parentTypesSettings: " + parentTypesSettings);
+                    logger.trace("parentTypesSettings: " + parentTypesSettings);
                     boolean array = XContentMapValues.isArray(parentTypesSettings);
 
                     if (array) {
                         ArrayList<String> fields = (ArrayList<String>) parentTypesSettings;
                         for (String field : fields) {
-                            logger.debug("Field: " + field);
+                            logger.trace("Field: " + field);
                             parentTypes.add(field);
                         }
                     }
@@ -614,13 +614,13 @@ public class MongoDBRiverDefinition {
                 if (mongoOptionsSettings.containsKey(INCLUDE_FIELDS_FIELD)) {
                     Set<String> includeFields = new HashSet<String>();
                     Object includeFieldsSettings = mongoOptionsSettings.get(INCLUDE_FIELDS_FIELD);
-                    logger.debug("includeFieldsSettings: " + includeFieldsSettings);
+                    logger.trace("includeFieldsSettings: " + includeFieldsSettings);
                     boolean array = XContentMapValues.isArray(includeFieldsSettings);
 
                     if (array) {
                         ArrayList<String> fields = (ArrayList<String>) includeFieldsSettings;
                         for (String field : fields) {
-                            logger.debug("Field: " + field);
+                            logger.trace("Field: " + field);
                             includeFields.add(field);
                         }
                     }
@@ -632,13 +632,13 @@ public class MongoDBRiverDefinition {
                 } else if (mongoOptionsSettings.containsKey(EXCLUDE_FIELDS_FIELD)) {
                     Set<String> excludeFields = new HashSet<String>();
                     Object excludeFieldsSettings = mongoOptionsSettings.get(EXCLUDE_FIELDS_FIELD);
-                    logger.debug("excludeFieldsSettings: " + excludeFieldsSettings);
+                    logger.trace("excludeFieldsSettings: " + excludeFieldsSettings);
                     boolean array = XContentMapValues.isArray(excludeFieldsSettings);
 
                     if (array) {
                         ArrayList<String> fields = (ArrayList<String>) excludeFieldsSettings;
                         for (String field : fields) {
-                            logger.debug("Field: " + field);
+                            logger.trace("Field: " + field);
                             excludeFields.add(field);
                         }
                     }
@@ -667,7 +667,7 @@ public class MongoDBRiverDefinition {
                             }
                         }
                     } catch (Throwable t) {
-                        logger.warn("Could set initial timestamp", t, new Object());
+                        logger.error("Could not set initial timestamp", t);
                     } finally {
                         builder.initialTimestamp(timeStamp);
                     }
@@ -815,7 +815,7 @@ public class MongoDBRiverDefinition {
             sslSocketFactory = sslContext.getSocketFactory();
             return sslSocketFactory;
         } catch (Exception ex) {
-            logger.error("Unable to build ssl socket factory without certificate validation, using default instead.", ex);
+            logger.warn("Unable to build ssl socket factory without certificate validation, using default instead.", ex);
         }
         return SSLSocketFactory.getDefault();
     }

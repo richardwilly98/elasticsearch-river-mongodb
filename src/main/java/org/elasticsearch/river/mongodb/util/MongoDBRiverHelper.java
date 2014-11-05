@@ -29,7 +29,7 @@ public abstract class MongoDBRiverHelper {
     }
 
     public static void setRiverStatus(Client client, String riverName, Status status) {
-        logger.debug("setRiverStatus called with {} - {}", riverName, status);
+        logger.info("setRiverStatus called with {} - {}", riverName, status);
         XContentBuilder xb;
         try {
             xb = jsonBuilder().startObject().startObject(MongoDBRiver.TYPE).field(MongoDBRiver.STATUS_FIELD, status).endObject()
