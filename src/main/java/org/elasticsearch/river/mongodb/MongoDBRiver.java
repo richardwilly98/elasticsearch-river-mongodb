@@ -225,7 +225,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                         if (servers != null) {
                             String replicaName = item.get(MONGODB_ID_FIELD).toString();
                             Thread tailerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(),
-                                    "mongodb_river_slurper_" + replicaName).newThread(new Slurper(servers, definition, context, client));
+                                    "mongodb_river_slurper_" + replicaName + ":" + definition.getIndexName()).newThread(new Slurper(servers, definition, context, client));
                             tailerThreads.add(tailerThread);
                         }
                     }
@@ -234,7 +234,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 }
             } else {
                 logger.trace("Not mongos");
-                Thread tailerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_slurper").newThread(
+                Thread tailerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_slurper:" + definition.getIndexName()).newThread(
                         new Slurper(definition.getMongoServers(), definition, context, client));
                 tailerThreads.add(tailerThread);
             }
@@ -243,11 +243,11 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 thread.start();
             }
 
-            indexerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_indexer").newThread(
+            indexerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_indexer:" + definition.getIndexName()).newThread(
                     new Indexer(this, definition, context, client, scriptService));
             indexerThread.start();
 
-            statusThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_status").newThread(
+            statusThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_status:" + definition.getIndexName()).newThread(
                     new StatusChecker(this, definition, context));
             statusThread.start();
         } catch (Throwable t) {
