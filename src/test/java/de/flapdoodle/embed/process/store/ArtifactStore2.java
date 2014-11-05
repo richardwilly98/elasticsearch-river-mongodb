@@ -30,7 +30,7 @@ import de.flapdoodle.embed.process.config.store.IDownloadConfig;
 import de.flapdoodle.embed.process.config.store.IPackageResolver;
 import de.flapdoodle.embed.process.distribution.Distribution;
 import de.flapdoodle.embed.process.extract.Extractors;
-import de.flapdoodle.embed.process.extract.FilesToExtract2;
+import de.flapdoodle.embed.process.extract.FilesToExtract;
 import de.flapdoodle.embed.process.extract.IExtractedFileSet;
 import de.flapdoodle.embed.process.extract.IExtractor;
 import de.flapdoodle.embed.process.extract.ITempNaming;
@@ -68,7 +68,7 @@ public class ArtifactStore2 implements IArtifactStore {
     File artifact = LocalArtifactStore.getArtifact(_downloadConfig, distribution);
     IExtractor extractor = Extractors.getExtractor(packageResolver.getArchiveType(distribution));
 
-    IExtractedFileSet extracted=extractor.extract(_downloadConfig, artifact, new FilesToExtract2(_tempDirFactory, _executableNaming, packageResolver.getFileSet(distribution)));
+    IExtractedFileSet extracted=extractor.extract(_downloadConfig, artifact, new FilesToExtract(_tempDirFactory, _executableNaming, packageResolver.getFileSet(distribution)));
     
     return extracted;
   }
