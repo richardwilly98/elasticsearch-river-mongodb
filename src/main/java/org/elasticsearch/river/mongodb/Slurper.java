@@ -25,12 +25,10 @@ import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.Mongo;
-import com.mongodb.MongoClient;
 import com.mongodb.MongoCursorNotFoundException;
 import com.mongodb.MongoException;
 import com.mongodb.MongoInterruptedException;
 import com.mongodb.QueryOperators;
-import com.mongodb.ServerAddress;
 import com.mongodb.gridfs.GridFS;
 import com.mongodb.gridfs.GridFSDBFile;
 import com.mongodb.gridfs.GridFSFile;
@@ -60,17 +58,17 @@ class Slurper implements Runnable {
             MongoDBRiver.OPLOG_UPDATE_ROW_OPERATION, // from TokuMX
             MongoDBRiver.OPLOG_UPDATE_OPERATION, MongoDBRiver.OPLOG_INSERT_OPERATION, MongoDBRiver.OPLOG_COMMAND_OPERATION);
     private final Client client;
-    private Mongo mongo;
+    private final Mongo mongo;
     private DB slurpedDb;
     private DB oplogDb;
     private DBCollection oplogCollection, oplogRefsCollection;
     private final AtomicLong totalDocuments = new AtomicLong();
 
-    public Slurper(List<ServerAddress> mongoServers, MongoDBRiverDefinition definition, SharedContext context, Client client) {
+    public Slurper(Mongo mongo, MongoDBRiverDefinition definition, SharedContext context, Client client) {
+        this.mongo = mongo;
         this.definition = definition;
         this.context = context;
         this.client = client;
-        this.mongo = new MongoClient(mongoServers, definition.getMongoClientOptions());
         this.findKeys = new BasicDBObject();
         this.gridfsOplogNamespace = definition.getMongoOplogNamespace() + MongoDBRiver.GRIDFS_FILES_SUFFIX;
         this.cmdOplogNamespace = definition.getMongoDb() + "." + MongoDBRiver.OPLOG_NAMESPACE_COMMAND;
@@ -157,10 +155,6 @@ class Slurper implements Runnable {
                 }
             } catch (MongoInterruptedException mIEx) {
                 logger.warn("Mongo driver has been interrupted", mIEx);
-                if (mongo != null) {
-                    mongo.close();
-                    mongo = null;
-                }
                 Thread.currentThread().interrupt();
                 break;
             } catch (MongoException e) {

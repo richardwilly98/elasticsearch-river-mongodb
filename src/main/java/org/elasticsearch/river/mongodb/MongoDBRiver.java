@@ -24,6 +24,7 @@ import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -132,6 +133,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     protected volatile boolean startInvoked = false;
 
     private Mongo mongo;
+    private final List<Mongo> replicaMongos = Lists.newArrayList();
     private DB adminDb;
 
     @Inject
@@ -224,7 +226,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                         if (servers != null) {
                             String replicaName = item.get(MONGODB_ID_FIELD).toString();
                             Thread tailerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(),
-                                    "mongodb_river_slurper_" + replicaName + ":" + definition.getIndexName()).newThread(new Slurper(servers, definition, context, client));
+                                    "mongodb_river_slurper_" + replicaName + ":" + definition.getIndexName()).newThread(new Slurper(getReplicaMongoClient(servers), definition, context, client));
                             tailerThreads.add(tailerThread);
                         }
                     }
@@ -232,7 +234,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             } else {
                 logger.trace("Not mongos");
                 Thread tailerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_slurper:" + definition.getIndexName()).newThread(
-                        new Slurper(definition.getMongoServers(), definition, context, client));
+                        new Slurper(getMongoClient(), definition, context, client));
                 tailerThreads.add(tailerThread);
             }
 
@@ -357,6 +359,12 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         return mongo;
     }
 
+    private Mongo getReplicaMongoClient(List<ServerAddress> servers) {
+        Mongo replicaMongo = new MongoClient(servers, definition.getMongoClientOptions());
+        replicaMongos.add(replicaMongo);
+        return replicaMongo;
+    }
+
     private void closeMongoClient() {
         logger.info("Closing Mongo client");
         if (adminDb != null) {
@@ -365,6 +373,11 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         if (mongo != null) {
             mongo.close();
             mongo = null;
+        }
+        for (Iterator<Mongo> it = replicaMongos.iterator(); it.hasNext(); ) {
+            Mongo replicaMongo = it.next();
+            replicaMongo.close();
+            it.remove();
         }
     }
 
