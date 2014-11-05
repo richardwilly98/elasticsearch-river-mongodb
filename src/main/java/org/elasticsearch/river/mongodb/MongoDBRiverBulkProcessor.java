@@ -87,7 +87,7 @@ public class MongoDBRiverBulkProcessor {
             checkBulkProcessorAvailability();
             logger.trace("beforeBulk - new bulk [{}] of items [{}]", executionId, request.numberOfActions());
             if (flushBulkProcessor.get()) {
-                logger.info("About to flush bulk request index[{}] - type[{}]", index, type);
+                logger.trace("About to flush bulk request index[{}] - type[{}]", index, type);
                 int dropDollectionIndex = findLastDropCollection(request.requests());
                 request.requests().subList(0, dropDollectionIndex + 1).clear();
                 try {
@@ -205,8 +205,8 @@ public class MongoDBRiverBulkProcessor {
     private void checkBulkProcessorAvailability() {
         while (!isBulkProcessorAvailable()) {
             try {
-                if (logger.isInfoEnabled()) {
-                    logger.info("Waiting for bulk queue to empty...");
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Waiting for bulk queue to empty...");
                 }
                 Thread.sleep(2000);
             } catch (InterruptedException e) {
@@ -282,7 +282,7 @@ public class MongoDBRiverBulkProcessor {
     private void logStatistics(long duration) {
         if (definition.isStoreStatistics()) {
             long totalDocuments = deletedDocuments.get() + insertedDocuments.get();
-            logger.debug("Indexed {} documents, {} insertions, {} updates, {} deletions", totalDocuments, insertedDocuments.get(),
+            logger.trace("Indexed {} documents: {} insertions, {} updates, {} deletions", totalDocuments, insertedDocuments.get(),
                     updatedDocuments.get(), deletedDocuments.get());
             Map<String, Object> source = new HashMap<String, Object>();
             Map<String, Object> statistics = Maps.newHashMap();

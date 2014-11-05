@@ -51,7 +51,7 @@ class Indexer implements Runnable {
         this.context = context;
         this.client = client;
         this.scriptService = scriptService;
-        logger.trace(
+        logger.debug(
                 "Create bulk processor with parameters - bulk actions: {} - concurrent request: {} - flush interval: {} - bulk size: {}",
                 definition.getBulk().getBulkActions(), definition.getBulk().getConcurrentRequests(), definition.getBulk()
                         .getFlushInterval(), definition.getBulk().getBulkSize());
@@ -158,12 +158,7 @@ class Indexer implements Runnable {
             entry.getData().put(definition.getIncludeCollection(), definition.getMongoCollection());
         }
 
-        Map<String, Object> ctx = null;
-        try {
-            ctx = XContentFactory.xContent(XContentType.JSON).createParser("{}").mapAndClose();
-        } catch (IOException e) {
-            logger.warn("failed to parse {}", e);
-        }
+        Map<String, Object> ctx = new HashMap();
         Map<String, Object> data = entry.getData().toMap();
         if (hasScript()) {
             if (ctx != null) {
@@ -183,7 +178,6 @@ class Indexer implements Runnable {
                     executableScript.run();
                     // we need to unwrap the context object...
                     ctx = (Map<String, Object>) executableScript.unwrap(ctx);
-                    logger.debug("context after script has been executed: {}", ctx);
                 } catch (Exception e) {
                     logger.warn("failed to script process {}, ignoring", e, ctx);
                     MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.SCRIPT_IMPORT_FAILED);
@@ -192,7 +186,7 @@ class Indexer implements Runnable {
                     logger.trace("Context after script executed: {}", ctx);
                 }
                 if (isDocumentIgnored(ctx)) {
-                    logger.debug("From script ignore document id: {}", objectId);
+                    logger.trace("From script ignore document id: {}", objectId);
                     // ignore document
                     return lastTimestamp;
                 }
@@ -201,10 +195,10 @@ class Indexer implements Runnable {
                 }
                 if (ctx.containsKey("document")) {
                     data = (Map<String, Object>) ctx.get("document");
-                    logger.debug("From script document: {}", data);
+                    logger.trace("From script document: {}", data);
                 }
                 operation = extractOperation(ctx);
-                logger.debug("From script operation: {} -> {}", ctx.get("operation").toString(), operation);
+                logger.trace("From script operation: {} -> {}", ctx.get("operation").toString(), operation);
             }
         }
 
@@ -233,27 +227,22 @@ class Indexer implements Runnable {
             return;
         }
 
-        boolean isAttachment = false;
-
-        if (logger.isDebugEnabled()) {
-            isAttachment = (data instanceof GridFSDBFile);
-        }
         if (operation == Operation.INSERT) {
             if (logger.isTraceEnabled()) {
-                logger.trace("Insert operation - id: {} - contains attachment: {}", objectId, isAttachment);
+                logger.trace("Insert operation - id: {} - contains attachment: {}", objectId, (data instanceof GridFSDBFile));
             }
             getBulkProcessor(index, type).addBulkRequest(objectId, build(data, objectId), routing, parent);
         }
         // UPDATE = DELETE + INSERT operation
         if (operation == Operation.UPDATE) {
             if (logger.isTraceEnabled()) {
-                logger.trace("Update operation - id: {} - contains attachment: {}", objectId, isAttachment);
+                logger.trace("Update operation - id: {} - contains attachment: {}", objectId, (data instanceof GridFSDBFile));
             }
             deleteBulkRequest(objectId, index, type, routing, parent);
             getBulkProcessor(index, type).addBulkRequest(objectId, build(data, objectId), routing, parent);
         }
         if (operation == Operation.DELETE) {
-            logger.info("Delete request [{}], [{}], [{}]", index, type, objectId);
+            logger.trace("Delete request [{}], [{}], [{}]", index, type, objectId);
             deleteBulkRequest(objectId, index, type, routing, parent);
         }
         if (operation == Operation.DROP_COLLECTION) {
@@ -295,8 +284,8 @@ class Indexer implements Runnable {
         if (entry.getData().get(MongoDBRiver.MONGODB_ID_FIELD) != null) {
             objectId = entry.getData().get(MongoDBRiver.MONGODB_ID_FIELD).toString();
         }
-        if (logger.isDebugEnabled()) {
-            logger.debug("applyAdvancedTransformation for id: [{}], operation: [{}]", objectId, operation);
+        if (logger.isTraceEnabled()) {
+            logger.trace("applyAdvancedTransformation for id: [{}], operation: [{}]", objectId, operation);
         }
 
         if (!definition.getIncludeCollection().isEmpty()) {
@@ -339,7 +328,7 @@ class Indexer implements Runnable {
                     // we need to unwrap the context object...
                     ctx = (Map<String, Object>) executableScript.unwrap(ctx);
                 } catch (Exception e) {
-                    logger.warn("failed to script process {}, ignoring", e, ctx);
+                    logger.error("failed to script process {}, ignoring", e, ctx);
                     MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.SCRIPT_IMPORT_FAILED);
                 }
                 if (logger.isTraceEnabled()) {
@@ -365,8 +354,8 @@ class Indexer implements Runnable {
                             boolean ignore = isDocumentIgnored(item);
                             Map<String, Object> data = (Map<String, Object>) item.get("data");
                             objectId = extractObjectId(data, objectId);
-                            if (logger.isDebugEnabled()) {
-                                logger.debug(
+                            if (logger.isTraceEnabled()) {
+                                logger.trace(
                                         "#### - Id: {} - operation: {} - ignore: {} - index: {} - type: {} - routing: {} - parent: {}",
                                         objectId, operation, ignore, index, type, routing, parent);
                             }
