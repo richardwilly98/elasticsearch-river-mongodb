@@ -13,16 +13,19 @@ import de.flapdoodle.embed.process.io.file.Files;
 
 public class FilesToExtract2 extends FilesToExtract {
 
-    public FilesToExtract2(IDirectory dirFactory, ITempNaming exeutableNaming, FileSet fileSet) throws IOException {
-        this(exeutableNaming, fileSet, Files.createTempDir(dirFactory, "extract"));
+    public FilesToExtract2(IDirectory dirFactory, ITempNaming executableNaming, FileSet fileSet) throws IOException {
+        this(executableNaming, fileSet, Files.createTempDir(dirFactory, "extract"));
     }
 
-    private FilesToExtract2(ITempNaming exeutableNaming, FileSet fileSet, final File subdir) {
-        this(exeutableNaming, fileSet, new IDirectory() { @Override public File asFile() { return subdir; }});
+    private FilesToExtract2(ITempNaming executableNaming, FileSet fileSet, final File subdir) {
+        this(executableNaming, fileSet, new IDirectory() {
+            @Override public File asFile() { return subdir; }
+            @Override public boolean isGenerated() { return true; }
+        });
     }
 
-    private FilesToExtract2(ITempNaming exeutableNaming, FileSet fileSet, IDirectory subdirFactory) {
-        super(subdirFactory, exeutableNaming, fileSet);
+    private FilesToExtract2(ITempNaming executableNaming, FileSet fileSet, IDirectory subdirFactory) {
+        super(subdirFactory, executableNaming, fileSet);
     }
 
 }
