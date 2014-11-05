@@ -283,8 +283,20 @@ class Slurper implements Runnable {
     }
 
     protected boolean assignCollections() {
-        DB adminDb = mongo.getDB(MongoDBRiver.MONGODB_ADMIN_DATABASE);
-        oplogDb = mongo.getDB(MongoDBRiver.MONGODB_LOCAL_DATABASE);
+    	DB adminDb;
+    	if (!definition.getMongoAdminAuthDatabase().isEmpty()) {
+	    	adminDb = mongo.getDB(definition.getMongoAdminAuthDatabase());
+    	} else {
+	    	adminDb = mongo.getDB(MongoDBRiver.MONGODB_ADMIN_DATABASE);
+    	}
+    	
+    	if (!definition.getMongoLocalAuthDatabase().isEmpty()) {
+    		logger.info("Local DB auth against "+definition.getMongoLocalAuthDatabase()+" user: "+definition.getMongoLocalUser());
+	    	oplogDb = mongo.getDB(definition.getMongoLocalAuthDatabase());
+    	} else {
+    		logger.info("Local DB auth against local user: "+definition.getMongoLocalUser());
+	    	oplogDb = mongo.getDB(MongoDBRiver.MONGODB_LOCAL_DATABASE);
+    	}
 
         if (!definition.getMongoAdminUser().isEmpty() && !definition.getMongoAdminPassword().isEmpty()) {
             logger.debug("Authenticate {} with {}", MongoDBRiver.MONGODB_ADMIN_DATABASE, definition.getMongoAdminUser());
@@ -307,6 +319,7 @@ class Slurper implements Runnable {
                 logger.error("Autenticatication failed for {}: {}", MongoDBRiver.MONGODB_LOCAL_DATABASE, cmd.getErrorMessage());
                 return false;
             }
+            oplogDb = oplogDb.getMongo().getDB(MongoDBRiver.MONGODB_LOCAL_DATABASE);
         }
 
         Set<String> collections = oplogDb.getCollectionNames();

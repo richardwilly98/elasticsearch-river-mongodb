@@ -83,6 +83,7 @@ public class MongoDBRiverDefinition {
     public final static String CREDENTIALS_FIELD = "credentials";
     public final static String USER_FIELD = "user";
     public final static String PASSWORD_FIELD = "password";
+    public final static String AUTH_FIELD = "auth";
     public final static String SCRIPT_FIELD = "script";
     public final static String SCRIPT_TYPE_FIELD = "script_type";
     public final static String COLLECTION_FIELD = "collection";
@@ -118,8 +119,10 @@ public class MongoDBRiverDefinition {
     // mongodb.credentials
     private final String mongoAdminUser;
     private final String mongoAdminPassword;
+    private final String mongoAdminAuthDatabase;
     private final String mongoLocalUser;
     private final String mongoLocalPassword;
+    private final String mongoLocalAuthDatabase;
 
     // mongodb.options
     private final MongoClientOptions mongoClientOptions;
@@ -168,8 +171,10 @@ public class MongoDBRiverDefinition {
         // mongodb.credentials
         private String mongoAdminUser = "";
         private String mongoAdminPassword = "";
+        private String mongoAdminAuthDatabase = "";
         private String mongoLocalUser = "";
         private String mongoLocalPassword = "";
+        private String mongoLocalAuthDatabase = "";
         // mongodb.options
         private MongoClientOptions mongoClientOptions = null;
         private int connectTimeout = 0;
@@ -250,6 +255,11 @@ public class MongoDBRiverDefinition {
             this.mongoAdminPassword = mongoAdminPassword;
             return this;
         }
+        
+        public Builder mongoAdminAuthDatabase(String mongoAdminAuthDatabase) {
+            this.mongoAdminAuthDatabase = mongoAdminAuthDatabase;
+            return this;
+        }
 
         public Builder mongoLocalUser(String mongoLocalUser) {
             this.mongoLocalUser = mongoLocalUser;
@@ -258,6 +268,11 @@ public class MongoDBRiverDefinition {
 
         public Builder mongoLocalPassword(String mongoLocalPassword) {
             this.mongoLocalPassword = mongoLocalPassword;
+            return this;
+        }
+        
+        public Builder mongoLocalAuthDatabase(String mongoLocalAuthDatabase) {
+            this.mongoLocalAuthDatabase = mongoLocalAuthDatabase;
             return this;
         }
 
@@ -665,8 +680,10 @@ public class MongoDBRiverDefinition {
                 String dbCredential;
                 String mau = "";
                 String map = "";
+                String maad = "";
                 String mlu = "";
                 String mlp = "";
+                String mlad = "";
                 // String mdu = "";
                 // String mdp = "";
                 Object mongoCredentialsSettings = mongoSettings.get(CREDENTIALS_FIELD);
@@ -679,9 +696,11 @@ public class MongoDBRiverDefinition {
                         if (ADMIN_DB_FIELD.equals(dbCredential)) {
                             mau = XContentMapValues.nodeStringValue(credential.get(USER_FIELD), null);
                             map = XContentMapValues.nodeStringValue(credential.get(PASSWORD_FIELD), null);
+                            maad = XContentMapValues.nodeStringValue(credential.get(AUTH_FIELD), null);
                         } else if (LOCAL_DB_FIELD.equals(dbCredential)) {
                             mlu = XContentMapValues.nodeStringValue(credential.get(USER_FIELD), null);
                             mlp = XContentMapValues.nodeStringValue(credential.get(PASSWORD_FIELD), null);
+                            mlad = XContentMapValues.nodeStringValue(credential.get(AUTH_FIELD), null);
                             // } else {
                             // mdu = XContentMapValues.nodeStringValue(
                             // credential.get(USER_FIELD), null);
@@ -692,8 +711,10 @@ public class MongoDBRiverDefinition {
                 }
                 builder.mongoAdminUser(mau);
                 builder.mongoAdminPassword(map);
+                builder.mongoAdminAuthDatabase(maad);
                 builder.mongoLocalUser(mlu);
                 builder.mongoLocalPassword(mlp);
+                builder.mongoLocalAuthDatabase(mlad);
                 // mongoDbUser = mdu;
                 // mongoDbPassword = mdp;
             }
@@ -858,8 +879,10 @@ public class MongoDBRiverDefinition {
         // mongodb.credentials
         this.mongoAdminUser = builder.mongoAdminUser;
         this.mongoAdminPassword = builder.mongoAdminPassword;
+        this.mongoAdminAuthDatabase = builder.mongoAdminAuthDatabase;
         this.mongoLocalUser = builder.mongoLocalUser;
         this.mongoLocalPassword = builder.mongoLocalPassword;
+        this.mongoLocalAuthDatabase = builder.mongoLocalAuthDatabase;
 
         // mongodb.options
         this.mongoClientOptions = builder.mongoClientOptions;
@@ -933,6 +956,10 @@ public class MongoDBRiverDefinition {
     public String getMongoAdminPassword() {
         return mongoAdminPassword;
     }
+    
+    public String getMongoAdminAuthDatabase() {
+        return mongoAdminAuthDatabase;
+    }
 
     public String getMongoLocalUser() {
         return mongoLocalUser;
@@ -940,6 +967,10 @@ public class MongoDBRiverDefinition {
 
     public String getMongoLocalPassword() {
         return mongoLocalPassword;
+    }
+    
+    public String getMongoLocalAuthDatabase() {
+        return mongoLocalAuthDatabase;
     }
 
     public MongoClientOptions getMongoClientOptions() {

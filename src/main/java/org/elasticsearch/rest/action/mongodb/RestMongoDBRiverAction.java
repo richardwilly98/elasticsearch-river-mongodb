@@ -49,8 +49,8 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
         logger.debug("uri: {}", uri);
         logger.debug("action: {}", request.param("action"));
 
-        if (uri.endsWith("list")) {
-            list(request, channel, client);
+        if (request.path().endsWith("list")) {
+            list(request, channel);
             return;
         } else if (uri.endsWith("start")) {
             start(request, channel, client);
@@ -101,7 +101,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
 
     private void list(RestRequest request, RestChannel channel, Client client) {
         try {
-            List<Map<String, Object>> rivers = getRivers(request.paramAsInt("from", 0), request.paramAsInt("size", 10), client);
+            Map<String, Object> rivers = getRivers(request.paramAsInt("page", 1), request.paramAsInt("count", 10));
             XContentBuilder builder = RestXContentBuilder.restContentBuilder(request);
             builder.value(rivers);
             channel.sendResponse(new BytesRestResponse(RestStatus.OK, builder));
@@ -144,12 +144,18 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
         }
     }
 
-    private List<Map<String, Object>> getRivers(int from, int size, Client client) {
+    private Map<String, Object> getRivers(int page, int count) {
+        int from = (page - 1) * count;
         SearchResponse searchResponse = client.prepareSearch(riverIndexName)
-                .setQuery(QueryBuilders.queryString(MongoDBRiver.TYPE).defaultField("type")).setFrom(from).setSize(size).get();
+                .setQuery(QueryBuilders.queryString(MongoDBRiver.TYPE).defaultField("type")).setFrom(from).setSize(count).get();
         long totalHits = searchResponse.getHits().totalHits();
         logger.trace("totalHits: {}", totalHits);
+        Map<String, Object> data = new HashMap<String, Object>();
+        data.put("hits", totalHits);
+        data.put("page", page);
+        data.put("pages", Math.ceil(totalHits / count) + 1);
         List<Map<String, Object>> rivers = new ArrayList<Map<String, Object>>();
+        int i = 0;
         for (SearchHit hit : searchResponse.getHits().hits()) {
             Map<String, Object> source = new HashMap<String, Object>();
             String riverName = hit.getType();
@@ -170,8 +176,11 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
                 logger.trace("source: {}", hit.getSourceAsString());
             }
             rivers.add(source);
+            i++;
         }
-        return rivers;
+        data.put("count", i);
+        data.put("results", rivers);
+        return data;
     }
 
 }
