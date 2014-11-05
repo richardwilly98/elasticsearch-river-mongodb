@@ -53,6 +53,8 @@ public class MongoDBRiverDefinition {
     public final static ByteSizeValue DEFAULT_BULK_SIZE = new ByteSizeValue(5, ByteSizeUnit.MB);
     public final static int DEFAULT_CONNECT_TIMEOUT = 30000;
     public final static int DEFAULT_SOCKET_TIMEOUT = 60000;
+    public final static int DEFAULT_CONNECTIONS_PER_HOST = 100;
+    public final static int DEFAULT_THREADS_ALLOWED_TO_BLOCK_FOR_CONNECTION_MULTIPLIER = 5;
 
     // fields
     public final static String DB_FIELD = "db";
@@ -75,6 +77,8 @@ public class MongoDBRiverDefinition {
     public final static String INITIAL_TIMESTAMP_SCRIPT_FIELD = "script";
     public final static String ADVANCED_TRANSFORMATION_FIELD = "advanced_transformation";
     public final static String SKIP_INITIAL_IMPORT_FIELD = "skip_initial_import";
+    public final static String CONNECTIONS_PER_HOST = "connections_per_host";
+    public final static String THREADS_ALLOWED_TO_BLOCK_FOR_CONNECTION_MULTIPLIER = "threads_allowed_to_block_for_connection_multiplier";
     public final static String PARENT_TYPES_FIELD = "parent_types";
     public final static String STORE_STATISTICS_FIELD = "store_statistics";
     public final static String IMPORT_ALL_COLLECTIONS_FIELD = "import_all_collections";
@@ -205,6 +209,8 @@ public class MongoDBRiverDefinition {
         private int throttleSize;
 
         private Bulk bulk;
+        private int connectionsPerHost;
+        private int threadsAllowedToBlockForConnectionMultiplier;
 
         public Builder mongoServers(List<ServerAddress> mongoServers) {
             this.mongoServers = mongoServers;
@@ -411,6 +417,16 @@ public class MongoDBRiverDefinition {
             return this;
         }
 
+        public Builder connectionsPerHost(int connectionsPerHost) {
+            this.connectionsPerHost = connectionsPerHost;
+            return this;
+        }
+
+        public Builder threadsAllowedToBlockForConnectionMultiplier(int threadsAllowedToBlockForConnectionMultiplier) {
+            this.threadsAllowedToBlockForConnectionMultiplier = threadsAllowedToBlockForConnectionMultiplier;
+            return this;
+        }
+
         public MongoDBRiverDefinition build() {
             return new MongoDBRiverDefinition(this);
         }
@@ -559,8 +575,15 @@ public class MongoDBRiverDefinition {
                 builder.advancedTransformation(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(ADVANCED_TRANSFORMATION_FIELD),
                         false));
                 builder.skipInitialImport(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(SKIP_INITIAL_IMPORT_FIELD), false));
+                builder.connectionsPerHost(XContentMapValues.nodeIntegerValue(mongoOptionsSettings.get(CONNECTIONS_PER_HOST), DEFAULT_CONNECTIONS_PER_HOST));
+                builder.threadsAllowedToBlockForConnectionMultiplier(XContentMapValues.nodeIntegerValue(mongoOptionsSettings.get(THREADS_ALLOWED_TO_BLOCK_FOR_CONNECTION_MULTIPLIER),
+                        DEFAULT_THREADS_ALLOWED_TO_BLOCK_FOR_CONNECTION_MULTIPLIER));
 
-                mongoClientOptionsBuilder.connectTimeout(builder.connectTimeout).socketTimeout(builder.socketTimeout);
+                mongoClientOptionsBuilder
+                    .connectTimeout(builder.connectTimeout)
+                    .socketTimeout(builder.socketTimeout)
+                    .connectionsPerHost(builder.connectionsPerHost)
+                    .threadsAllowedToBlockForConnectionMultiplier(builder.threadsAllowedToBlockForConnectionMultiplier);
 
                 if (builder.mongoSecondaryReadPreference) {
                     mongoClientOptionsBuilder.readPreference(ReadPreference.secondaryPreferred());
