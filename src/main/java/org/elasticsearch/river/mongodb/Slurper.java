@@ -304,7 +304,7 @@ class Slurper implements Runnable {
             CommandResult cmd = adminDb.authenticateCommand(definition.getMongoAdminUser(), definition.getMongoAdminPassword()
                     .toCharArray());
             if (!cmd.ok()) {
-                logger.error("Autenticatication failed for {}: {}", MongoDBRiver.MONGODB_ADMIN_DATABASE, cmd.getErrorMessage());
+                logger.error("Authentication failed for {}: {}", MongoDBRiver.MONGODB_ADMIN_DATABASE, cmd.getErrorMessage());
                 // Can still try with mongoLocal credential if provided.
                 // return false;
             }
@@ -316,7 +316,7 @@ class Slurper implements Runnable {
             CommandResult cmd = oplogDb.authenticateCommand(definition.getMongoLocalUser(), definition.getMongoLocalPassword()
                     .toCharArray());
             if (!cmd.ok()) {
-                logger.error("Autenticatication failed for {}: {}", MongoDBRiver.MONGODB_LOCAL_DATABASE, cmd.getErrorMessage());
+                logger.error("Authentication failed for {}: {}", MongoDBRiver.MONGODB_LOCAL_DATABASE, cmd.getErrorMessage());
                 return false;
             }
             oplogDb = oplogDb.getMongo().getDB(MongoDBRiver.MONGODB_LOCAL_DATABASE);

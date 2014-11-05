@@ -317,7 +317,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                     CommandResult cmd = adminDb.authenticateCommand(definition.getMongoAdminUser(), definition.getMongoAdminPassword()
                             .toCharArray());
                     if (!cmd.ok()) {
-                        logger.error("Autenticatication failed for {}: {}", MONGODB_ADMIN_DATABASE, cmd.getErrorMessage());
+                        logger.error("Authentication failed for {}: {}", MONGODB_ADMIN_DATABASE, cmd.getErrorMessage());
                     } else {
                         logger.trace("authenticateCommand: {} - isAuthenticated: {}", cmd, adminDb.isAuthenticated());
                     }
