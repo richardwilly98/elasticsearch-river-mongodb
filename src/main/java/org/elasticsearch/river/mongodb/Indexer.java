@@ -1,14 +1,10 @@
 package org.elasticsearch.river.mongodb;
 
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-
-import java.io.IOException;
-import java.util.AbstractMap.SimpleEntry;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import com.mongodb.BasicDBList;
+import com.mongodb.BasicDBObject;
+import com.mongodb.DBObject;
+import com.mongodb.DBRef;
+import com.mongodb.gridfs.GridFSDBFile;
 import org.bson.types.BasicBSONList;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
@@ -28,11 +24,14 @@ import org.elasticsearch.script.ExecutableScript;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.search.SearchHit;
 
-import com.mongodb.BasicDBList;
-import com.mongodb.BasicDBObject;
-import com.mongodb.DBObject;
-import com.mongodb.DBRef;
-import com.mongodb.gridfs.GridFSDBFile;
+import java.io.IOException;
+import java.util.AbstractMap.SimpleEntry;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 class Indexer implements Runnable {
 
@@ -390,7 +389,6 @@ class Indexer implements Runnable {
      * Map a DBObject for indexing
      * 
      * @param base
-     * @param mapData
      */
     private Map<String, Object> createObjectMap(DBObject base) {
         Map<String, Object> mapData = new HashMap<String, Object>();
@@ -417,11 +415,7 @@ class Indexer implements Runnable {
      * @return
      */
     private Map<String, Object> convertDbRef(DBRef ref) {
-        Map<String, Object> obj = new HashMap<String, Object>();
-        obj.put("id", ref.getId());
-        obj.put("ref", ref.getRef());
-
-        return obj;
+        return createObjectMap(ref.fetch());
     }
 
     private boolean hasScript() {
