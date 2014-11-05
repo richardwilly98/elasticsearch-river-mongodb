@@ -86,11 +86,14 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     public final static String MONGODB_ADMIN_DATABASE = "admin";
     public final static String MONGODB_CONFIG_DATABASE = "config";
     public final static String MONGODB_ID_FIELD = "_id";
+    public final static String MONGODB_OID_FIELD = "oid";
+    public final static String MONGODB_SEQ_FIELD = "seq";
     public final static String MONGODB_IN_OPERATOR = "$in";
     public final static String MONGODB_OR_OPERATOR = "$or";
     public final static String MONGODB_AND_OPERATOR = "$and";
     public final static String MONGODB_NATURAL_OPERATOR = "$natural";
     public final static String OPLOG_COLLECTION = "oplog.rs";
+    public final static String OPLOG_REFS_COLLECTION = "oplog.refs";
     public final static String OPLOG_NAMESPACE = "ns";
     public final static String OPLOG_NAMESPACE_COMMAND = "$cmd";
     public final static String OPLOG_ADMIN_COMMAND = "admin." + OPLOG_NAMESPACE_COMMAND;
@@ -111,6 +114,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     public final static String OPLOG_FROM_MIGRATE = "fromMigrate";
     public static final String OPLOG_OPS = "ops";
     public static final String OPLOG_CREATE_COMMAND = "create";
+    public static final String OPLOG_REF = "ref";
     public final static String GRIDFS_FILES_SUFFIX = ".files";
     public final static String GRIDFS_CHUNKS_SUFFIX = ".chunks";
     public final static String INSERTION_ORDER_KEY = "$natural";
@@ -158,7 +162,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 return;
             }
             if (status == Status.STOPPED) {
-                logger.debug("Cannot start river {}. It is currently disabled", riverName.getName());
+                logger.info("Cannot start river {}. It is currently disabled", riverName.getName());
                 startInvoked = true;
                 return;
             }
@@ -192,7 +196,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                     // listener here, and only start sampling when the
                     // block is removed...
                 } else {
-                    logger.warn("failed to create index [{}], disabling river...", e, definition.getIndexName());
+                    logger.error("failed to create index [{}], disabling river...", e, definition.getIndexName());
                     return;
                 }
             }
@@ -412,7 +416,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 .startObject("contentType").field("type", "string").endObject().startObject("md5").field("type", "string").endObject()
                 .startObject("length").field("type", "long").endObject().startObject("chunkSize").field("type", "long").endObject()
                 .endObject().endObject().endObject();
-        logger.info("Mapping: {}", mapping.string());
+        logger.info("GridFS Mapping: {}", mapping.string());
         return mapping;
     }
 
@@ -432,8 +436,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             if (mongodbState != null) {
                 Timestamp<?> lastTimestamp = Timestamp.on(mongodbState);
                 if (lastTimestamp != null) {
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("{} last timestamp: {}", definition.getMongoOplogNamespace(), lastTimestamp);
+                    if (logger.isTraceEnabled()) {
+                        logger.trace("{} last timestamp: {}", definition.getMongoOplogNamespace(), lastTimestamp);
                     }
                     return lastTimestamp;
                 }
@@ -454,8 +458,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
      */
     static void setLastTimestamp(final MongoDBRiverDefinition definition, final Timestamp<?> time, final BulkProcessor bulkProcessor) {
         try {
-            if (logger.isDebugEnabled()) {
-                logger.debug("setLastTimestamp [{}] [{}] [{}]", definition.getRiverName(), definition.getMongoOplogNamespace(), time);
+            if (logger.isTraceEnabled()) {
+                logger.trace("setLastTimestamp [{}] [{}] [{}]", definition.getRiverName(), definition.getMongoOplogNamespace(), time);
             }
             bulkProcessor.add(indexRequest(definition.getRiverIndexName()).type(definition.getRiverName())
                     .id(definition.getMongoOplogNamespace()).source(source(time)));
