@@ -114,6 +114,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     public final static String GRIDFS_FILES_SUFFIX = ".files";
     public final static String GRIDFS_CHUNKS_SUFFIX = ".chunks";
     public final static String INSERTION_ORDER_KEY = "$natural";
+    public final static int RETRY_ON_MONGODB_ERROR_DELAY = 10000; //ms
 
     static final ESLogger logger = ESLoggerFactory.getLogger(MongoDBRiver.class.getName());
 
@@ -259,40 +260,51 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         if (definition.isMongos() != null) {
             return definition.isMongos().booleanValue();
         } else {
-            DB adminDb = getAdminDb();
-            if (adminDb == null) {
-                return false;
-            }
-            logger.trace("Found {} database", MONGODB_ADMIN_DATABASE);
-            DBObject command = BasicDBObjectBuilder.start(
-                    ImmutableMap.builder().put("serverStatus", 1).put("asserts", 0).put("backgroundFlushing", 0).put("connections", 0)
-                            .put("cursors", 0).put("dur", 0).put("extra_info", 0).put("globalLock", 0).put("indexCounters", 0)
-                            .put("locks", 0).put("metrics", 0).put("network", 0).put("opcounters", 0).put("opcountersRepl", 0)
-                            .put("recordStats", 0).put("repl", 0).build()).get();
-            logger.trace("About to execute: {}", command);
-            CommandResult cr = adminDb.command(command, ReadPreference.primary());
-            logger.trace("Command executed return : {}", cr);
+            while(true) {
+                try {
+                    DB adminDb = getAdminDb();
+                    if (adminDb == null) {
+                        return false;
+                    }
+                    logger.trace("Found {} database", MONGODB_ADMIN_DATABASE);
+                    DBObject command = BasicDBObjectBuilder.start(
+                            ImmutableMap.builder().put("serverStatus", 1).put("asserts", 0).put("backgroundFlushing", 0).put("connections", 0)
+                                    .put("cursors", 0).put("dur", 0).put("extra_info", 0).put("globalLock", 0).put("indexCounters", 0).put("locks", 0)
+                                    .put("metrics", 0).put("network", 0).put("opcounters", 0).put("opcountersRepl", 0).put("recordStats", 0)
+                                    .put("repl", 0).build()).get();
+                    logger.trace("About to execute: {}", command);
+                    CommandResult cr = adminDb.command(command, ReadPreference.primary());
+                    logger.trace("Command executed return : {}", cr);
 
-            logger.info("MongoDB version - {}", cr.get("version"));
-            if (logger.isTraceEnabled()) {
-                logger.trace("serverStatus: {}", cr);
-            }
+                    logger.info("MongoDB version - {}", cr.get("version"));
+                    if (logger.isTraceEnabled()) {
+                        logger.trace("serverStatus: {}", cr);
+                    }
 
-            if (!cr.ok()) {
-                logger.warn("serverStatus returns error: {}", cr.getErrorMessage());
-                return false;
-            }
+                    if (!cr.ok()) {
+                        logger.warn("serverStatus returns error: {}", cr.getErrorMessage());
+                        return false;
+                    }
 
-            if (cr.get("process") == null) {
-                logger.warn("serverStatus.process return null.");
-                return false;
+                    if (cr.get("process") == null) {
+                        logger.warn("serverStatus.process return null.");
+                        return false;
+                    }
+                    String process = cr.get("process").toString().toLowerCase();
+                    if (logger.isTraceEnabled()) {
+                        logger.trace("process: {}", process);
+                    }
+                    // Fix for https://jira.mongodb.org/browse/SERVER-9160
+                    return (process.contains("mongos"));
+                } catch (MongoException e) {
+                    logger.warn("Mongo client exception... Retry in " + MongoDBRiver.RETRY_ON_MONGODB_ERROR_DELAY + "ms", e);
+                    try {
+                        Thread.sleep(MongoDBRiver.RETRY_ON_MONGODB_ERROR_DELAY);
+                    } catch (InterruptedException iEx) {}
+                } catch (Exception e) {
+                    throw new ElasticsearchException(String.format("Could not run isMongos: %s", MONGODB_ADMIN_DATABASE), e);
+                }
             }
-            String process = cr.get("process").toString().toLowerCase();
-            if (logger.isTraceEnabled()) {
-                logger.trace("process: {}", process);
-            }
-            // Fix for https://jira.mongodb.org/browse/SERVER-9160
-            return (process.contains("mongos"));
         }
     }
 
@@ -315,6 +327,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                     }
                 } catch (MongoException mEx) {
                     logger.warn("getAdminDb() failed", mEx);
+                    throw mEx;
                 }
             }
         }
