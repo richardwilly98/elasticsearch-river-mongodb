@@ -158,7 +158,7 @@ class Indexer implements Runnable {
             entry.getData().put(definition.getIncludeCollection(), definition.getMongoCollection());
         }
 
-        Map<String, Object> ctx = new HashMap();
+        Map<String, Object> ctx = new HashMap<>();
         Map<String, Object> data = entry.getData().toMap();
         if (hasScript()) {
             if (ctx != null) {
