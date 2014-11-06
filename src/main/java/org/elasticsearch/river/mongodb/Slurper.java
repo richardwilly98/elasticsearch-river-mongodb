@@ -284,20 +284,20 @@ class Slurper implements Runnable {
     }
 
     protected boolean assignCollections() {
-    	DB adminDb;
-    	if(!definition.getMongoAdminAuthDatabase().isEmpty()) {
-	    	adminDb = mongo.getDB(definition.getMongoAdminAuthDatabase());
-    	} else {
-	    	adminDb = mongo.getDB(MongoDBRiver.MONGODB_ADMIN_DATABASE);
-    	}
-    	
-    	if(!definition.getMongoLocalAuthDatabase().isEmpty()) {
-    		logger.info("Local DB auth against "+definition.getMongoLocalAuthDatabase()+" user: "+definition.getMongoLocalUser());
-	    	oplogDb = mongo.getDB(definition.getMongoLocalAuthDatabase());
-    	} else {
-    		logger.info("Local DB auth against local user: "+definition.getMongoLocalUser());
-	    	oplogDb = mongo.getDB(MongoDBRiver.MONGODB_LOCAL_DATABASE);
-    	}
+        DB adminDb;
+        if (!definition.getMongoAdminAuthDatabase().isEmpty()) {
+            adminDb = mongo.getDB(definition.getMongoAdminAuthDatabase());
+        } else {
+            adminDb = mongo.getDB(MongoDBRiver.MONGODB_ADMIN_DATABASE);
+        }
+
+        if (!definition.getMongoLocalAuthDatabase().isEmpty()) {
+            logger.info("Local DB auth against " + definition.getMongoLocalAuthDatabase() + " user: " + definition.getMongoLocalUser());
+            oplogDb = mongo.getDB(definition.getMongoLocalAuthDatabase());
+        } else {
+            logger.info("Local DB auth against local user: " + definition.getMongoLocalUser());
+            oplogDb = mongo.getDB(MongoDBRiver.MONGODB_LOCAL_DATABASE);
+        }
 
         if (!definition.getMongoAdminUser().isEmpty() && !definition.getMongoAdminPassword().isEmpty()) {
             logger.debug("Authenticate {} with {}", MongoDBRiver.MONGODB_ADMIN_DATABASE, definition.getMongoAdminUser());
@@ -369,7 +369,9 @@ class Slurper implements Runnable {
     }
 
     private Timestamp<?> getCurrentOplogTimestamp() {
-        return Timestamp.on(oplogCollection.find().sort(new BasicDBObject(MongoDBRiver.INSERTION_ORDER_KEY, -1)).limit(1).next());
+        try (DBCursor cursor = oplogCollection.find().sort(new BasicDBObject(MongoDBRiver.INSERTION_ORDER_KEY, -1)).limit(1)) {
+            return Timestamp.on(cursor.next());
+        }
     }
 
     private DBCursor processFullOplog() throws InterruptedException, SlurperException {
@@ -717,13 +719,18 @@ class Slurper implements Runnable {
         if (collection == null) {
             for (String name : slurpedDb.getCollectionNames()) {
                 DBCollection slurpedCollection = slurpedDb.getCollection(name);
-                for (DBObject item : slurpedCollection.find(update, findKeys)) {
-                    addToStream(operation, currentTimestamp, item, collection);
-                }
+                addQueryToStream(operation, currentTimestamp, update, collection, slurpedCollection);
             }
         } else {
             DBCollection slurpedCollection = slurpedDb.getCollection(collection);
-            for (DBObject item : slurpedCollection.find(update, findKeys)) {
+            addQueryToStream(operation, currentTimestamp, update, collection, slurpedCollection);
+        }
+    }
+
+    private void addQueryToStream(final Operation operation, final Timestamp<?> currentTimestamp, final DBObject update,
+                final String collection, final DBCollection slurpedCollection) throws InterruptedException {
+        try (DBCursor cursor = slurpedCollection.find(update, findKeys)) {
+            for (DBObject item : cursor) {
                 addToStream(operation, currentTimestamp, item, collection);
             }
         }
@@ -758,12 +765,12 @@ class Slurper implements Runnable {
         }
 
         if (operation == Operation.DROP_DATABASE) {
-            logger.info("addToStream - Operation.DROP_DATABASE, currentTimestamp [{}], data [{}], collection [{}]", currentTimestamp,
-                    data, collection);
+            logger.info("addToStream - Operation.DROP_DATABASE, currentTimestamp [{}], data [{}], collection [{}]",
+                    currentTimestamp, data, collection);
             if (definition.isImportAllCollections()) {
                 for (String name : slurpedDb.getCollectionNames()) {
-                    logger.info("addToStream - isImportAllCollections - Operation.DROP_DATABASE, currentTimestamp [{}], data [{}], collection [{}]", currentTimestamp,
-                            data, name);
+                    logger.info("addToStream - isImportAllCollections - Operation.DROP_DATABASE, currentTimestamp [{}], data [{}], collection [{}]",
+                            currentTimestamp, data, name);
                     context.getStream().put(new MongoDBRiver.QueueEntry(currentTimestamp, Operation.DROP_COLLECTION, data, name));
                 }
             } else {
