@@ -26,6 +26,7 @@ import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.Mongo;
 import com.mongodb.MongoClient;
+import com.mongodb.MongoCursorNotFoundException;
 import com.mongodb.MongoException;
 import com.mongodb.MongoInterruptedException;
 import com.mongodb.QueryOperators;
@@ -138,7 +139,7 @@ class Slurper implements Runnable {
                     }
                     logger.debug("Before waiting for 500 ms");
                     Thread.sleep(500);
-                } catch (MongoException.CursorNotFound e) {
+                } catch (MongoCursorNotFoundException e) {
                     logger.info("Cursor {} has been closed. About to open a new cusor.", cursor.getCursorId());
                     logger.debug("Total document inserted [{}]", totalDocuments.get());
                 } catch (SlurperException sEx) {
@@ -252,7 +253,7 @@ class Slurper implements Runnable {
                     }
                     inProgress = false;
                 }
-            } catch (MongoException.CursorNotFound e) {
+            } catch (MongoCursorNotFoundException e) {
                 logger.debug("Initial import - Cursor {} has been closed. About to open a new cursor.", cursor.getCursorId());
                 logger.debug("Total documents inserted so far by river {}: {}", definition.getRiverName(), totalDocuments.get());
             } finally {
