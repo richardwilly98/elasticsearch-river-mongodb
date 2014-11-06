@@ -17,10 +17,10 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import com.google.common.collect.ImmutableList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
+import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.WriteConcern;
 
@@ -64,9 +64,14 @@ public class RiverTokuMXOplogRefTest extends RiverTokuMXTestAbstract {
         refreshIndex();
         CountResponse countResponse = getNode().client().count(countRequest(getIndex())).actionGet();
         assertThat(countResponse.getCount(), Matchers.equalTo(1L));
-        DBObject lastOplog = mongoDB.getSisterDB(LOCAL_DATABASE_NAME).getCollection(OPLOG_COLLECTION)
-                .find().sort(new BasicDBObject("$natural", -1)).limit(1).toArray().get(0);
-        assertThat(lastOplog.containsField("ref"), Matchers.is(Boolean.TRUE));
+        DBCursor cursor = mongoDB.getSisterDB(LOCAL_DATABASE_NAME).getCollection(OPLOG_COLLECTION)
+                .find().sort(new BasicDBObject("$natural", -1)).limit(1);
+        try {
+            DBObject lastOplog = cursor.toArray().get(0);
+            assertThat(lastOplog.containsField("ref"), Matchers.is(Boolean.TRUE));
+        } finally {
+            cursor.close();
+        }
     }
 
     private static BasicDBObject buildLargeObject() {

@@ -369,7 +369,12 @@ class Slurper implements Runnable {
     }
 
     private Timestamp<?> getCurrentOplogTimestamp() {
-        return Timestamp.on(oplogCollection.find().sort(new BasicDBObject(MongoDBRiver.INSERTION_ORDER_KEY, -1)).limit(1).next());
+        DBCursor cursor = oplogCollection.find().sort(new BasicDBObject(MongoDBRiver.INSERTION_ORDER_KEY, -1)).limit(1);
+        try {
+            return Timestamp.on(cursor.next());
+        } finally {
+            cursor.close();
+        }
     }
 
     private DBCursor processFullOplog() throws InterruptedException, SlurperException {
@@ -717,15 +722,23 @@ class Slurper implements Runnable {
         if (collection == null) {
             for (String name : slurpedDb.getCollectionNames()) {
                 DBCollection slurpedCollection = slurpedDb.getCollection(name);
-                for (DBObject item : slurpedCollection.find(update, findKeys)) {
-                    addToStream(operation, currentTimestamp, item, collection);
-                }
+                addQueryToStream(operation, currentTimestamp, update, collection, slurpedCollection);
             }
         } else {
             DBCollection slurpedCollection = slurpedDb.getCollection(collection);
-            for (DBObject item : slurpedCollection.find(update, findKeys)) {
+            addQueryToStream(operation, currentTimestamp, update, collection, slurpedCollection);
+        }
+    }
+
+    private void addQueryToStream(final Operation operation, final Timestamp<?> currentTimestamp, final DBObject update,
+            final String collection, final DBCollection slurpedCollection) throws InterruptedException {
+        DBCursor cursor = slurpedCollection.find(update, findKeys);
+        try {
+            for (DBObject item : cursor) {
                 addToStream(operation, currentTimestamp, item, collection);
             }
+        } finally {
+            cursor.close();
         }
     }
 
