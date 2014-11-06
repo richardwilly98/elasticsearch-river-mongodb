@@ -24,13 +24,11 @@ import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
-import com.mongodb.Mongo;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoCursorNotFoundException;
 import com.mongodb.MongoException;
 import com.mongodb.MongoInterruptedException;
 import com.mongodb.QueryOperators;
-import com.mongodb.ServerAddress;
 import com.mongodb.gridfs.GridFS;
 import com.mongodb.gridfs.GridFSDBFile;
 import com.mongodb.gridfs.GridFSFile;
@@ -39,9 +37,7 @@ import com.mongodb.util.JSONSerializers;
 class Slurper implements Runnable {
 
     class SlurperException extends Exception {
-        /**
-         * 
-         */
+
         private static final long serialVersionUID = 1L;
 
         SlurperException(String message) {
@@ -59,18 +55,18 @@ class Slurper implements Runnable {
     private final ImmutableList<String> oplogOperations = ImmutableList.of(MongoDBRiver.OPLOG_DELETE_OPERATION,
             MongoDBRiver.OPLOG_UPDATE_ROW_OPERATION, // from TokuMX
             MongoDBRiver.OPLOG_UPDATE_OPERATION, MongoDBRiver.OPLOG_INSERT_OPERATION, MongoDBRiver.OPLOG_COMMAND_OPERATION);
-    private final Client client;
-    private Mongo mongo;
+    private final Client esClient;
+    private MongoClient mongoClient;
     private DB slurpedDb;
     private DB oplogDb;
     private DBCollection oplogCollection, oplogRefsCollection;
     private final AtomicLong totalDocuments = new AtomicLong();
 
-    public Slurper(List<ServerAddress> mongoServers, MongoDBRiverDefinition definition, SharedContext context, Client client) {
+    public Slurper(MongoClient mongoClient, MongoDBRiverDefinition definition, SharedContext context, Client esClient) {
         this.definition = definition;
         this.context = context;
-        this.client = client;
-        this.mongo = new MongoClient(mongoServers, definition.getMongoClientOptions());
+        this.esClient = esClient;
+        this.mongoClient = mongoClient;
         this.findKeys = new BasicDBObject();
         this.gridfsOplogNamespace = definition.getMongoOplogNamespace() + MongoDBRiver.GRIDFS_FILES_SUFFIX;
         this.cmdOplogNamespace = definition.getMongoDb() + "." + MongoDBRiver.OPLOG_NAMESPACE_COMMAND;
@@ -98,7 +94,7 @@ class Slurper implements Runnable {
                 if (!definition.isSkipInitialImport()) {
                     if (!riverHasIndexedFromOplog() && definition.getInitialTimestamp() == null) {
                         if (!isIndexEmpty()) {
-                            MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.INITIAL_IMPORT_FAILED);
+                            MongoDBRiverHelper.setRiverStatus(esClient, definition.getRiverName(), Status.INITIAL_IMPORT_FAILED);
                             break;
                         }
                         if (definition.isImportAllCollections()) {
@@ -157,10 +153,6 @@ class Slurper implements Runnable {
                 }
             } catch (MongoInterruptedException mIEx) {
                 logger.warn("Mongo driver has been interrupted", mIEx);
-                if (mongo != null) {
-                    mongo.close();
-                    mongo = null;
-                }
                 Thread.currentThread().interrupt();
                 break;
             } catch (MongoException e) {
@@ -180,11 +172,11 @@ class Slurper implements Runnable {
     }
 
     protected boolean riverHasIndexedFromOplog() {
-        return MongoDBRiver.getLastTimestamp(client, definition) != null;
+        return MongoDBRiver.getLastTimestamp(esClient, definition) != null;
     }
 
     protected boolean isIndexEmpty() {
-        return MongoDBRiver.getIndexCount(client, definition) == 0;
+        return MongoDBRiver.getIndexCount(esClient, definition) == 0;
     }
 
     /**
@@ -236,7 +228,7 @@ class Slurper implements Runnable {
                     // possible option: Get the object id list from .fs
                     // collection
                     // then call GriDFS.findOne
-                    GridFS grid = new GridFS(mongo.getDB(definition.getMongoDb()), definition.getMongoCollection());
+                    GridFS grid = new GridFS(mongoClient.getDB(definition.getMongoDb()), definition.getMongoCollection());
 
                     cursor = grid.getFileList();
                     while (cursor.hasNext()) {
@@ -286,17 +278,17 @@ class Slurper implements Runnable {
     protected boolean assignCollections() {
         DB adminDb;
         if (!definition.getMongoAdminAuthDatabase().isEmpty()) {
-            adminDb = mongo.getDB(definition.getMongoAdminAuthDatabase());
+            adminDb = mongoClient.getDB(definition.getMongoAdminAuthDatabase());
         } else {
-            adminDb = mongo.getDB(MongoDBRiver.MONGODB_ADMIN_DATABASE);
+            adminDb = mongoClient.getDB(MongoDBRiver.MONGODB_ADMIN_DATABASE);
         }
 
         if (!definition.getMongoLocalAuthDatabase().isEmpty()) {
             logger.info("Local DB auth against " + definition.getMongoLocalAuthDatabase() + " user: " + definition.getMongoLocalUser());
-            oplogDb = mongo.getDB(definition.getMongoLocalAuthDatabase());
+            oplogDb = mongoClient.getDB(definition.getMongoLocalAuthDatabase());
         } else {
             logger.info("Local DB auth against local user: " + definition.getMongoLocalUser());
-            oplogDb = mongo.getDB(MongoDBRiver.MONGODB_LOCAL_DATABASE);
+            oplogDb = mongoClient.getDB(MongoDBRiver.MONGODB_LOCAL_DATABASE);
         }
 
         if (!definition.getMongoAdminUser().isEmpty() && !definition.getMongoAdminPassword().isEmpty()) {
@@ -331,7 +323,7 @@ class Slurper implements Runnable {
         oplogCollection = oplogDb.getCollection(MongoDBRiver.OPLOG_COLLECTION);
         oplogRefsCollection = oplogDb.getCollection(MongoDBRiver.OPLOG_REFS_COLLECTION);
 
-        slurpedDb = mongo.getDB(definition.getMongoDb());
+        slurpedDb = mongoClient.getDB(definition.getMongoDb());
         if (!definition.getMongoAdminUser().isEmpty() && !definition.getMongoAdminPassword().isEmpty() && adminDb.isAuthenticated()) {
             slurpedDb = adminDb.getMongo().getDB(definition.getMongoDb());
         }
@@ -365,7 +357,7 @@ class Slurper implements Runnable {
     }
 
     private void updateIndexRefresh(String name, Object value) {
-        client.admin().indices().prepareUpdateSettings(name).setSettings(ImmutableMap.of("index.refresh_interval", value)).get();
+        esClient.admin().indices().prepareUpdateSettings(name).setSettings(ImmutableMap.of("index.refresh_interval", value)).get();
     }
 
     private Timestamp<?> getCurrentOplogTimestamp() {
@@ -461,7 +453,7 @@ class Slurper implements Runnable {
             if (objectId == null) {
                 throw new NullPointerException(MongoDBRiver.MONGODB_ID_FIELD);
             }
-            GridFS grid = new GridFS(mongo.getDB(definition.getMongoDb()), collection);
+            GridFS grid = new GridFS(mongoClient.getDB(definition.getMongoDb()), collection);
             GridFSDBFile file = grid.findOne(new ObjectId(objectId));
             if (file != null) {
                 logger.trace("Caught file: {} - {}", file.getId(), file.getFilename());
@@ -671,7 +663,7 @@ class Slurper implements Runnable {
     }
 
     private DBCursor oplogCursor(final Timestamp<?> timestampOverride) throws SlurperException {
-        Timestamp<?> time = timestampOverride == null ? MongoDBRiver.getLastTimestamp(client, definition) : timestampOverride;
+        Timestamp<?> time = timestampOverride == null ? MongoDBRiver.getLastTimestamp(esClient, definition) : timestampOverride;
         if (time == null) {
             return null;
         }
@@ -705,7 +697,7 @@ class Slurper implements Runnable {
         DBObject entry = cursor.next();
         Timestamp<?> oplogTimestamp = Timestamp.on(entry);
         if (!time.equals(oplogTimestamp)) {
-            MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.RIVER_STALE);
+            MongoDBRiverHelper.setRiverStatus(esClient, definition.getRiverName(), Status.RIVER_STALE);
             throw new SlurperException("River out of sync with oplog.rs collection");
         }
     }
