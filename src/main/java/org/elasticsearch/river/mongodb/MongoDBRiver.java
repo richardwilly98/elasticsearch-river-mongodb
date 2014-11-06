@@ -216,8 +216,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
             // Tail the oplog
             if (isMongos()) {
-                DBCursor cursor = getConfigDb().getCollection("shards").find();
-                try {
+                try (DBCursor cursor = getConfigDb().getCollection("shards").find()) {
                     while (cursor.hasNext()) {
                         DBObject item = cursor.next();
                         logger.debug("shards: {}", item.toString());
@@ -229,8 +228,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                             tailerThreads.add(tailerThread);
                         }
                     }
-                } finally {
-                    cursor.close();
                 }
             } else {
                 logger.trace("Not mongos");
