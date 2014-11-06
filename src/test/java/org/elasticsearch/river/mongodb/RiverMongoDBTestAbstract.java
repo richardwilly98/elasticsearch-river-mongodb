@@ -198,7 +198,7 @@ public abstract class RiverMongoDBTestAbstract {
             @Override public boolean apply(ExecutableType _) { return _.isSupported; }});
     }
 
-    private static boolean tokuIsSupported() {
+    protected static boolean tokuIsSupported() {
         return Platform.detect() == Platform.Linux && BitSize.detect() == BitSize.B64;
     }
 

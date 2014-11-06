@@ -24,6 +24,7 @@ import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.WriteConcern;
 
+@Test
 public class RiverTokuMXOplogRefTest extends RiverTokuMXTestAbstract {
 
     static final String LONG_STRING =
@@ -31,7 +32,7 @@ public class RiverTokuMXOplogRefTest extends RiverTokuMXTestAbstract {
 
     private DB mongoDB;
     private DBCollection mongoCollection;
-
+    
     @BeforeClass
     public void createDatabase() {
         logger.debug("createDatabase {}", getDatabase());
