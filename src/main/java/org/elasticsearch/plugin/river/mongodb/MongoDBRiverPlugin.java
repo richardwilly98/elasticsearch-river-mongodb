@@ -28,9 +28,9 @@ import org.elasticsearch.rest.RestModule;
 import org.elasticsearch.rest.action.mongodb.RestMongoDBRiverAction;
 import org.elasticsearch.river.RiversModule;
 import org.elasticsearch.river.mongodb.MongoClientService;
-import org.elasticsearch.river.mongodb.NodeLevelModule;
 import org.elasticsearch.river.mongodb.MongoDBRiver;
 import org.elasticsearch.river.mongodb.MongoDBRiverModule;
+import org.elasticsearch.river.mongodb.NodeLevelModule;
 
 import com.google.common.collect.ImmutableList;
 
