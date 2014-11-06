@@ -45,25 +45,24 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
 
     @Override
     protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
-        String uri = request.uri();
-        logger.debug("uri: {}", uri);
+        logger.debug("uri: {}", request.uri());
         logger.debug("action: {}", request.param("action"));
 
-        if (uri.indexOf("list") > -1) {
+        if (request.path().endsWith("list")) {
             list(request, channel, client);
             return;
-        } else if (uri.endsWith("start")) {
+        } else if (request.path().endsWith("start")) {
             start(request, channel, client);
             return;
-        } else if (uri.endsWith("stop")) {
+        } else if (request.path().endsWith("stop")) {
             stop(request, channel, client);
             return;
-        } else if (uri.endsWith("delete")) {
+        } else if (request.path().endsWith("delete")) {
             delete(request, channel, client);
             return;
         }
 
-        respondError(request, channel, "action not found: " + uri, RestStatus.OK);
+        respondError(request, channel, "action not found: " + request.uri(), RestStatus.OK);
     }
 
     private void delete(RestRequest request, RestChannel channel, Client client) {
@@ -145,7 +144,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
     }
 
     private Map<String, Object> getRivers(int page, int count, Client client) {
-    	int from = (page - 1) * count;
+        int from = (page - 1) * count;
         SearchResponse searchResponse = client.prepareSearch(riverIndexName)
                 .setQuery(QueryBuilders.queryString(MongoDBRiver.TYPE).defaultField("type")).setFrom(from).setSize(count).get();
         long totalHits = searchResponse.getHits().totalHits();
