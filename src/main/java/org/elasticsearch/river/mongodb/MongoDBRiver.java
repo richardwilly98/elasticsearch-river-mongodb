@@ -59,7 +59,6 @@ import com.mongodb.DB;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.Mongo;
-import com.mongodb.MongoClient;
 import com.mongodb.MongoException;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
@@ -131,17 +130,19 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     protected volatile Thread statusThread;
     protected volatile boolean startInvoked = false;
 
-    private Mongo mongo;
+    private final MongoClientService mongoClientService;
     private DB adminDb;
 
     @Inject
     public MongoDBRiver(RiverName riverName, RiverSettings settings, @RiverIndexName String riverIndexName, Client client,
-            ScriptService scriptService) {
+            ScriptService scriptService,
+            MongoClientService mongoClientService) {
         super(riverName, settings);
         if (logger.isTraceEnabled()) {
             logger.trace("Initializing river : [{}]", riverName.getName());
         }
         this.scriptService = scriptService;
+        this.mongoClientService = mongoClientService;
         this.client = client;
         this.definition = MongoDBRiverDefinition.parseSettings(riverName.name(), riverIndexName, settings, scriptService);
 
@@ -224,7 +225,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                         if (servers != null) {
                             String replicaName = item.get(MONGODB_ID_FIELD).toString();
                             Thread tailerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(),
-                                    "mongodb_river_slurper_" + replicaName + ":" + definition.getIndexName()).newThread(new Slurper(servers, definition, context, client));
+                                    "mongodb_river_slurper_" + replicaName + ":" + definition.getIndexName()).newThread(new Slurper(getReplicaMongoClient(servers), definition, context, client));
                             tailerThreads.add(tailerThread);
                         }
                     }
@@ -232,7 +233,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             } else {
                 logger.trace("Not mongos");
                 Thread tailerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_slurper:" + definition.getIndexName()).newThread(
-                        new Slurper(definition.getMongoServers(), definition, context, client));
+                        new Slurper(getMongoClient(), definition, context, client));
                 tailerThreads.add(tailerThread);
             }
 
@@ -351,21 +352,11 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     }
 
     private Mongo getMongoClient() {
-        if (mongo == null) {
-            mongo = new MongoClient(definition.getMongoServers(), definition.getMongoClientOptions());
-        }
-        return mongo;
+        return mongoClientService.getMongoClient(definition.getMongoServers(), definition.getMongoClientOptions());
     }
 
-    private void closeMongoClient() {
-        logger.info("Closing Mongo client");
-        if (adminDb != null) {
-            adminDb = null;
-        }
-        if (mongo != null) {
-            mongo.close();
-            mongo = null;
-        }
+    private Mongo getReplicaMongoClient(List<ServerAddress> servers) {
+        return mongoClientService.getMongoClient(servers, definition.getMongoClientOptions());
     }
 
     private List<ServerAddress> getServerAddressForReplica(DBObject item) {
@@ -404,7 +395,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 indexerThread.interrupt();
                 indexerThread = null;
             }
-            closeMongoClient();
         } catch (Throwable t) {
             logger.error("Fail to close river {}", t, riverName.getName());
         } finally {

@@ -19,10 +19,17 @@
 
 package org.elasticsearch.plugin.river.mongodb;
 
+import java.util.Collection;
+
+import org.elasticsearch.common.collect.ImmutableList;
+import org.elasticsearch.common.component.LifecycleComponent;
+import org.elasticsearch.common.inject.Module;
 import org.elasticsearch.plugins.AbstractPlugin;
 import org.elasticsearch.rest.RestModule;
 import org.elasticsearch.rest.action.mongodb.RestMongoDBRiverAction;
 import org.elasticsearch.river.RiversModule;
+import org.elasticsearch.river.mongodb.MongoClientService;
+import org.elasticsearch.river.mongodb.MongoClientServiceModule;
 import org.elasticsearch.river.mongodb.MongoDBRiver;
 import org.elasticsearch.river.mongodb.MongoDBRiverModule;
 
@@ -42,6 +49,16 @@ public class MongoDBRiverPlugin extends AbstractPlugin {
     @Override
     public String description() {
         return MongoDBRiver.DESCRIPTION;
+    }
+
+    @Override
+    public Collection<Class<? extends LifecycleComponent>> services() {
+        return ImmutableList.<Class<? extends LifecycleComponent>>builder().addAll(super.services()).add(MongoClientService.class).build();
+    }
+
+    @Override
+    public Collection<Class<? extends Module>> modules() {
+        return ImmutableList.<Class<? extends Module>>builder().addAll(super.modules()).add(MongoClientServiceModule.class).build();
     }
 
     /**
