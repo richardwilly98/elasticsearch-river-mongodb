@@ -24,7 +24,6 @@ import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -60,7 +59,6 @@ import com.mongodb.DB;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.Mongo;
-import com.mongodb.MongoClient;
 import com.mongodb.MongoException;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
@@ -132,18 +130,19 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     protected volatile Thread statusThread;
     protected volatile boolean startInvoked = false;
 
-    private Mongo mongo;
-    private final List<Mongo> replicaMongos = Lists.newArrayList();
+    private final MongoClientService mongoClientService;
     private DB adminDb;
 
     @Inject
     public MongoDBRiver(RiverName riverName, RiverSettings settings, @RiverIndexName String riverIndexName, Client client,
-            ScriptService scriptService) {
+            ScriptService scriptService,
+            MongoClientService mongoClientService) {
         super(riverName, settings);
         if (logger.isTraceEnabled()) {
             logger.trace("Initializing river : [{}]", riverName.getName());
         }
         this.scriptService = scriptService;
+        this.mongoClientService = mongoClientService;
         this.client = client;
         this.definition = MongoDBRiverDefinition.parseSettings(riverName.name(), riverIndexName, settings, scriptService);
 
@@ -353,32 +352,11 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     }
 
     private Mongo getMongoClient() {
-        if (mongo == null) {
-            mongo = new MongoClient(definition.getMongoServers(), definition.getMongoClientOptions());
-        }
-        return mongo;
+        return mongoClientService.getMongoClient(definition.getMongoServers(), definition.getMongoClientOptions());
     }
 
     private Mongo getReplicaMongoClient(List<ServerAddress> servers) {
-        Mongo replicaMongo = new MongoClient(servers, definition.getMongoClientOptions());
-        replicaMongos.add(replicaMongo);
-        return replicaMongo;
-    }
-
-    private void closeMongoClient() {
-        logger.info("Closing Mongo client");
-        if (adminDb != null) {
-            adminDb = null;
-        }
-        if (mongo != null) {
-            mongo.close();
-            mongo = null;
-        }
-        for (Iterator<Mongo> it = replicaMongos.iterator(); it.hasNext(); ) {
-            Mongo replicaMongo = it.next();
-            replicaMongo.close();
-            it.remove();
-        }
+        return mongoClientService.getMongoClient(servers, definition.getMongoClientOptions());
     }
 
     private List<ServerAddress> getServerAddressForReplica(DBObject item) {
@@ -417,7 +395,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 indexerThread.interrupt();
                 indexerThread = null;
             }
-            closeMongoClient();
         } catch (Throwable t) {
             logger.error("Fail to close river {}", t, riverName.getName());
         } finally {
