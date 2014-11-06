@@ -58,7 +58,6 @@ import com.mongodb.CommandResult;
 import com.mongodb.DB;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
-import com.mongodb.Mongo;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoException;
 import com.mongodb.ReadPreference;
@@ -131,7 +130,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     protected volatile Thread statusThread;
     protected volatile boolean startInvoked = false;
 
-    private Mongo mongo;
+    private MongoClient mongo;
     private DB adminDb;
 
     @Inject
@@ -224,7 +223,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                         if (servers != null) {
                             String replicaName = item.get(MONGODB_ID_FIELD).toString();
                             Thread tailerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(),
-                                    "mongodb_river_slurper_" + replicaName + ":" + definition.getIndexName()).newThread(new Slurper(servers, definition, context, client));
+                                    "mongodb_river_slurper_" + replicaName + ":" + definition.getIndexName()).newThread(new Slurper(getMongoClient(), definition, context, client));
                             tailerThreads.add(tailerThread);
                         }
                     }
@@ -232,7 +231,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             } else {
                 logger.trace("Not mongos");
                 Thread tailerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_slurper:" + definition.getIndexName()).newThread(
-                        new Slurper(definition.getMongoServers(), definition, context, client));
+                        new Slurper(getMongoClient(), definition, context, client));
                 tailerThreads.add(tailerThread);
             }
 
@@ -350,7 +349,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         return configDb;
     }
 
-    private Mongo getMongoClient() {
+    private MongoClient getMongoClient() {
         if (mongo == null) {
             mongo = new MongoClient(definition.getMongoServers(), definition.getMongoClientOptions());
         }
