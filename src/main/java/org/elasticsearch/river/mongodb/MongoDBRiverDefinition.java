@@ -531,14 +531,8 @@ public class MongoDBRiverDefinition {
             }
             builder.mongoServers(mongoServers);
 
-            MongoClientOptions.Builder mongoClientOptionsBuilder = MongoClientOptions.builder()/*
-                                                                                                * .
-                                                                                                * autoConnectRetry
-                                                                                                * (
-                                                                                                * true
-                                                                                                * )
-                                                                                                */
-            .socketKeepAlive(true);
+            MongoClientOptions.Builder mongoClientOptionsBuilder = MongoClientOptions.builder()
+                    .socketKeepAlive(true);
 
             // MongoDB options
             if (mongoSettings.containsKey(OPTIONS_FIELD)) {
