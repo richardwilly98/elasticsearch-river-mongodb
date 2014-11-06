@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
 import de.flapdoodle.embed.process.config.store.IDownloadConfig;
 import de.flapdoodle.embed.process.config.store.ITimeoutConfig;
 import de.flapdoodle.embed.process.distribution.Distribution;
+import de.flapdoodle.embed.process.io.directories.PropertyOrPlatformTempDir;
 import de.flapdoodle.embed.process.io.file.Files;
 import de.flapdoodle.embed.process.io.progress.IProgressListener;
 import de.flapdoodle.embed.process.store.ArtifactStore;
@@ -79,8 +80,8 @@ public class TokuDownloader implements IDownloader {
     openConnection.getInputStream().close();
 
     // Then fetch actual file, using the received cookies
-    File ret = Files.createTempFile(runtime.getFileNaming()
-        .nameFor(runtime.getDownloadPrefix(), "." + runtime.getPackageResolver().getArchiveType(distribution)));
+    File ret = Files.createTempFile(PropertyOrPlatformTempDir.defaultInstance(),
+            runtime.getFileNaming().nameFor(runtime.getDownloadPrefix(), "." + runtime.getPackageResolver().getArchiveType(distribution)));
     logger.fine("Saving distro to " + ret.getAbsolutePath());
     if (ret.canWrite()) {
 
