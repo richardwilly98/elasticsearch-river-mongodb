@@ -34,8 +34,8 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
     private final String riverIndexName;
 
     @Inject
-    public RestMongoDBRiverAction(Settings settings, Client client, RestController controller, @RiverIndexName String riverIndexName) {
-        super(settings, client);
+    public RestMongoDBRiverAction(Settings settings, Client esClient, RestController controller, @RiverIndexName String riverIndexName) {
+        super(settings, esClient);
         this.riverIndexName = riverIndexName;
         String baseUrl = "/" + riverIndexName + "/" + MongoDBRiver.TYPE;
         logger.trace("RestMongoDBRiverAction - baseUrl: {}", baseUrl);
@@ -44,63 +44,63 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
     }
 
     @Override
-    protected void handleRequest(RestRequest request, RestChannel channel, Client client) throws Exception {
+    protected void handleRequest(RestRequest request, RestChannel channel, Client esClient) throws Exception {
         logger.debug("uri: {}", request.uri());
         logger.debug("action: {}", request.param("action"));
 
         if (request.path().endsWith("list")) {
-            list(request, channel, client);
+            list(request, channel, esClient);
             return;
         } else if (request.path().endsWith("start")) {
-            start(request, channel, client);
+            start(request, channel, esClient);
             return;
         } else if (request.path().endsWith("stop")) {
-            stop(request, channel, client);
+            stop(request, channel, esClient);
             return;
         } else if (request.path().endsWith("delete")) {
-            delete(request, channel, client);
+            delete(request, channel, esClient);
             return;
         }
 
         respondError(request, channel, "action not found: " + request.uri(), RestStatus.OK);
     }
 
-    private void delete(RestRequest request, RestChannel channel, Client client) {
+    private void delete(RestRequest request, RestChannel channel, Client esClient) {
         String river = request.param("river");
         if (river == null || river.isEmpty()) {
             respondError(request, channel, "Parameter 'river' is required", RestStatus.BAD_REQUEST);
             return;
         }
         logger.info("Delete river: {}", river);
-        if (client.admin().indices().prepareTypesExists(riverIndexName).setTypes(river).get().isExists()) {
-            client.admin().indices().prepareDeleteMapping(riverIndexName).setType(river).get();
+        if (esClient.admin().indices().prepareTypesExists(riverIndexName).setTypes(river).get().isExists()) {
+            esClient.admin().indices().prepareDeleteMapping(riverIndexName).setType(river).get();
         }
         respondSuccess(request, channel, RestStatus.OK);
     }
 
-    private void start(RestRequest request, RestChannel channel, Client client) {
+    private void start(RestRequest request, RestChannel channel, Client esClient) {
         String river = request.param("river");
         if (river == null || river.isEmpty()) {
             respondError(request, channel, "Parameter 'river' is required", RestStatus.BAD_REQUEST);
             return;
         }
-        MongoDBRiverHelper.setRiverStatus(client, river, Status.RUNNING);
+        MongoDBRiverHelper.setRiverStatus(esClient, river, Status.RUNNING);
         respondSuccess(request, channel, RestStatus.OK);
     }
 
-    private void stop(RestRequest request, RestChannel channel, Client client) {
+    private void stop(RestRequest request, RestChannel channel, Client esClient) {
         String river = request.param("river");
         if (river == null || river.isEmpty()) {
             respondError(request, channel, "Parameter 'river' is required", RestStatus.BAD_REQUEST);
             return;
         }
-        MongoDBRiverHelper.setRiverStatus(client, river, Status.STOPPED);
+        MongoDBRiverHelper.setRiverStatus(esClient, river, Status.STOPPED);
         respondSuccess(request, channel, RestStatus.OK);
     }
 
-    private void list(RestRequest request, RestChannel channel, Client client) {
+    private void list(RestRequest request, RestChannel channel, Client esClient) {
         try {
-            Map<String, Object> rivers = getRivers(request.paramAsInt("page", 1), request.paramAsInt("count", 10), client);
+            Map<String, Object> rivers = getRivers(request.paramAsInt("page", 1), request.paramAsInt("count", 10), esClient);
             XContentBuilder builder = RestXContentBuilder.restContentBuilder(request);
             builder.value(rivers);
             channel.sendResponse(new BytesRestResponse(RestStatus.OK, builder));
@@ -143,9 +143,9 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
         }
     }
 
-    private Map<String, Object> getRivers(int page, int count, Client client) {
+    private Map<String, Object> getRivers(int page, int count, Client esClient) {
         int from = (page - 1) * count;
-        SearchResponse searchResponse = client.prepareSearch(riverIndexName)
+        SearchResponse searchResponse = esClient.prepareSearch(riverIndexName)
                 .setQuery(QueryBuilders.queryString(MongoDBRiver.TYPE).defaultField("type")).setFrom(from).setSize(count).get();
         long totalHits = searchResponse.getHits().totalHits();
         logger.trace("totalHits: {}", totalHits);
@@ -161,16 +161,16 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
             RiverSettings riverSettings = new RiverSettings(null, hit.getSource());
             MongoDBRiverDefinition definition = MongoDBRiverDefinition.parseSettings(riverName, riverIndexName, riverSettings, null);
 
-            Timestamp<?> ts = MongoDBRiver.getLastTimestamp(client, definition);
+            Timestamp<?> ts = MongoDBRiver.getLastTimestamp(esClient, definition);
             Long lastTimestamp = null;
             if (ts != null) {
                 lastTimestamp = ts.getTime();
             }
             source.put("name", riverName);
-            source.put("status", MongoDBRiverHelper.getRiverStatus(client, riverName));
+            source.put("status", MongoDBRiverHelper.getRiverStatus(esClient, riverName));
             source.put("settings", hit.getSource());
             source.put("lastTimestamp", lastTimestamp);
-            source.put("indexCount", MongoDBRiver.getIndexCount(client, definition));
+            source.put("indexCount", MongoDBRiver.getIndexCount(esClient, definition));
             if (logger.isTraceEnabled()) {
                 logger.trace("source: {}", hit.getSourceAsString());
             }
