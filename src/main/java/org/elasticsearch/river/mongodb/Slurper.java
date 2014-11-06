@@ -19,7 +19,6 @@ import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.Bytes;
-import com.mongodb.CommandResult;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
@@ -276,44 +275,8 @@ class Slurper implements Runnable {
     }
 
     protected boolean assignCollections() {
-        DB adminDb;
-        if (!definition.getMongoAdminAuthDatabase().isEmpty()) {
-            adminDb = mongoClient.getDB(definition.getMongoAdminAuthDatabase());
-        } else {
-            adminDb = mongoClient.getDB(MongoDBRiver.MONGODB_ADMIN_DATABASE);
-        }
-
-        if (!definition.getMongoLocalAuthDatabase().isEmpty()) {
-            logger.info("Local DB auth against " + definition.getMongoLocalAuthDatabase() + " user: " + definition.getMongoLocalUser());
-            oplogDb = mongoClient.getDB(definition.getMongoLocalAuthDatabase());
-        } else {
-            logger.info("Local DB auth against local user: " + definition.getMongoLocalUser());
-            oplogDb = mongoClient.getDB(MongoDBRiver.MONGODB_LOCAL_DATABASE);
-        }
-
-        if (!definition.getMongoAdminUser().isEmpty() && !definition.getMongoAdminPassword().isEmpty()) {
-            logger.debug("Authenticate {} with {}", MongoDBRiver.MONGODB_ADMIN_DATABASE, definition.getMongoAdminUser());
-
-            CommandResult cmd = adminDb.authenticateCommand(definition.getMongoAdminUser(), definition.getMongoAdminPassword()
-                    .toCharArray());
-            if (!cmd.ok()) {
-                logger.error("Authentication failed for {}: {}", MongoDBRiver.MONGODB_ADMIN_DATABASE, cmd.getErrorMessage());
-                // Can still try with mongoLocal credential if provided.
-                // return false;
-            }
-            oplogDb = adminDb.getMongo().getDB(MongoDBRiver.MONGODB_LOCAL_DATABASE);
-        }
-
-        if (!definition.getMongoLocalUser().isEmpty() && !definition.getMongoLocalPassword().isEmpty() && !oplogDb.isAuthenticated()) {
-            logger.debug("Authenticate {} with {}", MongoDBRiver.MONGODB_LOCAL_DATABASE, definition.getMongoLocalUser());
-            CommandResult cmd = oplogDb.authenticateCommand(definition.getMongoLocalUser(), definition.getMongoLocalPassword()
-                    .toCharArray());
-            if (!cmd.ok()) {
-                logger.error("Authentication failed for {}: {}", MongoDBRiver.MONGODB_LOCAL_DATABASE, cmd.getErrorMessage());
-                return false;
-            }
-            oplogDb = oplogDb.getMongo().getDB(MongoDBRiver.MONGODB_LOCAL_DATABASE);
-        }
+        logger.info("Local DB auth against local user: " + definition.getMongoLocalUser());
+        oplogDb = mongoClient.getDB(MongoDBRiver.MONGODB_LOCAL_DATABASE);
 
         Set<String> collections = oplogDb.getCollectionNames();
         if (!collections.contains(MongoDBRiver.OPLOG_COLLECTION)) {
@@ -324,34 +287,6 @@ class Slurper implements Runnable {
         oplogRefsCollection = oplogDb.getCollection(MongoDBRiver.OPLOG_REFS_COLLECTION);
 
         slurpedDb = mongoClient.getDB(definition.getMongoDb());
-        if (!definition.getMongoAdminUser().isEmpty() && !definition.getMongoAdminPassword().isEmpty() && adminDb.isAuthenticated()) {
-            slurpedDb = adminDb.getMongo().getDB(definition.getMongoDb());
-        }
-
-        // Not necessary as local user has access to all databases.
-        // http://docs.mongodb.org/manual/reference/local-database/
-        // if (!mongoDbUser.isEmpty() && !mongoDbPassword.isEmpty()
-        // && !slurpedDb.isAuthenticated()) {
-        // logger.info("Authenticate {} with {}", mongoDb, mongoDbUser);
-        // CommandResult cmd = slurpedDb.authenticateCommand(mongoDbUser,
-        // mongoDbPassword.toCharArray());
-        // if (!cmd.ok()) {
-        // logger.error("Authentication failed for {}: {}",
-        // mongoDb, cmd.getErrorMessage());
-        // return false;
-        // }
-        // }
-        // slurpedCollection =
-        // slurpedDb.getCollection(definition.getMongoCollection());
-        // if (definition.isImportAllCollections()) {
-        // for (String collection : slurpedDb.getCollectionNames()) {
-        // slurpedCollections.put(collection,
-        // slurpedDb.getCollection(collection));
-        // }
-        // } else {
-        // slurpedCollections.put(definition.getMongoCollection(),
-        // slurpedDb.getCollection(definition.getMongoCollection()));
-        // }
 
         return true;
     }

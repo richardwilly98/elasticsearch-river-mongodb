@@ -59,7 +59,7 @@ import com.mongodb.DB;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
-import com.mongodb.MongoException;
+import com.mongodb.MongoCredential;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 import com.mongodb.gridfs.GridFSDBFile;
@@ -121,7 +121,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     static final ESLogger logger = ESLoggerFactory.getLogger(MongoDBRiver.class.getName());
 
     protected final MongoDBRiverDefinition definition;
-    protected final Client client;
+    protected final Client esClient;
     protected final ScriptService scriptService;
     protected final SharedContext context;
 
@@ -130,18 +130,18 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     protected volatile Thread statusThread;
     protected volatile boolean startInvoked = false;
 
-    private MongoClient mongo;
+    private MongoClient mongoClient;
     private DB adminDb;
 
     @Inject
-    public MongoDBRiver(RiverName riverName, RiverSettings settings, @RiverIndexName String riverIndexName, Client client,
+    public MongoDBRiver(RiverName riverName, RiverSettings settings, @RiverIndexName String riverIndexName, Client esClient,
             ScriptService scriptService) {
         super(riverName, settings);
         if (logger.isTraceEnabled()) {
             logger.trace("Initializing river : [{}]", riverName.getName());
         }
         this.scriptService = scriptService;
-        this.client = client;
+        this.esClient = esClient;
         this.definition = MongoDBRiverDefinition.parseSettings(riverName.name(), riverIndexName, settings, scriptService);
 
         BlockingQueue<QueueEntry> stream = definition.getThrottleSize() == -1 ? new LinkedTransferQueue<QueueEntry>()
@@ -154,7 +154,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     public void start() {
         try {
             logger.info("Starting river {}", riverName.getName());
-            Status status = MongoDBRiverHelper.getRiverStatus(client, riverName.getName());
+            Status status = MongoDBRiverHelper.getRiverStatus(esClient, riverName.getName());
             if (status == Status.IMPORT_FAILED || status == Status.INITIAL_IMPORT_FAILED || status == Status.SCRIPT_IMPORT_FAILED
                     || status == Status.START_FAILED) {
                 logger.error("Cannot start river {}. Current status is {}", riverName.getName(), status);
@@ -166,7 +166,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 return;
             }
 
-            MongoDBRiverHelper.setRiverStatus(client, riverName.getName(), Status.RUNNING);
+            MongoDBRiverHelper.setRiverStatus(esClient, riverName.getName(), Status.RUNNING);
             this.context.setStatus(Status.RUNNING);
             for (ServerAddress server : definition.getMongoServers()) {
                 logger.debug("Using mongodb server(s): host [{}], port [{}]", server.getHost(), server.getPort());
@@ -181,8 +181,8 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
             // Create the index if it does not exist
             try {
-                if (!client.admin().indices().prepareExists(definition.getIndexName()).get().isExists()) {
-                    client.admin().indices().prepareCreate(definition.getIndexName()).get();
+                if (!esClient.admin().indices().prepareExists(definition.getIndexName()).get().isExists()) {
+                    esClient.admin().indices().prepareCreate(definition.getIndexName()).get();
                 }
             } catch (Exception e) {
                 if (ExceptionsHelper.unwrapCause(e) instanceof IndexAlreadyExistsException) {
@@ -206,7 +206,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                     if (logger.isDebugEnabled()) {
                         logger.debug("Set explicit attachment mapping.");
                     }
-                    client.admin().indices().preparePutMapping(definition.getIndexName()).setType(definition.getTypeName())
+                    esClient.admin().indices().preparePutMapping(definition.getIndexName()).setType(definition.getTypeName())
                             .setSource(getGridFSMapping()).get();
                 } catch (Exception e) {
                     logger.warn("Failed to set explicit mapping (attachment): {}", e);
@@ -223,7 +223,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                         if (servers != null) {
                             String replicaName = item.get(MONGODB_ID_FIELD).toString();
                             Thread tailerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(),
-                                    "mongodb_river_slurper_" + replicaName + ":" + definition.getIndexName()).newThread(new Slurper(getMongoClient(), definition, context, client));
+                                    "mongodb_river_slurper_" + replicaName + ":" + definition.getIndexName()).newThread(new Slurper(getMongoClient(), definition, context, esClient));
                             tailerThreads.add(tailerThread);
                         }
                     }
@@ -231,7 +231,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             } else {
                 logger.trace("Not mongos");
                 Thread tailerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_slurper:" + definition.getIndexName()).newThread(
-                        new Slurper(getMongoClient(), definition, context, client));
+                        new Slurper(getMongoClient(), definition, context, esClient));
                 tailerThreads.add(tailerThread);
             }
 
@@ -240,7 +240,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             }
 
             indexerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_indexer:" + definition.getIndexName()).newThread(
-                    new Indexer(this, definition, context, client, scriptService));
+                    new Indexer(this, definition, context, esClient, scriptService));
             indexerThread.start();
 
             statusThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_status:" + definition.getIndexName()).newThread(
@@ -248,7 +248,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             statusThread.start();
         } catch (Throwable t) {
             logger.warn("Fail to start river {}", t, riverName.getName());
-            MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.START_FAILED);
+            MongoDBRiverHelper.setRiverStatus(esClient, definition.getRiverName(), Status.START_FAILED);
             this.context.setStatus(Status.START_FAILED);
         } finally {
             startInvoked = true;
@@ -298,30 +298,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
     private DB getAdminDb() {
         if (adminDb == null) {
-        	if(!definition.getMongoAdminAuthDatabase().isEmpty()) {
-	        	adminDb = getMongoClient().getDB(definition.getMongoAdminAuthDatabase());
-        	} else {
-            	adminDb = getMongoClient().getDB(MONGODB_ADMIN_DATABASE);
-            }
-            if (logger.isTraceEnabled()) {
-                logger.trace("MongoAdminUser: {} - authenticated: {}", definition.getMongoAdminUser(), adminDb.isAuthenticated());
-            }
-            if (!definition.getMongoAdminUser().isEmpty() && !definition.getMongoAdminPassword().isEmpty() && !adminDb.isAuthenticated()) {
-                logger.info("Authenticate {} with {}", MONGODB_ADMIN_DATABASE, definition.getMongoAdminUser());
-
-                try {
-                    CommandResult cmd = adminDb.authenticateCommand(definition.getMongoAdminUser(), definition.getMongoAdminPassword()
-                            .toCharArray());
-                    if (!cmd.ok()) {
-                        logger.error("Authentication failed for {}: {}", MONGODB_ADMIN_DATABASE, cmd.getErrorMessage());
-                    } else {
-                        logger.trace("authenticateCommand: {} - isAuthenticated: {}", cmd, adminDb.isAuthenticated());
-                    }
-                } catch (MongoException mEx) {
-                    logger.warn("getAdminDb() failed", mEx);
-                }
-            }
-            adminDb = adminDb.getMongo().getDB(MONGODB_ADMIN_DATABASE);
+            adminDb = getMongoClient().getDB(MONGODB_ADMIN_DATABASE);
         }
         if (adminDb == null) {
             throw new ElasticsearchException(String.format("Could not get %s database from MongoDB", MONGODB_ADMIN_DATABASE));
@@ -331,18 +308,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
     private DB getConfigDb() {
         DB configDb = getMongoClient().getDB(MONGODB_CONFIG_DATABASE);
-        if (!definition.getMongoAdminUser().isEmpty() && !definition.getMongoAdminPassword().isEmpty() && getAdminDb().isAuthenticated()) {
-            configDb = getAdminDb().getMongo().getDB(MONGODB_CONFIG_DATABASE);
-            // } else if (!mongoDbUser.isEmpty() && !mongoDbPassword.isEmpty()
-            // && !configDb.isAuthenticated()) {
-            // logger.info("Authenticate {} with {}", mongoDb, mongoDbUser);
-            // CommandResult cmd = configDb.authenticateCommand(mongoDbUser,
-            // mongoDbPassword.toCharArray());
-            // if (!cmd.ok()) {
-            // logger.error("Authentication failed for {}: {}",
-            // DB_CONFIG, cmd.getErrorMessage());
-            // }
-        }
         if (configDb == null) {
             throw new ElasticsearchException(String.format("Could not get %s database from MongoDB", MONGODB_CONFIG_DATABASE));
         }
@@ -350,10 +315,23 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     }
 
     private MongoClient getMongoClient() {
-        if (mongo == null) {
-            mongo = new MongoClient(definition.getMongoServers(), definition.getMongoClientOptions());
+        if (mongoClient == null) {
+            List<MongoCredential> mongoCredentials = new ArrayList<>();
+            if (definition.getMongoLocalUser() != null && definition.getMongoLocalPassword() != null) {
+                mongoCredentials.add(MongoCredential.createMongoCRCredential(
+                        definition.getMongoLocalUser(),
+                        definition.getMongoLocalAuthDatabase() != null ? definition.getMongoLocalAuthDatabase() : MongoDBRiver.MONGODB_LOCAL_DATABASE,
+                        definition.getMongoLocalPassword().toCharArray()));
+            }
+            if (definition.getMongoAdminUser() != null && definition.getMongoAdminPassword() != null) {
+                mongoCredentials.add(MongoCredential.createMongoCRCredential(
+                        definition.getMongoAdminUser(),
+                        definition.getMongoAdminAuthDatabase() != null ? definition.getMongoAdminAuthDatabase() : MongoDBRiver.MONGODB_ADMIN_DATABASE,
+                        definition.getMongoAdminPassword().toCharArray()));
+            }
+            mongoClient = new MongoClient(definition.getMongoServers(), mongoCredentials, definition.getMongoClientOptions());
         }
-        return mongo;
+        return mongoClient;
     }
 
     private void closeMongoClient() {
@@ -361,9 +339,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         if (adminDb != null) {
             adminDb = null;
         }
-        if (mongo != null) {
-            mongo.close();
-            mongo = null;
+        if (mongoClient != null) {
+            mongoClient.close();
+            mongoClient = null;
         }
     }
 

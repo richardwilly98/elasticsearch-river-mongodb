@@ -40,16 +40,16 @@ class Indexer implements Runnable {
     private final MongoDBRiver river;
     private final MongoDBRiverDefinition definition;
     private final SharedContext context;
-    private final Client client;
+    private final Client esClient;
     private final ScriptService scriptService;
 
     private final Map<SimpleEntry<String, String>, MongoDBRiverBulkProcessor> processors = Maps.newHashMap();
 
-    public Indexer(MongoDBRiver river, MongoDBRiverDefinition definition, SharedContext context, Client client, ScriptService scriptService) {
+    public Indexer(MongoDBRiver river, MongoDBRiverDefinition definition, SharedContext context, Client esClient, ScriptService scriptService) {
         this.river = river;
         this.definition = definition;
         this.context = context;
-        this.client = client;
+        this.esClient = esClient;
         this.scriptService = scriptService;
         logger.debug(
                 "Create bulk processor with parameters - bulk actions: {} - concurrent request: {} - flush interval: {} - bulk size: {}",
@@ -90,7 +90,7 @@ class Indexer implements Runnable {
     private MongoDBRiverBulkProcessor getBulkProcessor(String index, String type) {
         SimpleEntry<String, String> entry = new SimpleEntry<String, String>(index, type);
         if (!processors.containsKey(entry)) {
-            processors.put(new SimpleEntry<String, String>(index, type), new MongoDBRiverBulkProcessor.Builder(river, definition, client,
+            processors.put(new SimpleEntry<String, String>(index, type), new MongoDBRiverBulkProcessor.Builder(river, definition, esClient,
                     index, type).build());
         }
         return processors.get(entry);
@@ -180,7 +180,7 @@ class Indexer implements Runnable {
                     ctx = (Map<String, Object>) executableScript.unwrap(ctx);
                 } catch (Exception e) {
                     logger.warn("failed to script process {}, ignoring", e, ctx);
-                    MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.SCRIPT_IMPORT_FAILED);
+                    MongoDBRiverHelper.setRiverStatus(esClient, definition.getRiverName(), Status.SCRIPT_IMPORT_FAILED);
                 }
                 if (logger.isTraceEnabled()) {
                     logger.trace("Context after script executed: {}", ctx);
@@ -266,7 +266,7 @@ class Indexer implements Runnable {
 
         if (definition.getParentTypes() != null && definition.getParentTypes().contains(type)) {
             QueryBuilder builder = QueryBuilders.hasParentQuery(type, QueryBuilders.termQuery(MongoDBRiver.MONGODB_ID_FIELD, objectId));
-            SearchResponse response = client.prepareSearch(index).setQuery(builder).setRouting(routing)
+            SearchResponse response = esClient.prepareSearch(index).setQuery(builder).setRouting(routing)
                     .addField(MongoDBRiver.MONGODB_ID_FIELD).execute().actionGet();
             for (SearchHit hit : response.getHits().getHits()) {
                 getBulkProcessor(index, hit.getType()).deleteBulkRequest(hit.getId(), routing, objectId);
@@ -329,7 +329,7 @@ class Indexer implements Runnable {
                     ctx = (Map<String, Object>) executableScript.unwrap(ctx);
                 } catch (Exception e) {
                     logger.error("failed to script process {}, ignoring", e, ctx);
-                    MongoDBRiverHelper.setRiverStatus(client, definition.getRiverName(), Status.SCRIPT_IMPORT_FAILED);
+                    MongoDBRiverHelper.setRiverStatus(esClient, definition.getRiverName(), Status.SCRIPT_IMPORT_FAILED);
                 }
                 if (logger.isTraceEnabled()) {
                     logger.trace("Context after script executed: {}", ctx);
