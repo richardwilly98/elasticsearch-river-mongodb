@@ -55,13 +55,13 @@ public abstract class MongoDBHelper {
         int nRead;
         byte[] data = new byte[1024];
 
-        InputStream stream = file.getInputStream();
-        while ((nRead = stream.read(data, 0, data.length)) != -1) {
-            buffer.write(data, 0, nRead);
-        }
+        try (InputStream stream = file.getInputStream()) {
+            while ((nRead = stream.read(data, 0, data.length)) != -1) {
+                buffer.write(data, 0, nRead);
+            }
 
-        buffer.flush();
-        stream.close();
+            buffer.flush();
+        }
 
         String encodedContent = Base64.encodeBytes(buffer.toByteArray());
 
