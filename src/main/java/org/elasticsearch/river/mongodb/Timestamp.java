@@ -46,6 +46,11 @@ public abstract class Timestamp<T extends Timestamp<T>> implements Comparable<Ti
         }
 
         @Override
+        public int hashCode() {
+            return ts.hashCode();
+        }
+
+        @Override
         public String toString() {
             return "Timestamp.BSON(ts=" + JSON.serialize(ts) + ")";
         }
@@ -89,6 +94,11 @@ public abstract class Timestamp<T extends Timestamp<T>> implements Comparable<Ti
         @Override
         public boolean equals(Object o) {
             return o instanceof GTID && Arrays.equals(gtid, ((GTID) o).gtid);
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(gtid);
         }
 
         @Override
