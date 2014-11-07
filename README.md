@@ -148,17 +148,23 @@ License
 Changelog
 -------
 
+#### 2.0.2-SNAPSHOT
+- Update versions ES 1.3.4, MongoDB 2.6.5, MongoDB driver 2.12.4, Java 7
+- Improved scaling for running multiple rivers and numerous bug fixes by @ankon of Collaborne B.V.
+- Improved TokuMX support by @kdkeck of Connectifier, Inc.
+- Support for collection names with period by @qraynaud
+
 #### 2.0.1
-- Update versions ES 1.2.2, MongoDB 2.6.5, MongoDB driver 2.12.3
-- Support for TokuMX by @kdkeck
-- TODO
+- Update versions ES 1.2.2, MongoDB 2.6.3, MongoDB driver 2.12.3
+- Support for TokuMX by @kdkeck of Connectifier, Inc.
 
 #### 2.0.0
 - Update versions ES 1.0.0, MongoDB 2.4.9, MongoDB driver 2.11.4
-- TODO
+- Detection of stale river
 
 #### 1.7.4
-- TODO
+- Make include_fields work for nested fields
+- Fix ensuring river status indicates failures
 
 #### 1.7.3
 - Update versions ES 0.90.7
