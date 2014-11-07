@@ -644,7 +644,7 @@ class Slurper implements Runnable {
         if (collection == null) {
             for (String name : slurpedDb.getCollectionNames()) {
                 DBCollection slurpedCollection = slurpedDb.getCollection(name);
-                addQueryToStream(operation, currentTimestamp, update, collection, slurpedCollection);
+                addQueryToStream(operation, currentTimestamp, update, name, slurpedCollection);
             }
         } else {
             DBCollection slurpedCollection = slurpedDb.getCollection(collection);
