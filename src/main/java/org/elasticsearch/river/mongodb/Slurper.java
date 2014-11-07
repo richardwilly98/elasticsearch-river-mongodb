@@ -55,7 +55,7 @@ class Slurper implements Runnable {
             MongoDBRiver.OPLOG_UPDATE_ROW_OPERATION, // from TokuMX
             MongoDBRiver.OPLOG_UPDATE_OPERATION, MongoDBRiver.OPLOG_INSERT_OPERATION, MongoDBRiver.OPLOG_COMMAND_OPERATION);
     private final Client esClient;
-    private MongoClient mongoClient;
+    private final MongoClient mongoClient;
     private DB slurpedDb;
     private DB oplogDb;
     private DBCollection oplogCollection, oplogRefsCollection;
