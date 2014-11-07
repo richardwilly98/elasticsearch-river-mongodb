@@ -1,8 +1,13 @@
 package org.elasticsearch.river.mongodb;
 
 public enum Operation {
-    INSERT(MongoDBRiver.OPLOG_INSERT_OPERATION), UPDATE(MongoDBRiver.OPLOG_UPDATE_OPERATION), DELETE(MongoDBRiver.OPLOG_DELETE_OPERATION), DROP_COLLECTION(
-            "dc"), DROP_DATABASE("dd"), COMMAND(MongoDBRiver.OPLOG_COMMAND_OPERATION), UNKNOWN(null);
+    INSERT(MongoDBRiver.OPLOG_INSERT_OPERATION),
+    UPDATE(MongoDBRiver.OPLOG_UPDATE_OPERATION),
+    DELETE(MongoDBRiver.OPLOG_DELETE_OPERATION),
+    DROP_COLLECTION("dc"),
+    DROP_DATABASE("dd"),
+    COMMAND(MongoDBRiver.OPLOG_COMMAND_OPERATION),
+    UNKNOWN(null);
 
     private String value;
 

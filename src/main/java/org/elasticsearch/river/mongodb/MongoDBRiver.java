@@ -24,6 +24,7 @@ import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -59,6 +60,7 @@ import com.mongodb.DB;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
+import com.mongodb.MongoClientOptions;
 import com.mongodb.MongoCredential;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
@@ -130,18 +132,19 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     protected volatile Thread statusThread;
     protected volatile boolean startInvoked = false;
 
-    private MongoClient mongoClient;
+    private final MongoClientService mongoClientService;
     private DB adminDb;
 
     @Inject
-    public MongoDBRiver(RiverName riverName, RiverSettings settings, @RiverIndexName String riverIndexName, Client esClient,
-            ScriptService scriptService) {
+    public MongoDBRiver(RiverName riverName, RiverSettings settings, @RiverIndexName String riverIndexName,
+            Client esClient, ScriptService scriptService, MongoClientService mongoClientService) {
         super(riverName, settings);
         if (logger.isTraceEnabled()) {
             logger.trace("Initializing river : [{}]", riverName.getName());
         }
-        this.scriptService = scriptService;
         this.esClient = esClient;
+        this.scriptService = scriptService;
+        this.mongoClientService = mongoClientService;
         this.definition = MongoDBRiverDefinition.parseSettings(riverName.name(), riverIndexName, settings, scriptService);
 
         BlockingQueue<QueueEntry> stream = definition.getThrottleSize() == -1 ? new LinkedTransferQueue<QueueEntry>()
@@ -222,8 +225,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                         List<ServerAddress> servers = getServerAddressForReplica(item);
                         if (servers != null) {
                             String replicaName = item.get(MONGODB_ID_FIELD).toString();
-                            Thread tailerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(),
-                                    "mongodb_river_slurper_" + replicaName + ":" + definition.getIndexName()).newThread(new Slurper(getMongoClient(), definition, context, esClient));
+                            Thread tailerThread = EsExecutors.daemonThreadFactory(
+                                    settings.globalSettings(), "mongodb_river_slurper_" + replicaName + ":" + definition.getIndexName()
+                                ).newThread(new Slurper(getMongoClient(servers), definition, context, esClient));
                             tailerThreads.add(tailerThread);
                         }
                     }
@@ -315,34 +319,11 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     }
 
     private MongoClient getMongoClient() {
-        if (mongoClient == null) {
-            List<MongoCredential> mongoCredentials = new ArrayList<>();
-            if (definition.getMongoLocalUser() != null && definition.getMongoLocalPassword() != null) {
-                mongoCredentials.add(MongoCredential.createMongoCRCredential(
-                        definition.getMongoLocalUser(),
-                        definition.getMongoLocalAuthDatabase() != null ? definition.getMongoLocalAuthDatabase() : MongoDBRiver.MONGODB_LOCAL_DATABASE,
-                        definition.getMongoLocalPassword().toCharArray()));
-            }
-            if (definition.getMongoAdminUser() != null && definition.getMongoAdminPassword() != null) {
-                mongoCredentials.add(MongoCredential.createMongoCRCredential(
-                        definition.getMongoAdminUser(),
-                        definition.getMongoAdminAuthDatabase() != null ? definition.getMongoAdminAuthDatabase() : MongoDBRiver.MONGODB_ADMIN_DATABASE,
-                        definition.getMongoAdminPassword().toCharArray()));
-            }
-            mongoClient = new MongoClient(definition.getMongoServers(), mongoCredentials, definition.getMongoClientOptions());
-        }
-        return mongoClient;
+        return mongoClientService.getMongoClient(definition, null);
     }
-
-    private void closeMongoClient() {
-        logger.info("Closing Mongo client");
-        if (adminDb != null) {
-            adminDb = null;
-        }
-        if (mongoClient != null) {
-            mongoClient.close();
-            mongoClient = null;
-        }
+    
+    private MongoClient getMongoClient(List<ServerAddress> servers) {
+        return mongoClientService.getMongoClient(definition, servers);
     }
 
     private List<ServerAddress> getServerAddressForReplica(DBObject item) {
@@ -381,7 +362,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 indexerThread.interrupt();
                 indexerThread = null;
             }
-            closeMongoClient();
         } catch (Throwable t) {
             logger.error("Fail to close river {}", t, riverName.getName());
         } finally {
