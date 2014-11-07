@@ -462,10 +462,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             this.collection = collection;
         }
 
-        public boolean isOplogEntry() {
-            return oplogTimestamp != null;
-        }
-
         public boolean isAttachment() {
             return (data instanceof GridFSDBFile);
         }
