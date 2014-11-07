@@ -56,12 +56,7 @@ public class MongoClientService extends AbstractLifecycleComponent<MongoClientSe
     public MongoClient getMongoClient(MongoDBRiverDefinition definition, List<ServerAddress> overrideServers) {
         synchronized ($lock) {
             List<ServerAddress> servers = overrideServers != null ? overrideServers : definition.getMongoServers();
-            MongoClient mongoClient = mongoClients.get(servers);
-            if (mongoClient != null) {
-                return mongoClient;
-            }
 
-            logger.info("Creating MongoClient for [{}]", servers);
             List<MongoCredential> mongoCredentials = new ArrayList<>();
             if (!Strings.isNullOrEmpty(definition.getMongoLocalUser()) && !Strings.isNullOrEmpty(definition.getMongoLocalPassword())) {
                 mongoCredentials.add(MongoCredential.createMongoCRCredential(
@@ -76,8 +71,16 @@ public class MongoClientService extends AbstractLifecycleComponent<MongoClientSe
                         definition.getMongoAdminPassword().toCharArray()));
             }
             MongoClientOptions mongoClientOptions = definition.getMongoClientOptions();
+            ClientCacheKey cacheKey = new ClientCacheKey(servers, mongoCredentials, mongoClientOptions);
+
+            MongoClient mongoClient = mongoClients.get(cacheKey);
+            if (mongoClient != null) {
+                return mongoClient;
+            }
+
+            logger.info("Creating MongoClient for [{}]", servers);
             mongoClient = new MongoClient(servers, mongoCredentials, mongoClientOptions);
-            mongoClients.put(new ClientCacheKey(servers, mongoCredentials, mongoClientOptions), mongoClient);
+            mongoClients.put(cacheKey, mongoClient);
             return mongoClient;
         }
     }
