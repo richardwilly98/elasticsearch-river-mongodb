@@ -119,7 +119,7 @@ class Indexer implements Runnable {
         } else {
             type = definition.getTypeName();
         }
-        if (MongoDBRiver.OPLOG_COMMAND_OPERATION.equals(operation)) {
+        if (operation == Operation.COMMAND) {
             try {
                 updateBulkRequest(entry.getData(), null, operation, definition.getIndexName(), type, null, null);
             } catch (IOException ioEx) {
