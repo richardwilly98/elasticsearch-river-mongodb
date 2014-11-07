@@ -8,7 +8,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.bson.BasicBSONObject;
 import org.bson.types.ObjectId;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.common.base.CharMatcher;
 import org.elasticsearch.common.collect.ImmutableList;
 import org.elasticsearch.common.collect.ImmutableMap;
 import org.elasticsearch.common.logging.ESLogger;
