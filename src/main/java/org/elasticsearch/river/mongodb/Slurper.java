@@ -468,7 +468,7 @@ class Slurper implements Runnable {
     }
 
     private String getCollectionFromNamespace(String namespace) {
-        if (namespace.startsWith(definition.getMongoDb()) && CharMatcher.is('.').countIn(namespace) == 1) {
+        if (namespace.startsWith(definition.getMongoDb() + '.')) {
             return namespace.substring(definition.getMongoDb().length() + 1);
         }
         logger.error("Cannot get collection from namespace [{}]", namespace);
