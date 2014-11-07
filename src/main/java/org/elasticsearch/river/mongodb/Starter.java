@@ -29,6 +29,8 @@ import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 
 class Starter implements Runnable {
+    private final static int RETRY_ON_MONGODB_ERROR_DELAY = 10000;
+
     private final ESLogger logger = ESLoggerFactory.getLogger(this.getClass().getName());
     private final MongoClientService mongoClientService;
     private final RiverSettings settings;
@@ -84,8 +86,11 @@ class Starter implements Runnable {
                 logger.error("Mongo driver has been interrupted", mIEx);
                 break;
             } catch (MongoSocketException mNEx) {
-                // Ignore these
-                logger.warn("Mongo gave a network exception", mNEx);
+                // Ignore these and retry after a short while
+                logger.warn("Mongo gave a network exception, retrying in {}ms", RETRY_ON_MONGODB_ERROR_DELAY, mNEx);
+                try {
+                    Thread.sleep(RETRY_ON_MONGODB_ERROR_DELAY);
+                } catch (InterruptedException iEx) {}
             } catch (MongoException mEx) {
                 // Something else, stop.
                 logger.error("Mongo gave an exception: giving up", mEx);
