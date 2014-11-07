@@ -152,7 +152,7 @@ public class RestMongoDBRiverAction extends BaseRestHandler {
         Map<String, Object> data = new HashMap<String, Object>();
         data.put("hits", totalHits);
         data.put("page", page);
-        data.put("pages", Math.ceil(totalHits / count) + 1);
+        data.put("pages", Math.ceil(totalHits / (float) count));
         List<Map<String, Object>> rivers = new ArrayList<Map<String, Object>>();
         int i = 0;
         for (SearchHit hit : searchResponse.getHits().hits()) {
