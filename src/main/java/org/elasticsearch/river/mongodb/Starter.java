@@ -39,8 +39,6 @@ class Starter implements Runnable {
     private final Client esClient;
     private final List<Thread> tailerThreads;
 
-    private DB adminDb;
-
     public Starter(MongoClientService mongoClientService, RiverSettings settings, MongoDBRiverDefinition definition, SharedContext context, Client esClient, List<Thread> tailerThreads) {
         this.mongoClientService = mongoClientService;
         this.settings = settings;
@@ -103,10 +101,6 @@ class Starter implements Runnable {
         if (definition.isMongos() != null) {
             return definition.isMongos().booleanValue();
         } else {
-            DB adminDb = getAdminDb();
-            if (adminDb == null) {
-                return false;
-            }
             logger.trace("Found {} database", MONGODB_ADMIN_DATABASE);
             DBObject command = BasicDBObjectBuilder.start(
                     ImmutableMap.builder().put("serverStatus", 1).put("asserts", 0).put("backgroundFlushing", 0).put("connections", 0)
@@ -114,7 +108,7 @@ class Starter implements Runnable {
                             .put("locks", 0).put("metrics", 0).put("network", 0).put("opcounters", 0).put("opcountersRepl", 0)
                             .put("recordStats", 0).put("repl", 0).build()).get();
             logger.trace("About to execute: {}", command);
-            CommandResult cr = adminDb.command(command, ReadPreference.primary());
+            CommandResult cr = getAdminDb().command(command, ReadPreference.primary());
             logger.trace("Command executed return : {}", cr);
 
             logger.info("MongoDB version - {}", cr.get("version"));
@@ -141,9 +135,7 @@ class Starter implements Runnable {
     }
 
     private DB getAdminDb() {
-        if (adminDb == null) {
-            adminDb = getMongoClient().getDB(MONGODB_ADMIN_DATABASE);
-        }
+        DB adminDb = getMongoClient().getDB(MONGODB_ADMIN_DATABASE);
         if (adminDb == null) {
             throw new ElasticsearchException(String.format("Could not get %s database from MongoDB", MONGODB_ADMIN_DATABASE));
         }
