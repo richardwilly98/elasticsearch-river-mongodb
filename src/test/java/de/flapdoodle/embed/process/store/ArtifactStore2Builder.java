@@ -30,6 +30,11 @@ import de.flapdoodle.embed.process.config.store.ILibraryStore;
 import de.flapdoodle.embed.process.extract.ITempNaming;
 import de.flapdoodle.embed.process.io.directories.IDirectory;
 
+/**
+ * TODO: delete this after upgrading to the next version of de.flapdoodle.embed
+ * The ability to set a downloader has now been added to de.flapdoodle.embed.process
+ * https://github.com/flapdoodle-oss/de.flapdoodle.embed.process/commit/24a51a14bd77137f19c635d1a448233316e26892
+ */
 public class ArtifactStore2Builder extends AbstractBuilder<IArtifactStore> {
   private static Logger logger = Logger.getLogger(ArtifactStore2Builder.class.getName());
 
