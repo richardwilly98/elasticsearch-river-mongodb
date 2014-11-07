@@ -224,9 +224,7 @@ class Slurper implements Runnable {
                 } else {
                     // TODO: To be optimized.
                     // https://github.com/mongodb/mongo-java-driver/pull/48#issuecomment-25241988
-                    // possible option: Get the object id list from .fs
-                    // collection
-                    // then call GriDFS.findOne
+                    // possible option: Get the object id list from .fs collection then call GriDFS.findOne
                     GridFS grid = new GridFS(mongoClient.getDB(definition.getMongoDb()), definition.getMongoCollection());
 
                     cursor = grid.getFileList();
