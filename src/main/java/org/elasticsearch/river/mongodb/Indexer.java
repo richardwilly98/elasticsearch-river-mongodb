@@ -464,16 +464,16 @@ class Indexer implements Runnable {
         if (operation == null) {
             return null;
         } else {
-            return Operation.fromString(ctx.get("operation").toString());
+            return Operation.fromString(operation.toString());
         }
     }
 
     private boolean isDocumentIgnored(Map<String, Object> ctx) {
-        return (ctx.containsKey("ignore") && ctx.get("ignore").equals(Boolean.TRUE));
+        return Boolean.TRUE.equals(ctx.get("ignore"));
     }
 
     private boolean isDocumentDeleted(Map<String, Object> ctx) {
-        return (ctx.containsKey("deleted") && ctx.get("deleted").equals(Boolean.TRUE));
+        return Boolean.TRUE.equals(ctx.get("deleted"));
     }
 
     private String extractType(Map<String, Object> ctx, String defaultType) {
