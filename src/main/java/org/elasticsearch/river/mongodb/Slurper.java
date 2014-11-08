@@ -16,6 +16,7 @@ import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.river.mongodb.util.MongoDBHelper;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 
+import com.google.common.base.Preconditions;
 import com.mongodb.BasicDBObject;
 import com.mongodb.Bytes;
 import com.mongodb.DB;
@@ -207,7 +208,9 @@ class Slurper implements Runnable {
                         logger.trace("Collection {} - count: {}", collection.getName(), collection.count());
                     }
                     long count = 0;
-                    cursor = collection.find(getFilterForInitialImport(definition.getMongoCollectionFilter(), lastId));
+                    cursor = collection
+                            .find(getFilterForInitialImport(definition.getMongoCollectionFilter(), lastId))
+                            .sort(new BasicDBObject("_id", 1));
                     while (cursor.hasNext()) {
                         DBObject object = cursor.next();
                         count++;
@@ -258,17 +261,15 @@ class Slurper implements Runnable {
     }
 
     private BasicDBObject getFilterForInitialImport(BasicDBObject filter, String id) {
+        Preconditions.checkNotNull(filter);
         if (id == null) {
             return filter;
-        } else {
-            BasicDBObject filterId = new BasicDBObject(MongoDBRiver.MONGODB_ID_FIELD, new BasicBSONObject(QueryOperators.GT, id));
-            if (filter == null) {
-                return filterId;
-            } else {
-                List<BasicDBObject> values = ImmutableList.of(filter, filterId);
-                return new BasicDBObject(QueryOperators.AND, values);
-            }
         }
+        BasicDBObject idFilter = new BasicDBObject(MongoDBRiver.MONGODB_ID_FIELD, new BasicBSONObject(QueryOperators.GT, id));
+        if (filter.equals(new BasicDBObject())) {
+            return idFilter;
+        }
+        return new BasicDBObject(QueryOperators.AND, ImmutableList.of(filter, idFilter));
     }
 
     protected boolean assignCollections() {
