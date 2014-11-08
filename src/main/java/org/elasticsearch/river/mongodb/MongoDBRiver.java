@@ -52,6 +52,8 @@ import org.elasticsearch.script.ScriptService;
 
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
+import com.mongodb.MongoSocketException;
+import com.mongodb.MongoTimeoutException;
 import com.mongodb.ServerAddress;
 import com.mongodb.gridfs.GridFSDBFile;
 
@@ -65,50 +67,51 @@ import com.mongodb.gridfs.GridFSDBFile;
  */
 public class MongoDBRiver extends AbstractRiverComponent implements River {
 
-    public final static String TYPE = "mongodb";
-    public final static String NAME = "mongodb-river";
-    public final static String STATUS_ID = "_riverstatus";
-    public final static String STATUS_FIELD = "status";
-    public final static String DESCRIPTION = "MongoDB River Plugin";
-    public final static String LAST_TIMESTAMP_FIELD = "_last_ts";
-    public final static String LAST_GTID_FIELD = "_last_gtid";
-    public final static String MONGODB_LOCAL_DATABASE = "local";
-    public final static String MONGODB_ADMIN_DATABASE = "admin";
-    public final static String MONGODB_CONFIG_DATABASE = "config";
-    public final static String MONGODB_ID_FIELD = "_id";
-    public final static String MONGODB_OID_FIELD = "oid";
-    public final static String MONGODB_SEQ_FIELD = "seq";
-    public final static String MONGODB_IN_OPERATOR = "$in";
-    public final static String MONGODB_OR_OPERATOR = "$or";
-    public final static String MONGODB_AND_OPERATOR = "$and";
-    public final static String MONGODB_NATURAL_OPERATOR = "$natural";
-    public final static String OPLOG_COLLECTION = "oplog.rs";
-    public final static String OPLOG_REFS_COLLECTION = "oplog.refs";
-    public final static String OPLOG_NAMESPACE = "ns";
-    public final static String OPLOG_NAMESPACE_COMMAND = "$cmd";
-    public final static String OPLOG_ADMIN_COMMAND = "admin." + OPLOG_NAMESPACE_COMMAND;
-    public final static String OPLOG_OBJECT = "o";
-    public final static String OPLOG_UPDATE = "o2";
-    public final static String OPLOG_OPERATION = "op";
-    public final static String OPLOG_UPDATE_OPERATION = "u";
-    public final static String OPLOG_UPDATE_ROW_OPERATION = "ur";
-    public final static String OPLOG_INSERT_OPERATION = "i";
-    public final static String OPLOG_DELETE_OPERATION = "d";
-    public final static String OPLOG_COMMAND_OPERATION = "c";
-    public final static String OPLOG_NOOP_OPERATION = "n";
-    public final static String OPLOG_DROP_COMMAND_OPERATION = "drop";
-    public final static String OPLOG_DROP_DATABASE_COMMAND_OPERATION = "dropDatabase";
-    public final static String OPLOG_RENAME_COLLECTION_COMMAND_OPERATION = "renameCollection";
-    public final static String OPLOG_TO = "to";
-    public final static String OPLOG_TIMESTAMP = "ts";
-    public final static String OPLOG_FROM_MIGRATE = "fromMigrate";
+    public static final String TYPE = "mongodb";
+    public static final String NAME = "mongodb-river";
+    public static final String STATUS_ID = "_riverstatus";
+    public static final String STATUS_FIELD = "status";
+    public static final String DESCRIPTION = "MongoDB River Plugin";
+    public static final String LAST_TIMESTAMP_FIELD = "_last_ts";
+    public static final String LAST_GTID_FIELD = "_last_gtid";
+    public static final String MONGODB_LOCAL_DATABASE = "local";
+    public static final String MONGODB_ADMIN_DATABASE = "admin";
+    public static final String MONGODB_CONFIG_DATABASE = "config";
+    public static final String MONGODB_ID_FIELD = "_id";
+    public static final String MONGODB_OID_FIELD = "oid";
+    public static final String MONGODB_SEQ_FIELD = "seq";
+    public static final String MONGODB_IN_OPERATOR = "$in";
+    public static final String MONGODB_OR_OPERATOR = "$or";
+    public static final String MONGODB_AND_OPERATOR = "$and";
+    public static final String MONGODB_NATURAL_OPERATOR = "$natural";
+    public static final String OPLOG_COLLECTION = "oplog.rs";
+    public static final String OPLOG_REFS_COLLECTION = "oplog.refs";
+    public static final String OPLOG_NAMESPACE = "ns";
+    public static final String OPLOG_NAMESPACE_COMMAND = "$cmd";
+    public static final String OPLOG_ADMIN_COMMAND = "admin." + OPLOG_NAMESPACE_COMMAND;
+    public static final String OPLOG_OBJECT = "o";
+    public static final String OPLOG_UPDATE = "o2";
+    public static final String OPLOG_OPERATION = "op";
+    public static final String OPLOG_UPDATE_OPERATION = "u";
+    public static final String OPLOG_UPDATE_ROW_OPERATION = "ur";
+    public static final String OPLOG_INSERT_OPERATION = "i";
+    public static final String OPLOG_DELETE_OPERATION = "d";
+    public static final String OPLOG_COMMAND_OPERATION = "c";
+    public static final String OPLOG_NOOP_OPERATION = "n";
+    public static final String OPLOG_DROP_COMMAND_OPERATION = "drop";
+    public static final String OPLOG_DROP_DATABASE_COMMAND_OPERATION = "dropDatabase";
+    public static final String OPLOG_RENAME_COLLECTION_COMMAND_OPERATION = "renameCollection";
+    public static final String OPLOG_TO = "to";
+    public static final String OPLOG_TIMESTAMP = "ts";
+    public static final String OPLOG_FROM_MIGRATE = "fromMigrate";
     public static final String OPLOG_OPS = "ops";
     public static final String OPLOG_CREATE_COMMAND = "create";
     public static final String OPLOG_REF = "ref";
-    public final static String GRIDFS_FILES_SUFFIX = ".files";
-    public final static String GRIDFS_CHUNKS_SUFFIX = ".chunks";
-    public final static String INSERTION_ORDER_KEY = "$natural";
+    public static final String GRIDFS_FILES_SUFFIX = ".files";
+    public static final String GRIDFS_CHUNKS_SUFFIX = ".chunks";
+    public static final String INSERTION_ORDER_KEY = "$natural";
 
+    static final int MONGODB_RETRY_ERROR_DELAY_MS = 10_000;
     static final ESLogger logger = ESLoggerFactory.getLogger(MongoDBRiver.class.getName());
 
     protected final MongoDBRiverDefinition definition;
@@ -204,7 +207,16 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 }
             }
 
-            MongoConfig config = new MongoConfigProvider(definition, getMongoClient()).call();
+            MongoConfigProvider configProvider = new MongoConfigProvider(definition, getMongoClient());
+            MongoConfig config;
+            while (true) {
+                try {
+                    config = configProvider.call();
+                    break;
+                } catch(MongoSocketException | MongoTimeoutException e) {
+                    Thread.sleep(MONGODB_RETRY_ERROR_DELAY_MS);
+                }
+            }
 
             // Tail the oplog
             if (config.isMongos()) {
