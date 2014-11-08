@@ -22,21 +22,17 @@ import static org.elasticsearch.client.Requests.indexRequest;
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 
 import java.io.IOException;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedTransferQueue;
 
-import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.block.ClusterBlockException;
-import org.elasticsearch.common.collect.ImmutableMap;
 import org.elasticsearch.common.collect.Lists;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.logging.ESLogger;
@@ -49,17 +45,13 @@ import org.elasticsearch.river.River;
 import org.elasticsearch.river.RiverIndexName;
 import org.elasticsearch.river.RiverName;
 import org.elasticsearch.river.RiverSettings;
+import org.elasticsearch.river.mongodb.MongoConfig.Shard;
 import org.elasticsearch.river.mongodb.util.MongoDBHelper;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 import org.elasticsearch.script.ScriptService;
 
-import com.mongodb.BasicDBObjectBuilder;
-import com.mongodb.CommandResult;
-import com.mongodb.DB;
-import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
-import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 import com.mongodb.gridfs.GridFSDBFile;
 
@@ -130,7 +122,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     protected volatile boolean startInvoked = false;
 
     private final MongoClientService mongoClientService;
-    private DB adminDb;
 
     @Inject
     public MongoDBRiver(RiverName riverName, RiverSettings settings, @RiverIndexName String riverIndexName,
@@ -213,21 +204,15 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 }
             }
 
+            MongoConfig config = new MongoConfigProvider(definition, getMongoClient()).call();
+
             // Tail the oplog
-            if (isMongos()) {
-                try (DBCursor cursor = getConfigDb().getCollection("shards").find()) {
-                    while (cursor.hasNext()) {
-                        DBObject item = cursor.next();
-                        logger.debug("shards: {}", item.toString());
-                        List<ServerAddress> servers = getServerAddressForReplica(item);
-                        if (servers != null) {
-                            String replicaName = item.get(MONGODB_ID_FIELD).toString();
-                            Thread tailerThread = EsExecutors.daemonThreadFactory(
-                                    settings.globalSettings(), "mongodb_river_slurper_" + replicaName + ":" + definition.getIndexName()
-                                ).newThread(new Slurper(getMongoClient(servers), definition, context, esClient));
-                            tailerThreads.add(tailerThread);
-                        }
-                    }
+            if (config.isMongos()) {
+                for (Shard shard : config.getShards()) {
+                    Thread tailerThread = EsExecutors.daemonThreadFactory(
+                            settings.globalSettings(), "mongodb_river_slurper_" + shard.getName() + ":" + definition.getIndexName()
+                        ).newThread(new Slurper(getMongoClient(shard.getReplicas()), definition, context, esClient));
+                    tailerThreads.add(tailerThread);                   
                 }
             } else {
                 logger.trace("Not mongos");
@@ -256,90 +241,12 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         }
     }
 
-    private boolean isMongos() {
-        if (definition.isMongos() != null) {
-            return definition.isMongos().booleanValue();
-        } else {
-            DB adminDb = getAdminDb();
-            if (adminDb == null) {
-                return false;
-            }
-            logger.trace("Found {} database", MONGODB_ADMIN_DATABASE);
-            DBObject command = BasicDBObjectBuilder.start(
-                    ImmutableMap.builder().put("serverStatus", 1).put("asserts", 0).put("backgroundFlushing", 0).put("connections", 0)
-                            .put("cursors", 0).put("dur", 0).put("extra_info", 0).put("globalLock", 0).put("indexCounters", 0)
-                            .put("locks", 0).put("metrics", 0).put("network", 0).put("opcounters", 0).put("opcountersRepl", 0)
-                            .put("recordStats", 0).put("repl", 0).build()).get();
-            logger.trace("About to execute: {}", command);
-            CommandResult cr = adminDb.command(command, ReadPreference.primary());
-            logger.trace("Command executed return : {}", cr);
-
-            logger.info("MongoDB version - {}", cr.get("version"));
-            if (logger.isTraceEnabled()) {
-                logger.trace("serverStatus: {}", cr);
-            }
-
-            if (!cr.ok()) {
-                logger.warn("serverStatus returns error: {}", cr.getErrorMessage());
-                return false;
-            }
-
-            if (cr.get("process") == null) {
-                logger.warn("serverStatus.process return null.");
-                return false;
-            }
-            String process = cr.get("process").toString().toLowerCase();
-            if (logger.isTraceEnabled()) {
-                logger.trace("process: {}", process);
-            }
-            // Fix for https://jira.mongodb.org/browse/SERVER-9160
-            return (process.contains("mongos"));
-        }
-    }
-
-    private DB getAdminDb() {
-        if (adminDb == null) {
-            adminDb = getMongoClient().getDB(MONGODB_ADMIN_DATABASE);
-        }
-        if (adminDb == null) {
-            throw new ElasticsearchException(String.format("Could not get %s database from MongoDB", MONGODB_ADMIN_DATABASE));
-        }
-        return adminDb;
-    }
-
-    private DB getConfigDb() {
-        DB configDb = getMongoClient().getDB(MONGODB_CONFIG_DATABASE);
-        if (configDb == null) {
-            throw new ElasticsearchException(String.format("Could not get %s database from MongoDB", MONGODB_CONFIG_DATABASE));
-        }
-        return configDb;
-    }
-
     private MongoClient getMongoClient() {
         return mongoClientService.getMongoClient(definition, null);
     }
     
     private MongoClient getMongoClient(List<ServerAddress> servers) {
         return mongoClientService.getMongoClient(definition, servers);
-    }
-
-    private List<ServerAddress> getServerAddressForReplica(DBObject item) {
-        String definition = item.get("host").toString();
-        if (definition.contains("/")) {
-            definition = definition.substring(definition.indexOf("/") + 1);
-        }
-        if (logger.isDebugEnabled()) {
-            logger.debug("getServerAddressForReplica - definition: {}", definition);
-        }
-        List<ServerAddress> servers = new ArrayList<ServerAddress>();
-        for (String server : definition.split(",")) {
-            try {
-                servers.add(new ServerAddress(server));
-            } catch (UnknownHostException uhEx) {
-                logger.warn("failed to execute bulk", uhEx);
-            }
-        }
-        return servers;
     }
 
     @Override
