@@ -9,7 +9,7 @@ In order to install the plugin, simply run: ```bin/plugin --install com.github.r
 
 | MongoDB River Plugin     | ElasticSearch    | MongoDB       | TokuMX        |
 |--------------------------|------------------|---------------|---------------|
-| master                   | 1.3.4            | 2.6.5         | 1.5.1         |
+| master                   | 1.3.5            | 2.6.5         | 1.5.1         |
 | 2.0.1                    | 1.2.2            | 2.4.9 -> 2.6.3| 1.5.0         |
 | 2.0.0                    | 1.0.0 -> 1.1.1   | 2.4.9         |               |
 | 1.7.4                    | 0.90.10          | 2.4.8         |               |
@@ -149,7 +149,7 @@ Changelog
 -------
 
 #### 2.0.2-SNAPSHOT
-- Update versions ES 1.3.4, MongoDB 2.6.5, MongoDB driver 2.12.4, Java 7
+- Update versions ES 1.3.5, MongoDB 2.6.5, MongoDB driver 2.12.4, Java 7
 - Improved scaling for running multiple rivers and numerous bug fixes by @ankon of Collaborne B.V.
 - Improved TokuMX support by @kdkeck of Connectifier, Inc.
 - Support for collection names with period by @qraynaud
