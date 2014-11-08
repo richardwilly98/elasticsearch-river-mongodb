@@ -298,7 +298,7 @@ class Slurper implements Runnable {
 
     private DBCursor processFullOplog() throws InterruptedException, SlurperException {
         Timestamp<?> currentTimestamp = getCurrentOplogTimestamp();
-        addInsertToStream(currentTimestamp, null);
+        addQueryToStream(Operation.INSERT, currentTimestamp, null, null);
         return oplogCursor(currentTimestamp);
     }
 
