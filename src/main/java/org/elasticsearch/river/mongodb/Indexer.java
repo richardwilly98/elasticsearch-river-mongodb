@@ -389,21 +389,20 @@ class Indexer implements Runnable {
     /**
      * Map a DBObject for indexing
      * 
-     * @param base
-     * @param mapData
+     * @param dbObj
      */
-    private Map<String, Object> createObjectMap(DBObject base) {
+    private Map<String, Object> createObjectMap(DBObject dbObj) {
         Map<String, Object> mapData = new HashMap<String, Object>();
-        for (String key : base.keySet()) {
-            Object forMap = base.get(key);
-            if (forMap instanceof DBRef) {
-                mapData.put(key, this.convertDbRef((DBRef) forMap));
-            } else if (forMap instanceof BasicDBList) {
-                mapData.put(key, ((BasicBSONList) forMap).toArray());
-            } else if (forMap instanceof BasicDBObject) {
-                mapData.put(key, this.createObjectMap((DBObject) forMap));
+        for (String key : dbObj.keySet()) {
+            Object value = dbObj.get(key);
+            if (value instanceof DBRef) {
+                mapData.put(key, this.convertDbRef((DBRef) value));
+            } else if (value instanceof BasicDBList) {
+                mapData.put(key, ((BasicBSONList) value).toArray());
+            } else if (value instanceof BasicDBObject) {
+                mapData.put(key, this.createObjectMap((DBObject) value));
             } else {
-                mapData.put(key, forMap);
+                mapData.put(key, value);
             }
         }
 
