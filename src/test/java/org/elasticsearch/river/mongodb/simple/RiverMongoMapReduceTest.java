@@ -91,13 +91,13 @@ public class RiverMongoMapReduceTest extends RiverMongoDBTestAbstract {
             refreshIndex();
             assertThat(executableType.name() + " inputCollection is indexed",
                     getNode().client().admin().indices().prepareTypesExists(getIndex()).setTypes(mongoCollection.getName()).get()
-                    .isExists(), equalTo(true));
+                            .isExists(), equalTo(true));
 
             String map = "function() { emit(this.cust_id, this.amount); }";
             String reduce = "function (key, values) { return Array.sum( values ) }";
 
-            MapReduceCommand cmd = new MapReduceCommand(mongoCollection, map, reduce, outputCollection, MapReduceCommand.OutputType.REPLACE,
-                    null);
+            MapReduceCommand cmd = new MapReduceCommand(mongoCollection, map, reduce, outputCollection,
+                    MapReduceCommand.OutputType.REPLACE, null);
 
             MapReduceOutput out = mongoCollection.mapReduce(cmd);
             logger.debug("MapReduceOutput: {}", out);
@@ -117,8 +117,8 @@ public class RiverMongoMapReduceTest extends RiverMongoDBTestAbstract {
                     getNode().client().prepareCount(getIndex()).setTypes(mongoCollection.getName()).get().getCount(),
                     equalTo(mongoCollection.count()));
             assertThat(executableType.name() + " outputCollection items indexed",
-                    getNode().client().prepareCount(getIndex()).setTypes(outputCollection).get().getCount(), equalTo(mongoDB
-                    .getCollection(outputCollection).count()));
+                    getNode().client().prepareCount(getIndex()).setTypes(outputCollection).get().getCount(),
+                    equalTo(mongoDB.getCollection(outputCollection).count()));
         } catch (Throwable t) {
             logger.error("mapReduceTest failed.", t);
             t.printStackTrace();
