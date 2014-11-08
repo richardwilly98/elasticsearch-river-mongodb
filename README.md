@@ -7,6 +7,8 @@ See the [wiki](https://github.com/richardwilly98/elasticsearch-river-mongodb/wik
 
 In order to install the plugin, simply run: ```bin/plugin --install com.github.richardwilly98.elasticsearch/elasticsearch-river-mongodb/2.0.1```
 
+Note that you must be using MongoDB replica sets since this river tails the oplog.
+
 | MongoDB River Plugin     | ElasticSearch    | MongoDB       | TokuMX        |
 |--------------------------|------------------|---------------|---------------|
 | master                   | 1.3.5            | 2.6.5         | 1.5.1         |
