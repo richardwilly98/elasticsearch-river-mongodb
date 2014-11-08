@@ -55,6 +55,22 @@
 	</properties>
 
 	<profiles>
+    <profile>
+	    <id>default</id>
+	    <activation>
+	      <activeByDefault>true</activeByDefault>
+	    </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <excludedGroups>slow</excludedGroups>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
 		<profile>
 			<id>keep-plugins</id>
 			<build>

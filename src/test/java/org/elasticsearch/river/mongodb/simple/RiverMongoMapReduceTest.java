@@ -74,7 +74,7 @@ public class RiverMongoMapReduceTest extends RiverMongoDBTestAbstract {
         mongoDB.dropDatabase();
     }
 
-    @Test
+    @Test(groups = { "slow" })
     public void mapReduceTest() throws Throwable {
         logger.debug("Start mapReduceTest");
         try {
