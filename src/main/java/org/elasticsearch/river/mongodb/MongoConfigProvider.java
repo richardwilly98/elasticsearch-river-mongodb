@@ -35,7 +35,7 @@ public class MongoConfigProvider implements Callable<MongoConfig> {
     @Override
     public MongoConfig call() {
         boolean isMongos = isMongos();
-        List<Shard> shards = getShards();
+        List<Shard> shards = isMongos ? getShards() : new ArrayList<Shard>();
         MongoConfig config = new MongoConfig(isMongos, shards);
         return config;
     }
