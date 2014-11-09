@@ -3,6 +3,7 @@ package org.elasticsearch.river.mongodb;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Callable;
 
 import org.elasticsearch.ElasticsearchException;
@@ -38,11 +39,21 @@ public class MongoConfigProvider implements Callable<MongoConfig> {
 
     @Override
     public MongoConfig call() {
+        ensureIsReplicaSet();
         boolean isMongos = isMongos();
         List<Shard> shards = getShards(isMongos);
         MongoConfig config = new MongoConfig(isMongos, shards);
         return config;
     }
+
+    protected boolean ensureIsReplicaSet() {
+        Set<String> collections = clusterClient.getDB(MongoDBRiver.MONGODB_LOCAL_DATABASE).getCollectionNames();
+        if (!collections.contains(MongoDBRiver.OPLOG_COLLECTION)) {
+            throw new IllegalStateException("Cannot find " + MongoDBRiver.OPLOG_COLLECTION + " collection. Please check this link: http://docs.mongodb.org/manual/tutorial/deploy-replica-set/");
+        }
+        return true;
+    }
+
 
     private DB getAdminDb() {
         DB adminDb = clusterClient.getDB(MongoDBRiver.MONGODB_ADMIN_DATABASE);

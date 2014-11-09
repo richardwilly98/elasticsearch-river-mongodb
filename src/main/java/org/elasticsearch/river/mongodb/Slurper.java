@@ -1,7 +1,6 @@
 package org.elasticsearch.river.mongodb;
 
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.bson.BasicBSONObject;
@@ -57,9 +56,9 @@ class Slurper implements Runnable {
     private final Client esClient;
     private final MongoClient mongoClient;
     private Timestamp<?> timestamp;
-    private DB slurpedDb;
-    private DB oplogDb;
-    private DBCollection oplogCollection, oplogRefsCollection;
+    private final DB slurpedDb;
+    private final DB oplogDb;
+    private final DBCollection oplogCollection, oplogRefsCollection;
     private final AtomicLong totalDocuments = new AtomicLong();
 
     public Slurper(Timestamp<?> timestamp, MongoClient mongoClient, MongoDBRiverDefinition definition, SharedContext context, Client esClient) {
@@ -80,39 +79,65 @@ class Slurper implements Runnable {
                 findKeys.put(key, 1);
             }
         }
+        this.oplogDb = mongoClient.getDB(MongoDBRiver.MONGODB_LOCAL_DATABASE);
+        this.oplogCollection = oplogDb.getCollection(MongoDBRiver.OPLOG_COLLECTION);
+        this.oplogRefsCollection = oplogDb.getCollection(MongoDBRiver.OPLOG_REFS_COLLECTION);
+        this.slurpedDb = mongoClient.getDB(definition.getMongoDb());
     }
 
     @Override
     public void run() {
         while (context.getStatus() == Status.RUNNING) {
+            if (definition.isSkipInitialImport() || definition.getInitialTimestamp() != null) {
+                logger.info("Skip initial import from collection {}", definition.getMongoCollection());
+                break;
+            }
+            if (riverHasIndexedFromOplog()) {
+                logger.trace("Initial import already completed.");
+                break;
+            }
             try {
-                if (!assignCollections()) {
-                    break; // failed to assign oplogCollection or slurpedCollection
+                if (!isIndexEmpty()) {
+                    MongoDBRiverHelper.setRiverStatus(
+                            esClient, definition.getRiverName(), Status.INITIAL_IMPORT_FAILED);
+                    return;
                 }
-
-                if (!definition.isSkipInitialImport()) {
-                    if (!riverHasIndexedFromOplog() && definition.getInitialTimestamp() == null) {
-                        if (!isIndexEmpty()) {
-                            MongoDBRiverHelper.setRiverStatus(
-                                    esClient, definition.getRiverName(), Status.INITIAL_IMPORT_FAILED);
-                            break;
-                        }
-                        if (definition.isImportAllCollections()) {
-                            for (String name : slurpedDb.getCollectionNames()) {
-                                if (name.length() < 7 || !name.substring(0, 7).equals("system.")) {
-                                    DBCollection collection = slurpedDb.getCollection(name);
-                                    doInitialImport(collection);
-                                }
-                            }
-                        } else {
-                            DBCollection collection = slurpedDb.getCollection(definition.getMongoCollection());
-                            doInitialImport(collection);
+                if (definition.isImportAllCollections()) {
+                    for (String name : slurpedDb.getCollectionNames()) {
+                        if (name.length() < 7 || !name.substring(0, 7).equals("system.")) {
+                            DBCollection collection = slurpedDb.getCollection(name);
+                            importCollection(collection);
                         }
                     }
                 } else {
-                    logger.info("Skip initial import from collection {}", definition.getMongoCollection());
+                    DBCollection collection = slurpedDb.getCollection(definition.getMongoCollection());
+                    importCollection(collection);
                 }
+                logger.debug("Before waiting for 500 ms");
+                Thread.sleep(500);
+            } catch (MongoInterruptedException | InterruptedException e) {
+                logger.info("river-mongodb slurper interrupted");
+                Thread.currentThread().interrupt();
+                return;
+            } catch (MongoSocketException | MongoTimeoutException | MongoCursorNotFoundException e) {
+                logger.info("Oplog tailing - {} - {}. Will retry.", e.getClass().getSimpleName(), e.getMessage());
+                logger.debug("Total documents inserted so far by river {}: {}", definition.getRiverName(), totalDocuments.get());
+                try {
+                    Thread.sleep(MongoDBRiver.MONGODB_RETRY_ERROR_DELAY_MS);
+                } catch (InterruptedException iEx) {
+                    logger.info("river-mongodb slurper interrupted");
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            } catch (Exception e) {
+                logger.error("Exception while looping in cursor", e);
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
 
+        while (context.getStatus() == Status.RUNNING) {
+            try {        
                 // Slurp from oplog
                 DBCursor cursor = null;
                 try {
@@ -144,11 +169,11 @@ class Slurper implements Runnable {
             } catch (SlurperException e) {
                 logger.error("Exception in slurper", e);
                 Thread.currentThread().interrupt();
-                break;
+                return;
             } catch (MongoInterruptedException | InterruptedException e) {
                 logger.info("river-mongodb slurper interrupted");
                 Thread.currentThread().interrupt();
-                break;
+                return;
             } catch (MongoSocketException | MongoTimeoutException | MongoCursorNotFoundException e) {
                 logger.info("Oplog tailing - {} - {}. Will retry.", e.getClass().getSimpleName(), e.getMessage());
                 logger.debug("Total documents inserted so far by river {}: {}", definition.getRiverName(), totalDocuments.get());
@@ -157,12 +182,12 @@ class Slurper implements Runnable {
                 } catch (InterruptedException iEx) {
                     logger.info("river-mongodb slurper interrupted");
                     Thread.currentThread().interrupt();
-                    break;
+                    return;
                 }
             } catch (Exception e) {
                 logger.error("Exception while looping in cursor", e);
                 Thread.currentThread().interrupt();
-                break;
+                return;
             }
         }
         logger.info("Slurper is stopping. River has status {}", context.getStatus());
@@ -184,7 +209,7 @@ class Slurper implements Runnable {
      * @throws InterruptedException
      *             if the blocking queue stream is interrupted while waiting
      */
-    protected void doInitialImport(DBCollection collection) throws InterruptedException {
+    protected void importCollection(DBCollection collection) throws InterruptedException {
         // TODO: ensure the index type is empty
         // DBCollection slurpedCollection =
         // slurpedDb.getCollection(definition.getMongoCollection());
@@ -210,7 +235,12 @@ class Slurper implements Runnable {
                     while (cursor.hasNext()) {
                         DBObject object = cursor.next();
                         count++;
-                        lastId = addInsertToStream(null, applyFieldFilter(object), collection.getName());
+                        if (cursor.hasNext()) {
+                          lastId = addInsertToStream(null, applyFieldFilter(object), collection.getName());
+                        } else {
+                          logger.debug("Last entry for initial import of {} - add timestamp: {}", collection.getFullName(), timestamp);
+                          lastId = addInsertToStream(timestamp, applyFieldFilter(object), collection.getName());
+                        }
                     }
                     inProgress = false;
                     logger.info("Number of documents indexed in initial import of {}: {}", collection.getFullName(), count);
@@ -225,7 +255,12 @@ class Slurper implements Runnable {
                         DBObject object = cursor.next();
                         if (object instanceof GridFSDBFile) {
                             GridFSDBFile file = grid.findOne(new ObjectId(object.get(MongoDBRiver.MONGODB_ID_FIELD).toString()));
-                            lastId = addInsertToStream(null, file);
+                            if (cursor.hasNext()) {
+                              lastId = addInsertToStream(null, file);
+                            } else {
+                              logger.debug("Last entry for initial import of {} - add timestamp: {}", collection.getFullName(), timestamp);
+                              lastId = addInsertToStream(timestamp, file);
+                            }
                         }
                     }
                     inProgress = false;
@@ -256,23 +291,6 @@ class Slurper implements Runnable {
             return idFilter;
         }
         return new BasicDBObject(QueryOperators.AND, ImmutableList.of(filter, idFilter));
-    }
-
-    protected boolean assignCollections() {
-        logger.info("Local DB auth against local user: " + definition.getMongoLocalUser());
-        oplogDb = mongoClient.getDB(MongoDBRiver.MONGODB_LOCAL_DATABASE);
-
-        Set<String> collections = oplogDb.getCollectionNames();
-        if (!collections.contains(MongoDBRiver.OPLOG_COLLECTION)) {
-            logger.error("Cannot find " + MongoDBRiver.OPLOG_COLLECTION + " collection. Please check this link: http://goo.gl/2x5IW");
-            return false;
-        }
-        oplogCollection = oplogDb.getCollection(MongoDBRiver.OPLOG_COLLECTION);
-        oplogRefsCollection = oplogDb.getCollection(MongoDBRiver.OPLOG_REFS_COLLECTION);
-
-        slurpedDb = mongoClient.getDB(definition.getMongoDb());
-
-        return true;
     }
 
     private void updateIndexRefresh(String name, Object value) {
@@ -446,7 +464,7 @@ class Slurper implements Runnable {
                 if (to.startsWith(definition.getMongoDb())) {
                     String newCollection = getCollectionFromNamespace(to);
                     DBCollection coll = slurpedDb.getCollection(newCollection);
-                    doInitialImport(coll);
+                    importCollection(coll);
                 }
             }
         }
@@ -580,11 +598,7 @@ class Slurper implements Runnable {
         return null;
     }
 
-    private DBCursor oplogCursor(final Timestamp<?> timestampOverride) throws SlurperException {
-        Timestamp<?> time = timestampOverride == null ? MongoDBRiver.getLastTimestamp(esClient, definition) : timestampOverride;
-        if (time == null) {
-            return null;
-        }
+    private DBCursor oplogCursor(final Timestamp<?> time) throws SlurperException {
         DBObject indexFilter = time.getOplogFilter();
         if (indexFilter == null) {
             return null;
