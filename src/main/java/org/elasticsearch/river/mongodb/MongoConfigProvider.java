@@ -11,9 +11,11 @@ import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.river.mongodb.MongoConfig.Shard;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.BasicDBObjectBuilder;
 import com.mongodb.CommandResult;
 import com.mongodb.DB;
+import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
@@ -24,24 +26,26 @@ public class MongoConfigProvider implements Callable<MongoConfig> {
 
     private static final ESLogger logger = ESLoggerFactory.getLogger(MongoConfigProvider.class.getName());
 
+    private final MongoClientService mongoClientService;
     private final MongoDBRiverDefinition definition;
-    private final MongoClient client;
+    private final MongoClient clusterClient;
 
-    public MongoConfigProvider(MongoDBRiverDefinition definition, MongoClient client) {
+    public MongoConfigProvider(MongoClientService mongoClientService, MongoDBRiverDefinition definition) {
+        this.mongoClientService = mongoClientService;
         this.definition= definition;
-        this.client = client;
+        this.clusterClient = mongoClientService.getMongoClusterClient(definition);
     }
 
     @Override
     public MongoConfig call() {
         boolean isMongos = isMongos();
-        List<Shard> shards = isMongos ? getShards() : new ArrayList<Shard>();
+        List<Shard> shards = getShards(isMongos);
         MongoConfig config = new MongoConfig(isMongos, shards);
         return config;
     }
 
     private DB getAdminDb() {
-        DB adminDb = client.getDB(MongoDBRiver.MONGODB_ADMIN_DATABASE);
+        DB adminDb = clusterClient.getDB(MongoDBRiver.MONGODB_ADMIN_DATABASE);
         if (adminDb == null) {
             throw new ElasticsearchException(
                     String.format("Could not get %s database from MongoDB", MongoDBRiver.MONGODB_ADMIN_DATABASE));
@@ -50,7 +54,7 @@ public class MongoConfigProvider implements Callable<MongoConfig> {
     }
 
     private DB getConfigDb() {
-        DB configDb = client.getDB(MongoDBRiver.MONGODB_CONFIG_DATABASE);
+        DB configDb = clusterClient.getDB(MongoDBRiver.MONGODB_CONFIG_DATABASE);
         if (configDb == null) {
             throw new ElasticsearchException(
                     String.format("Could not get %s database from MongoDB", MongoDBRiver.MONGODB_CONFIG_DATABASE));
@@ -99,19 +103,28 @@ public class MongoConfigProvider implements Callable<MongoConfig> {
         }
     }
 
-    private List<Shard> getShards() {
+    private List<Shard> getShards(boolean isMongos) {
         List<Shard> shards = new ArrayList<>();
-        try (DBCursor cursor = getConfigDb().getCollection("shards").find()) {
-            while (cursor.hasNext()) {
-                DBObject item = cursor.next();
-                List<ServerAddress> servers = getServerAddressForReplica(item);
-                if (servers != null) {
-                    String replicaName = item.get(MongoDBRiver.MONGODB_ID_FIELD).toString();
-                    shards.add(new Shard(replicaName, servers));
+        if (isMongos) {
+            try (DBCursor cursor = getConfigDb().getCollection("shards").find()) {
+                while (cursor.hasNext()) {
+                    DBObject item = cursor.next();
+                    List<ServerAddress> shardServers = getServerAddressForReplica(item);
+                    if (shardServers != null) {
+                        String shardName = item.get(MongoDBRiver.MONGODB_ID_FIELD).toString();
+                        MongoClient shardClient = mongoClientService.getMongoShardClient(definition, shardServers);
+                        Timestamp<?> latestOplogTimestamp = getCurrentOplogTimestamp(shardClient);
+                        shards.add(new Shard(shardName, shardServers, latestOplogTimestamp));
+                    }
                 }
             }
+            return shards;
+        } else {
+            List<ServerAddress> servers = clusterClient.getServerAddressList();
+            Timestamp<?> latestOplogTimestamp = getCurrentOplogTimestamp(clusterClient);
+            shards.add(new Shard("unsharded", servers, latestOplogTimestamp));
+            return shards;
         }
-        return shards;
     }
 
     private List<ServerAddress> getServerAddressForReplica(DBObject item) {
@@ -131,6 +144,15 @@ public class MongoConfigProvider implements Callable<MongoConfig> {
             }
         }
         return servers;
-    }    
+    }
     
+    private Timestamp<?> getCurrentOplogTimestamp(MongoClient shardClient) {
+        DBCollection oplogCollection = shardClient
+                .getDB(MongoDBRiver.MONGODB_LOCAL_DATABASE)
+                .getCollection(MongoDBRiver.OPLOG_COLLECTION);
+        try (DBCursor cursor = oplogCollection.find().sort(new BasicDBObject("$natural", -1)).limit(1)) {
+            return Timestamp.on(cursor.next());
+        }
+    }
+
 }

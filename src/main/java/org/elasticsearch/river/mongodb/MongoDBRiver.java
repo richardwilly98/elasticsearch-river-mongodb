@@ -207,7 +207,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 }
             }
 
-            MongoConfigProvider configProvider = new MongoConfigProvider(definition, getMongoClient());
+            MongoConfigProvider configProvider = new MongoConfigProvider(mongoClientService, definition);
             MongoConfig config;
             while (true) {
                 try {
@@ -221,16 +221,19 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             // Tail the oplog
             if (config.isMongos()) {
                 for (Shard shard : config.getShards()) {
+                    MongoClient mongoClient = mongoClientService.getMongoShardClient(definition, shard.getReplicas());
                     Thread tailerThread = EsExecutors.daemonThreadFactory(
                             settings.globalSettings(), "mongodb_river_slurper_" + shard.getName() + ":" + definition.getIndexName()
-                        ).newThread(new Slurper(getMongoClient(shard.getReplicas()), definition, context, esClient));
+                        ).newThread(new Slurper(shard.getLatestOplogTimestamp(), mongoClient, definition, context, esClient));
                     tailerThreads.add(tailerThread);                   
                 }
             } else {
-                logger.trace("Not mongos");
-                Thread tailerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_slurper:" + definition.getIndexName()).newThread(
-                        new Slurper(getMongoClient(), definition, context, esClient));
-                tailerThreads.add(tailerThread);
+                Shard shard = config.getShards().get(0);
+                MongoClient mongoClient = mongoClientService.getMongoClusterClient(definition);
+                Thread tailerThread = EsExecutors.daemonThreadFactory(
+                        settings.globalSettings(), "mongodb_river_slurper_" + shard.getName() + ":" + definition.getIndexName()
+                    ).newThread(new Slurper(shard.getLatestOplogTimestamp(), mongoClient, definition, context, esClient));
+                tailerThreads.add(tailerThread);                   
             }
 
             for (Thread thread : tailerThreads) {
@@ -251,14 +254,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         } finally {
             startInvoked = true;
         }
-    }
-
-    private MongoClient getMongoClient() {
-        return mongoClientService.getMongoClient(definition, null);
-    }
-    
-    private MongoClient getMongoClient(List<ServerAddress> servers) {
-        return mongoClientService.getMongoClient(definition, servers);
     }
 
     @Override

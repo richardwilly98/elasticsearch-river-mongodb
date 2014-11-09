@@ -47,15 +47,19 @@ public class MongoClientService extends AbstractLifecycleComponent<MongoClientSe
         }
     }
 
+    public MongoClient getMongoClusterClient(MongoDBRiverDefinition definition) {
+        return getMongoShardClient(definition, null);
+    }
+
     /**
      * Get or create a {@link MongoClient} for the given {@code servers}.
      *
      * If a client already exists for the given list of servers with the same credentials and
      * options it will be reused, otherwise a new client will be created.
      */
-    public MongoClient getMongoClient(MongoDBRiverDefinition definition, List<ServerAddress> overrideServers) {
+    public MongoClient getMongoShardClient(MongoDBRiverDefinition definition, List<ServerAddress> shardServers) {
         synchronized ($lock) {
-            List<ServerAddress> servers = overrideServers != null ? overrideServers : definition.getMongoServers();
+            List<ServerAddress> servers = shardServers != null ? shardServers : definition.getMongoServers();
 
             List<MongoCredential> mongoCredentials = new ArrayList<>();
             if (!Strings.isNullOrEmpty(definition.getMongoLocalUser()) && !Strings.isNullOrEmpty(definition.getMongoLocalPassword())) {
