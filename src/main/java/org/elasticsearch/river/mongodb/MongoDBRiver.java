@@ -281,11 +281,19 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     }
 
     private XContentBuilder getGridFSMapping() throws IOException {
-        XContentBuilder mapping = jsonBuilder().startObject().startObject(definition.getTypeName()).startObject("properties")
-                .startObject("content").field("type", "attachment").endObject().startObject("filename").field("type", "string").endObject()
-                .startObject("contentType").field("type", "string").endObject().startObject("md5").field("type", "string").endObject()
-                .startObject("length").field("type", "long").endObject().startObject("chunkSize").field("type", "long").endObject()
-                .endObject().endObject().endObject();
+        XContentBuilder mapping = jsonBuilder()
+            .startObject()
+                .startObject(definition.getTypeName())
+                    .startObject("properties")
+                        .startObject("content").field("type", "attachment").endObject()
+                        .startObject("filename").field("type", "string").endObject()
+                        .startObject("contentType").field("type", "string").endObject()
+                        .startObject("md5").field("type", "string").endObject()
+                        .startObject("length").field("type", "long").endObject()
+                        .startObject("chunkSize").field("type", "long").endObject()
+                    .endObject()
+               .endObject()
+           .endObject();
         logger.info("GridFS Mapping: {}", mapping.string());
         return mapping;
     }
