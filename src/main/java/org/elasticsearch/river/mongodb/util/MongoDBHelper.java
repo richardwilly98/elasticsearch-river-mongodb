@@ -70,9 +70,9 @@ public abstract class MongoDBHelper {
 
         builder.startObject();
         builder.startObject("content");
-        builder.field("content_type", file.getContentType());
-        builder.field("title", file.getFilename());
-        builder.field("content", encodedContent);
+        builder.field("_content_type", file.getContentType());
+        builder.field("_title", file.getFilename());
+        builder.field("_content", encodedContent);
         builder.endObject();
         builder.field("filename", file.getFilename());
         builder.field("contentType", file.getContentType());
