@@ -9,7 +9,7 @@ import org.elasticsearch.river.mongodb.MongoDBRiver.QueueEntry;
  */
 public class SharedContext {
 
-    private BlockingQueue<QueueEntry> stream;
+    private final BlockingQueue<QueueEntry> stream;
     private Status status;
 
     public SharedContext(BlockingQueue<QueueEntry> stream, Status status) {
@@ -19,10 +19,6 @@ public class SharedContext {
 
     public BlockingQueue<QueueEntry> getStream() {
         return stream;
-    }
-
-    public void setStream(BlockingQueue<QueueEntry> stream) {
-        this.stream = stream;
     }
 
     public Status getStatus() {
