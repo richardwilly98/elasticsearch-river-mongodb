@@ -104,18 +104,21 @@ class Slurper implements Runnable {
 			BasicDBObject[] subCatDBObjects =  subCategoryList.toArray(new BasicDBObject[0]);
 			for(BasicDBObject basicDBObject:subCatDBObjects){
 				subcategoryMap.put(basicDBObject.get("id").toString(), basicDBObject.get("title").toString());
-				
-				BasicDBList TypeList = (BasicDBList)basicDBObject.get("types");
-				BasicDBObject[] typeDBObjects =  TypeList.toArray(new BasicDBObject[0]);
-				for(BasicDBObject basicDBObject1:typeDBObjects){
-					typeMap.put(basicDBObject1.get("id").toString(), basicDBObject1.get("name").toString());
+				BasicDBList typeList = (BasicDBList)basicDBObject.get("types");
+				if(typeList != null){
+					BasicDBObject[] typeDBObjects =  typeList.toArray(new BasicDBObject[0]);
+					for(BasicDBObject basicDBObject1:typeDBObjects){
+						typeMap.put(basicDBObject1.get("id").toString(), basicDBObject1.get("name").toString());
+					}
 				}
 			}
 
 			BasicDBList parentTypeList = (BasicDBList)dbObject.get("types");
+			if(parentTypeList != null){
 			BasicDBObject[] ParentTypeDBObjects =  parentTypeList.toArray(new BasicDBObject[0]);
-			for(BasicDBObject basicDBObject:ParentTypeDBObjects){
-				typeMap.put(basicDBObject.get("id").toString(), basicDBObject.get("name").toString());
+				for(BasicDBObject basicDBObject:ParentTypeDBObjects){
+					typeMap.put(basicDBObject.get("id").toString(), basicDBObject.get("name").toString());
+				}
 			}
 			}
 			
