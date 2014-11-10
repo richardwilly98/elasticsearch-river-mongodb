@@ -160,11 +160,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 return;
             }
 
-            MongoDBRiverHelper.setRiverStatus(esClient, riverName.getName(), Status.RUNNING);
-            this.context.setStatus(Status.RUNNING);
-            for (ServerAddress server : definition.getMongoServers()) {
-                logger.debug("Using mongodb server(s): host [{}], port [{}]", server.getHost(), server.getPort());
-            }
             // http://stackoverflow.com/questions/5270611/read-maven-properties-file-inside-jar-war-file
             logger.info("{} - {}", DESCRIPTION, MongoDBHelper.getRiverVersion());
             logger.info(
@@ -172,6 +167,16 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                     definition.isMongoSecondaryReadPreference(), definition.isDropCollection(), definition.getIncludeCollection(),
                     definition.getThrottleSize(), definition.isMongoGridFS(), definition.getMongoOplogFilter(), definition.getMongoDb(),
                     definition.getMongoCollection(), definition.getScript(), definition.getIndexName(), definition.getTypeName());
+
+
+            MongoDBRiverHelper.setRiverStatus(esClient, riverName.getName(), Status.RUNNING);
+            this.context.setStatus(Status.RUNNING);
+            for (ServerAddress server : definition.getMongoServers()) {
+                logger.debug("Using mongodb server(s): host [{}], port [{}]", server.getHost(), server.getPort());
+            }
+            statusThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_status:" + definition.getIndexName()).newThread(
+                    new StatusChecker(this, definition, context));
+            statusThread.start();
 
             // Create the index if it does not exist
             try {
@@ -243,10 +248,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             indexerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_indexer:" + definition.getIndexName()).newThread(
                     new Indexer(this, definition, context, esClient, scriptService));
             indexerThread.start();
-
-            statusThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_status:" + definition.getIndexName()).newThread(
-                    new StatusChecker(this, definition, context));
-            statusThread.start();
         } catch (Throwable t) {
             logger.warn("Fail to start river {}", t, riverName.getName());
             MongoDBRiverHelper.setRiverStatus(esClient, definition.getRiverName(), Status.START_FAILED);

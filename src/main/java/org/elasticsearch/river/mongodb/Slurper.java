@@ -87,15 +87,11 @@ class Slurper implements Runnable {
 
     @Override
     public void run() {
-        while (context.getStatus() == Status.RUNNING) {
-            if (definition.isSkipInitialImport() || definition.getInitialTimestamp() != null) {
-                logger.info("Skip initial import from collection {}", definition.getMongoCollection());
-                break;
-            }
-            if (riverHasIndexedFromOplog()) {
-                logger.trace("Initial import already completed.");
-                break;
-            }
+        if (definition.isSkipInitialImport() || definition.getInitialTimestamp() != null) {
+            logger.info("Skip initial import from collection {}", definition.getMongoCollection());
+        } else if (riverHasIndexedFromOplog()) {
+            logger.trace("Initial import already completed.");
+        } else {
             try {
                 if (!isIndexEmpty()) {
                     MongoDBRiverHelper.setRiverStatus(
@@ -232,7 +228,7 @@ class Slurper implements Runnable {
                     cursor = collection
                             .find(getFilterForInitialImport(definition.getMongoCollectionFilter(), lastId))
                             .sort(new BasicDBObject("_id", 1));
-                    while (cursor.hasNext()) {
+                    while (cursor.hasNext() && context.getStatus() == Status.RUNNING) {
                         DBObject object = cursor.next();
                         count++;
                         if (cursor.hasNext()) {
