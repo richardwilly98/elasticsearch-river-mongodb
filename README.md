@@ -141,6 +141,10 @@ License
 Changelog
 -------
 
+#### master
+- Update versions ES 1.4.0
+- Bug fix for initial import of sharded collections
+
 #### 2.0.2
 - Update versions ES 1.3.5, MongoDB 2.6.5, MongoDB driver 2.12.4, Java 7
 - Improved scaling for running multiple rivers and numerous bug fixes by @ankon of Collaborne B.V.

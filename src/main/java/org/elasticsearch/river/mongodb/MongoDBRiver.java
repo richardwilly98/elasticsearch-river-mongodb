@@ -212,6 +212,19 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 }
             }
 
+            // Replicate data roughly the same way MongoDB does
+            // https://groups.google.com/d/msg/mongodb-user/sOKlhD_E2ns/SvngoUHXtcAJ
+            //
+            // Steps:
+            // Get oplog timestamp
+            // Do the initial import
+            // Sync from the oplog of each shard starting at timestamp
+            //
+            // Notes
+            // Primary difference between river sync and MongoDB replica sync is that we ignore chunk migrations
+            // We only need to know about CRUD commands. If data moves from one MongoDB shard to another
+            // then we do not need to let ElasticSearch know that.
+            MongoClient mongoClusterClient = mongoClientService.getMongoClusterClient(definition);
             MongoConfigProvider configProvider = new MongoConfigProvider(mongoClientService, definition);
             MongoConfig config;
             while (true) {
@@ -223,21 +236,36 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 }
             }
 
+            Timestamp startTimestamp = null;
+            if (definition.getInitialTimestamp() != null) {
+                startTimestamp = definition.getInitialTimestamp();
+            } else if (getLastProcessedTimestamp() != null) {
+                startTimestamp = getLastProcessedTimestamp();
+            } else {
+                for (Shard shard : config.getShards()) {
+                    if (startTimestamp == null || shard.getLatestOplogTimestamp().compareTo(startTimestamp) < 1) {
+                        startTimestamp = shard.getLatestOplogTimestamp();
+                    }
+                }
+            }
+
+            CollectionSlurper importer = new CollectionSlurper(startTimestamp, mongoClusterClient, definition, context, esClient);
+            importer.run();
+
             // Tail the oplog
             if (config.isMongos()) {
                 for (Shard shard : config.getShards()) {
                     MongoClient mongoClient = mongoClientService.getMongoShardClient(definition, shard.getReplicas());
                     Thread tailerThread = EsExecutors.daemonThreadFactory(
                             settings.globalSettings(), "mongodb_river_slurper_" + shard.getName() + ":" + definition.getIndexName()
-                        ).newThread(new Slurper(shard.getLatestOplogTimestamp(), mongoClient, definition, context, esClient));
+                        ).newThread(new Slurper(shard.getLatestOplogTimestamp(), mongoClusterClient, mongoClient, definition, context, esClient));
                     tailerThreads.add(tailerThread);                   
                 }
             } else {
                 Shard shard = config.getShards().get(0);
-                MongoClient mongoClient = mongoClientService.getMongoClusterClient(definition);
                 Thread tailerThread = EsExecutors.daemonThreadFactory(
                         settings.globalSettings(), "mongodb_river_slurper_" + shard.getName() + ":" + definition.getIndexName()
-                    ).newThread(new Slurper(shard.getLatestOplogTimestamp(), mongoClient, definition, context, esClient));
+                    ).newThread(new Slurper(shard.getLatestOplogTimestamp(), mongoClusterClient, mongoClusterClient, definition, context, esClient));
                 tailerThreads.add(tailerThread);                   
             }
 
@@ -279,6 +307,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         } finally {
             this.context.setStatus(Status.STOPPED);
         }
+    }
+
+    protected Timestamp<?> getLastProcessedTimestamp() {
+      return MongoDBRiver.getLastTimestamp(esClient, definition);
     }
 
     private XContentBuilder getGridFSMapping() throws IOException {
