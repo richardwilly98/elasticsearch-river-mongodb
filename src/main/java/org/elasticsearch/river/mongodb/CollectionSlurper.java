@@ -31,20 +31,10 @@ import com.mongodb.gridfs.GridFSFile;
 
 class CollectionSlurper implements Runnable {
 
-    class SlurperException extends Exception {
-
-        private static final long serialVersionUID = 1L;
-
-        SlurperException(String message) {
-            super(message);
-        }
-    }
-
     private static final ESLogger logger = ESLoggerFactory.getLogger(CollectionSlurper.class.getName());
 
     private final MongoDBRiverDefinition definition;
     private final SharedContext context;
-    private final BasicDBObject findKeys;
     private final Client esClient;
     private final MongoClient mongoClient;
     private Timestamp<?> timestamp;
@@ -57,16 +47,6 @@ class CollectionSlurper implements Runnable {
         this.context = context;
         this.esClient = esClient;
         this.mongoClient = mongoClient;
-        this.findKeys = new BasicDBObject();
-        if (definition.getExcludeFields() != null) {
-            for (String key : definition.getExcludeFields()) {
-                findKeys.put(key, 0);
-            }
-        } else if (definition.getIncludeFields() != null) {
-            for (String key : definition.getIncludeFields()) {
-                findKeys.put(key, 1);
-            }
-        }
         this.slurpedDb = mongoClient.getDB(definition.getMongoDb());
     }
 

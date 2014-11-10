@@ -29,7 +29,7 @@ import com.mongodb.gridfs.GridFSDBFile;
 import com.mongodb.gridfs.GridFSFile;
 import com.mongodb.util.JSONSerializers;
 
-class Slurper implements Runnable {
+class OplogSlurper implements Runnable {
 
     class SlurperException extends Exception {
 
@@ -40,7 +40,7 @@ class Slurper implements Runnable {
         }
     }
 
-    private static final ESLogger logger = ESLoggerFactory.getLogger(Slurper.class.getName());
+    private static final ESLogger logger = ESLoggerFactory.getLogger(OplogSlurper.class.getName());
 
     private final MongoDBRiverDefinition definition;
     private final SharedContext context;
@@ -59,7 +59,7 @@ class Slurper implements Runnable {
     private final DBCollection oplogCollection, oplogRefsCollection;
     private final AtomicLong totalDocuments = new AtomicLong();
 
-    public Slurper(Timestamp<?> timestamp, MongoClient mongoClusterClient, MongoClient mongoShardClient, MongoDBRiverDefinition definition, SharedContext context, Client esClient) {
+    public OplogSlurper(Timestamp<?> timestamp, MongoClient mongoClusterClient, MongoClient mongoShardClient, MongoDBRiverDefinition definition, SharedContext context, Client esClient) {
         this.timestamp = timestamp;
         this.definition = definition;
         this.context = context;

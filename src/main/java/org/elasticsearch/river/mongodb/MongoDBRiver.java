@@ -258,14 +258,14 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                     MongoClient mongoClient = mongoClientService.getMongoShardClient(definition, shard.getReplicas());
                     Thread tailerThread = EsExecutors.daemonThreadFactory(
                             settings.globalSettings(), "mongodb_river_slurper_" + shard.getName() + ":" + definition.getIndexName()
-                        ).newThread(new Slurper(shard.getLatestOplogTimestamp(), mongoClusterClient, mongoClient, definition, context, esClient));
+                        ).newThread(new OplogSlurper(shard.getLatestOplogTimestamp(), mongoClusterClient, mongoClient, definition, context, esClient));
                     tailerThreads.add(tailerThread);                   
                 }
             } else {
                 Shard shard = config.getShards().get(0);
                 Thread tailerThread = EsExecutors.daemonThreadFactory(
                         settings.globalSettings(), "mongodb_river_slurper_" + shard.getName() + ":" + definition.getIndexName()
-                    ).newThread(new Slurper(shard.getLatestOplogTimestamp(), mongoClusterClient, mongoClusterClient, definition, context, esClient));
+                    ).newThread(new OplogSlurper(shard.getLatestOplogTimestamp(), mongoClusterClient, mongoClusterClient, definition, context, esClient));
                 tailerThreads.add(tailerThread);                   
             }
 
