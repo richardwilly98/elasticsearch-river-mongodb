@@ -122,7 +122,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     protected volatile List<Thread> tailerThreads = Lists.newArrayList();
     protected volatile Thread indexerThread;
     protected volatile Thread statusThread;
-    protected volatile boolean startInvoked = false;
 
     private final MongoClientService mongoClientService;
 
@@ -156,7 +155,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             }
             if (status == Status.STOPPED) {
                 logger.info("Cannot start river {}. It is currently disabled", riverName.getName());
-                startInvoked = true;
                 return;
             }
 
@@ -249,6 +247,11 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 }
             }
 
+            indexerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_indexer:" + definition.getIndexName()).newThread(
+                    new Indexer(this, definition, context, esClient, scriptService));
+            indexerThread.start();
+
+            // Import in main thread to block tailing the oplog            
             CollectionSlurper importer = new CollectionSlurper(startTimestamp, mongoClusterClient, definition, context, esClient);
             importer.run();
 
@@ -272,16 +275,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             for (Thread thread : tailerThreads) {
                 thread.start();
             }
-
-            indexerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_indexer:" + definition.getIndexName()).newThread(
-                    new Indexer(this, definition, context, esClient, scriptService));
-            indexerThread.start();
         } catch (Throwable t) {
             logger.warn("Fail to start river {}", t, riverName.getName());
             MongoDBRiverHelper.setRiverStatus(esClient, definition.getRiverName(), Status.START_FAILED);
             this.context.setStatus(Status.START_FAILED);
-        } finally {
-            startInvoked = true;
         }
     }
 
