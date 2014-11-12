@@ -276,7 +276,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 thread.start();
             }
         } catch (Throwable t) {
-            logger.warn("Fail to start river {}", t, riverName.getName());
+            logger.warn("Failed to start river {}", t, riverName.getName());
             MongoDBRiverHelper.setRiverStatus(esClient, definition.getRiverName(), Status.START_FAILED);
             this.context.setStatus(Status.START_FAILED);
         }
