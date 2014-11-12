@@ -152,10 +152,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             logger.error("Cannot start river {}. Current status is {}", riverName.getName(), status);
             return;
         }
-        if (status == Status.STOPPED) {
-            logger.info("Cannot start river {}. It is currently disabled", riverName.getName());
-            return;
-        }
 
         // http://stackoverflow.com/questions/5270611/read-maven-properties-file-inside-jar-war-file
         logger.info("{} - {}", DESCRIPTION, MongoDBHelper.getRiverVersion());
@@ -169,10 +165,18 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             logger.debug("Using mongodb server(s): host [{}], port [{}]", server.getHost(), server.getPort());
         }
 
-        // Mark the current status as "waiting for full start"
-        context.setStatus(Status.STARTING);
-        // Request start of the river in the next iteration of the status thread
-        MongoDBRiverHelper.setRiverStatus(esClient, riverName.getName(), Status.RUNNING);
+        if (status == Status.STOPPED) {
+            // Leave the current status of the river alone, but set the context status to 'stopped'.
+            // Enabling the river via REST will trigger the actual start.
+            context.setStatus(Status.STOPPED);
+
+            logger.info("River {} is currently disabled", riverName.getName());
+        } else {
+            // Mark the current status as "waiting for full start"
+            context.setStatus(Status.STARTING);
+            // Request start of the river in the next iteration of the status thread
+            MongoDBRiverHelper.setRiverStatus(esClient, riverName.getName(), Status.RUNNING);
+        }
 
         statusThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_status:" + definition.getIndexName()).newThread(
                 new StatusChecker(this, definition, context));
