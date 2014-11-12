@@ -334,7 +334,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
         // Cleanup the other parts (the status thread is gone, and can't do that for us anymore)
         internalStopRiver();
-        MongoDBRiverHelper.setRiverStatus(esClient, definition.getRiverName(), Status.STOPPED);
     }
 
     protected Timestamp<?> getLastProcessedTimestamp() {
