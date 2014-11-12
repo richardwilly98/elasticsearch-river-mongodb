@@ -145,37 +145,45 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
     @Override
     public void start() {
+        logger.info("Starting river {}", riverName.getName());
+        Status status = MongoDBRiverHelper.getRiverStatus(esClient, riverName.getName());
+        if (status == Status.IMPORT_FAILED || status == Status.INITIAL_IMPORT_FAILED || status == Status.SCRIPT_IMPORT_FAILED
+                || status == Status.START_FAILED) {
+            logger.error("Cannot start river {}. Current status is {}", riverName.getName(), status);
+            return;
+        }
+        if (status == Status.STOPPED) {
+            logger.info("Cannot start river {}. It is currently disabled", riverName.getName());
+            return;
+        }
+
+        // http://stackoverflow.com/questions/5270611/read-maven-properties-file-inside-jar-war-file
+        logger.info("{} - {}", DESCRIPTION, MongoDBHelper.getRiverVersion());
+        logger.info(
+                "starting mongodb stream. options: secondaryreadpreference [{}], drop_collection [{}], include_collection [{}], throttlesize [{}], gridfs [{}], filter [{}], db [{}], collection [{}], script [{}], indexing to [{}]/[{}]",
+                definition.isMongoSecondaryReadPreference(), definition.isDropCollection(), definition.getIncludeCollection(),
+                definition.getThrottleSize(), definition.isMongoGridFS(), definition.getMongoOplogFilter(), definition.getMongoDb(),
+                definition.getMongoCollection(), definition.getScript(), definition.getIndexName(), definition.getTypeName());
+
+        for (ServerAddress server : definition.getMongoServers()) {
+            logger.debug("Using mongodb server(s): host [{}], port [{}]", server.getHost(), server.getPort());
+        }
+
+        // Mark the current status as "waiting for full start"
+        context.setStatus(Status.STARTING);
+        // Request start of the river in the next iteration of the status thread
+        MongoDBRiverHelper.setRiverStatus(esClient, riverName.getName(), Status.RUNNING);
+
+        statusThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_status:" + definition.getIndexName()).newThread(
+                new StatusChecker(this, definition, context));
+        statusThread.start();
+    }
+
+    /**
+     * Execute actions to (re-)start the river on this node.
+     */
+    public void internalStartRiver() {
         try {
-            logger.info("Starting river {}", riverName.getName());
-            Status status = MongoDBRiverHelper.getRiverStatus(esClient, riverName.getName());
-            if (status == Status.IMPORT_FAILED || status == Status.INITIAL_IMPORT_FAILED || status == Status.SCRIPT_IMPORT_FAILED
-                    || status == Status.START_FAILED) {
-                logger.error("Cannot start river {}. Current status is {}", riverName.getName(), status);
-                return;
-            }
-            if (status == Status.STOPPED) {
-                logger.info("Cannot start river {}. It is currently disabled", riverName.getName());
-                return;
-            }
-
-            // http://stackoverflow.com/questions/5270611/read-maven-properties-file-inside-jar-war-file
-            logger.info("{} - {}", DESCRIPTION, MongoDBHelper.getRiverVersion());
-            logger.info(
-                    "starting mongodb stream. options: secondaryreadpreference [{}], drop_collection [{}], include_collection [{}], throttlesize [{}], gridfs [{}], filter [{}], db [{}], collection [{}], script [{}], indexing to [{}]/[{}]",
-                    definition.isMongoSecondaryReadPreference(), definition.isDropCollection(), definition.getIncludeCollection(),
-                    definition.getThrottleSize(), definition.isMongoGridFS(), definition.getMongoOplogFilter(), definition.getMongoDb(),
-                    definition.getMongoCollection(), definition.getScript(), definition.getIndexName(), definition.getTypeName());
-
-
-            MongoDBRiverHelper.setRiverStatus(esClient, riverName.getName(), Status.RUNNING);
-            this.context.setStatus(Status.RUNNING);
-            for (ServerAddress server : definition.getMongoServers()) {
-                logger.debug("Using mongodb server(s): host [{}], port [{}]", server.getHost(), server.getPort());
-            }
-            statusThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_status:" + definition.getIndexName()).newThread(
-                    new StatusChecker(this, definition, context));
-            statusThread.start();
-
             // Create the index if it does not exist
             try {
                 if (!esClient.admin().indices().prepareExists(definition.getIndexName()).get().isExists()) {
@@ -247,6 +255,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 }
             }
 
+            // All good, mark the context as "running"
+            context.setStatus(Status.RUNNING);
+
             indexerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_indexer:" + definition.getIndexName()).newThread(
                     new Indexer(this, definition, context, esClient, scriptService));
             indexerThread.start();
@@ -278,18 +289,19 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         } catch (Throwable t) {
             logger.warn("Failed to start river {}", t, riverName.getName());
             MongoDBRiverHelper.setRiverStatus(esClient, definition.getRiverName(), Status.START_FAILED);
-            this.context.setStatus(Status.START_FAILED);
+            context.setStatus(Status.START_FAILED);
         }
     }
 
-    @Override
-    public void close() {
-        logger.info("Closing river {}", riverName.getName());
+    /**
+     * Execute actions to stop this river.
+     *
+     * The status thread will not be touched, and the river can be restarted by setting its status again
+     * to {@link Status#RUNNING}.
+     */
+    public void internalStopRiver() {
+        logger.info("Stopping river {}", riverName.getName());
         try {
-            if (statusThread != null) {
-                statusThread.interrupt();
-                statusThread = null;
-            }
             for (Thread thread : tailerThreads) {
                 thread.interrupt();
                 thread = null;
@@ -304,6 +316,21 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         } finally {
             this.context.setStatus(Status.STOPPED);
         }
+    }
+
+    @Override
+    public void close() {
+        logger.info("Closing river {}", riverName.getName());
+
+        // Stop the status thread completely, it will be re-started by #start()
+        if (statusThread != null) {
+            statusThread.interrupt();
+            statusThread = null;
+        }
+
+        // Cleanup the other parts (the status thread is gone, and can't do that for us anymore)
+        internalStopRiver();
+        MongoDBRiverHelper.setRiverStatus(esClient, definition.getRiverName(), Status.STOPPED);
     }
 
     protected Timestamp<?> getLastProcessedTimestamp() {
