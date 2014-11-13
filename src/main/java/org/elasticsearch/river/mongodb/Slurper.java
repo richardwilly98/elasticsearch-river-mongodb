@@ -68,7 +68,6 @@ class Slurper implements Runnable {
     private DBCollection oplogCollection;
     private final AtomicLong totalDocuments = new AtomicLong();
     private static Map<String,String> categoryMap = new HashMap<String,String>();
-    private static Map<String,String> subcategoryMap = new HashMap<String,String>();
     private static Map<String,String> typeMap = new HashMap<String,String>();
 
 
@@ -103,7 +102,7 @@ class Slurper implements Runnable {
 			BasicDBList subCategoryList = (BasicDBList)dbObject.get("sub_categories");
 			BasicDBObject[] subCatDBObjects =  subCategoryList.toArray(new BasicDBObject[0]);
 			for(BasicDBObject basicDBObject:subCatDBObjects){
-				subcategoryMap.put(basicDBObject.get("id").toString(), basicDBObject.get("title").toString());
+				categoryMap.put(basicDBObject.get("id").toString(), basicDBObject.get("title").toString());
 				BasicDBList typeList = (BasicDBList)basicDBObject.get("types");
 				if(typeList != null){
 					BasicDBObject[] typeDBObjects =  typeList.toArray(new BasicDBObject[0]);
@@ -764,16 +763,10 @@ class Slurper implements Runnable {
 			Integer i = new Double(obj.toString()).intValue();
 			if(categoryMap.get(i.toString()) != null){
 				Map<String,String> addCategoryMap = new HashMap<String,String>();
-				addCategoryMap.put("cat_id", i.toString());
+				addCategoryMap.put("id", i.toString());
 				addCategoryMap.put("category_name", categoryMap.get(i.toString()));
 				categoryAddList.add(addCategoryMap);
-			}else if(subcategoryMap.get(i.toString()) != null){
-				Map<String,String> addSubCategoryMap = new HashMap<String,String>();
-				addSubCategoryMap.put("subcat_id", i.toString());
-				addSubCategoryMap.put("subcategory_name", subcategoryMap.get(i.toString()));
-				categoryAddList.add(addSubCategoryMap);
-			}
-			if(categoryMap.get(i.toString()) == null && subcategoryMap.get(i.toString()) == null){
+			}else{
 				condition = 1;
 			}
 		}
