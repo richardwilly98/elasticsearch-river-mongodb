@@ -772,7 +772,7 @@ class Slurper implements Runnable {
 				Map<String,String> addSubCategoryMap = new HashMap<String,String>();
 				addSubCategoryMap.put("subcat_id", i.toString());
 				addSubCategoryMap.put("subcategory_name", subcategoryMap.get(i.toString()));
-				addCategoryMap.put("category", subcategoryMap.get(i.toString()));
+				addSubCategoryMap.put("category", subcategoryMap.get(i.toString()));
 				categoryAddList.add(addSubCategoryMap);
 			}
 			if(categoryMap.get(i.toString()) == null && subcategoryMap.get(i.toString()) == null){
