@@ -316,7 +316,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 indexerThread = null;
             }
         } catch (Throwable t) {
-            logger.error("Fail to close river {}", t, riverName.getName());
+            logger.error("Failed to stop river {}", t, riverName.getName());
         } finally {
             this.context.setStatus(Status.STOPPED);
         }
