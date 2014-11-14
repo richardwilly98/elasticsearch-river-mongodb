@@ -186,7 +186,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     /**
      * Execute actions to (re-)start the river on this node.
      */
-    public void internalStartRiver() {
+    void internalStartRiver() {
         try {
             // Create the index if it does not exist
             try {
@@ -303,7 +303,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
      * The status thread will not be touched, and the river can be restarted by setting its status again
      * to {@link Status#RUNNING}.
      */
-    public void internalStopRiver() {
+    void internalStopRiver() {
         logger.info("Stopping river {}", riverName.getName());
         try {
             for (Thread thread : tailerThreads) {
