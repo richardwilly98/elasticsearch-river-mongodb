@@ -170,7 +170,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             // Enabling the river via REST will trigger the actual start.
             context.setStatus(Status.STOPPED);
 
-            logger.info("River {} is currently disabled", riverName.getName());
+            logger.info("River {} is currently disabled and will not be started", riverName.getName());
         } else {
             // Mark the current status as "waiting for full start"
             context.setStatus(Status.STARTING);
