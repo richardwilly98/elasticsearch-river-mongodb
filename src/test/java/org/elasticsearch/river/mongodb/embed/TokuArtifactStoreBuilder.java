@@ -7,7 +7,7 @@ import de.flapdoodle.embed.process.distribution.Platform;
 import de.flapdoodle.embed.process.extract.UUIDTempNaming;
 import de.flapdoodle.embed.process.io.directories.PropertyOrPlatformTempDir;
 
-public class TokuArtifactStoreBuilder extends de.flapdoodle.embed.process.store.ArtifactStore2Builder {
+public class TokuArtifactStoreBuilder extends de.flapdoodle.embed.process.store.ArtifactStoreBuilder {
 
     public TokuArtifactStoreBuilder defaults(Command command) {
         tempDir().setDefault(new PropertyOrPlatformTempDir());
