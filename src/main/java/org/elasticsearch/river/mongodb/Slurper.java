@@ -70,6 +70,9 @@ class Slurper implements Runnable {
     private static Map<String,String> categoryMap = new HashMap<String,String>();
     private static Map<String,String> subcategoryMap = new HashMap<String,String>();
     private static Map<String,String> typeMap = new HashMap<String,String>();
+    private static Map<String,String> categoryURIMap = new HashMap<String,String>();
+    private static Map<String,String> subcategoryURIMap = new HashMap<String,String>();
+    private static Map<String,String> typeURIMap = new HashMap<String,String>();
 
 
     public Slurper(List<ServerAddress> mongoServers, MongoDBRiverDefinition definition, SharedContext context, Client client) {
@@ -99,16 +102,21 @@ class Slurper implements Runnable {
 
 			DBObject dbObject = dbCursor.next();
 			categoryMap.put(dbObject.get("id").toString(), dbObject.get("title").toString());
+			categoryURIMap.put(dbObject.get("id").toString(), String.valueOf(dbObject.get("uri")));
+
 			if(dbObject.get("sub_categories") != null){
 			BasicDBList subCategoryList = (BasicDBList)dbObject.get("sub_categories");
 			BasicDBObject[] subCatDBObjects =  subCategoryList.toArray(new BasicDBObject[0]);
 			for(BasicDBObject basicDBObject:subCatDBObjects){
 				subcategoryMap.put(basicDBObject.get("id").toString(), basicDBObject.get("title").toString());
+				subcategoryURIMap.put(basicDBObject.get("id").toString(), String.valueOf(basicDBObject.get("uri")));
+
 				BasicDBList typeList = (BasicDBList)basicDBObject.get("types");
 				if(typeList != null){
 					BasicDBObject[] typeDBObjects =  typeList.toArray(new BasicDBObject[0]);
 					for(BasicDBObject basicDBObject1:typeDBObjects){
 						typeMap.put(basicDBObject1.get("id").toString(), basicDBObject1.get("name").toString());
+						typeURIMap.put(basicDBObject1.get("id").toString(), String.valueOf(basicDBObject1.get("uri")));
 					}
 				}
 			}
@@ -118,11 +126,13 @@ class Slurper implements Runnable {
 			BasicDBObject[] ParentTypeDBObjects =  parentTypeList.toArray(new BasicDBObject[0]);
 				for(BasicDBObject basicDBObject:ParentTypeDBObjects){
 					typeMap.put(basicDBObject.get("id").toString(), basicDBObject.get("name").toString());
+					typeURIMap.put(basicDBObject.get("id").toString(), String.valueOf(basicDBObject.get("uri")));
 				}
 			}
 			}
 			
 		}
+		
 	}
     
     @Override
@@ -767,12 +777,16 @@ class Slurper implements Runnable {
 				addCategoryMap.put("cat_id", i.toString());
 				addCategoryMap.put("category_name", categoryMap.get(i.toString()));
 				addCategoryMap.put("category", categoryMap.get(i.toString()));
+				addCategoryMap.put("category_uri", categoryURIMap.get(i.toString()));
+
 				categoryAddList.add(addCategoryMap);
 			}else if(subcategoryMap.get(i.toString()) != null){
 				Map<String,String> addSubCategoryMap = new HashMap<String,String>();
 				addSubCategoryMap.put("subcat_id", i.toString());
 				addSubCategoryMap.put("subcategory_name", subcategoryMap.get(i.toString()));
 				addSubCategoryMap.put("category", subcategoryMap.get(i.toString()));
+				addSubCategoryMap.put("subcategory_uri", subcategoryURIMap.get(i.toString()));
+
 				categoryAddList.add(addSubCategoryMap);
 			}
 			if(categoryMap.get(i.toString()) == null && subcategoryMap.get(i.toString()) == null){
@@ -789,6 +803,7 @@ class Slurper implements Runnable {
 			Map<String,String> addTypeMap = new HashMap<String,String>();
 			addTypeMap.put("id", i.toString());
 			addTypeMap.put("product_type", typeMap.get(i.toString()));
+			addTypeMap.put("type_uri", typeURIMap.get(i.toString()));
 			typeAddList.add(addTypeMap);
 			if(typeMap.get(i.toString()) == null){
 				condition = 1;
