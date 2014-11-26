@@ -1,3 +1,12 @@
+Issue Tracker
+==================================
+
+This project is maintained in the spare time of contributors and so time able to be dedicated to it is extremely limited.
+
+Please file issues only for reproducable problems. Given our limited time, we are not able to provide any help using the river and issues that simply say "things aren't working" will be closed. However, if you're able to diagnose an issue yourself we may be able to help with a fix and we are happy to review pull requests.
+
+To debug issues, try changing the log level to trace as described in [the wiki](https://github.com/richardwilly98/elasticsearch-river-mongodb/wiki). You may wish to build a custom version of the river with extra logging.
+
 MongoDB River Plugin for ElasticSearch
 ==================================
 
