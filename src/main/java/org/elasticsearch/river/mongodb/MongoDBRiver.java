@@ -119,7 +119,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     protected final ScriptService scriptService;
     protected final SharedContext context;
 
-    protected volatile List<Thread> tailerThreads = Lists.newArrayList();
+    protected final List<Thread> tailerThreads = Lists.newArrayList();
     protected volatile Thread indexerThread;
     protected volatile Thread statusThread;
 
