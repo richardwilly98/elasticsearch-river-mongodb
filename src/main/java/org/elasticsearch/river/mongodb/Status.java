@@ -3,7 +3,9 @@ package org.elasticsearch.river.mongodb;
 public enum Status {
 
     UNKNOWN,
-    /** River is starting up */
+    /** River should be started */
+    START_PENDING,
+    /** River is actually starting up */
     STARTING,
     START_FAILED,
     RUNNING,

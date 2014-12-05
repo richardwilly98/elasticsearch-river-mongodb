@@ -120,6 +120,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     protected final SharedContext context;
 
     protected final List<Thread> tailerThreads = Lists.newArrayList();
+    protected volatile Thread startupThread;
     protected volatile Thread indexerThread;
     protected volatile Thread statusThread;
 
@@ -173,7 +174,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             logger.info("River {} is currently disabled and will not be started", riverName.getName());
         } else {
             // Mark the current status as "waiting for full start"
-            context.setStatus(Status.STARTING);
+            context.setStatus(Status.START_PENDING);
             // Request start of the river in the next iteration of the status thread
             MongoDBRiverHelper.setRiverStatus(esClient, riverName.getName(), Status.RUNNING);
         }
@@ -187,114 +188,134 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
      * Execute actions to (re-)start the river on this node.
      */
     void internalStartRiver() {
-        try {
-            // Create the index if it does not exist
-            try {
-                if (!esClient.admin().indices().prepareExists(definition.getIndexName()).get().isExists()) {
-                    esClient.admin().indices().prepareCreate(definition.getIndexName()).get();
-                }
-            } catch (Exception e) {
-                if (ExceptionsHelper.unwrapCause(e) instanceof IndexAlreadyExistsException) {
-                    // that's fine
-                } else if (ExceptionsHelper.unwrapCause(e) instanceof ClusterBlockException) {
-                    // ok, not recovered yet..., lets start indexing and hope we
-                    // recover by the first bulk
-                    // TODO: a smarter logic can be to register for cluster
-                    // event
-                    // listener here, and only start sampling when the
-                    // block is removed...
-                } else {
-                    logger.error("failed to create index [{}], disabling river...", e, definition.getIndexName());
-                    return;
-                }
-            }
-
-            // GridFS
-            if (definition.isMongoGridFS()) {
-                try {
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("Set explicit attachment mapping.");
-                    }
-                    esClient.admin().indices().preparePutMapping(definition.getIndexName()).setType(definition.getTypeName())
-                            .setSource(getGridFSMapping()).get();
-                } catch (Exception e) {
-                    logger.warn("Failed to set explicit mapping (attachment): {}", e);
-                }
-            }
-
-            // Replicate data roughly the same way MongoDB does
-            // https://groups.google.com/d/msg/mongodb-user/sOKlhD_E2ns/SvngoUHXtcAJ
-            //
-            // Steps:
-            // Get oplog timestamp
-            // Do the initial import
-            // Sync from the oplog of each shard starting at timestamp
-            //
-            // Notes
-            // Primary difference between river sync and MongoDB replica sync is that we ignore chunk migrations
-            // We only need to know about CRUD commands. If data moves from one MongoDB shard to another
-            // then we do not need to let ElasticSearch know that.
-            MongoClient mongoClusterClient = mongoClientService.getMongoClusterClient(definition);
-            MongoConfigProvider configProvider = new MongoConfigProvider(mongoClientService, definition);
-            MongoConfig config;
-            while (true) {
-                try {
-                    config = configProvider.call();
-                    break;
-                } catch(MongoSocketException | MongoTimeoutException e) {
-                    Thread.sleep(MONGODB_RETRY_ERROR_DELAY_MS);
-                }
-            }
-
-            Timestamp startTimestamp = null;
-            if (definition.getInitialTimestamp() != null) {
-                startTimestamp = definition.getInitialTimestamp();
-            } else if (getLastProcessedTimestamp() != null) {
-                startTimestamp = getLastProcessedTimestamp();
-            } else {
-                for (Shard shard : config.getShards()) {
-                    if (startTimestamp == null || shard.getLatestOplogTimestamp().compareTo(startTimestamp) < 1) {
-                        startTimestamp = shard.getLatestOplogTimestamp();
-                    }
-                }
-            }
-
-            // All good, mark the context as "running"
-            context.setStatus(Status.RUNNING);
-
-            indexerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_indexer:" + definition.getIndexName()).newThread(
-                    new Indexer(this, definition, context, esClient, scriptService));
-            indexerThread.start();
-
-            // Import in main thread to block tailing the oplog            
-            CollectionSlurper importer = new CollectionSlurper(startTimestamp, mongoClusterClient, definition, context, esClient);
-            importer.run();
-
-            // Tail the oplog
-            if (config.isMongos()) {
-                for (Shard shard : config.getShards()) {
-                    MongoClient mongoClient = mongoClientService.getMongoShardClient(definition, shard.getReplicas());
-                    Thread tailerThread = EsExecutors.daemonThreadFactory(
-                            settings.globalSettings(), "mongodb_river_slurper_" + shard.getName() + ":" + definition.getIndexName()
-                        ).newThread(new OplogSlurper(shard.getLatestOplogTimestamp(), mongoClusterClient, mongoClient, definition, context, esClient));
-                    tailerThreads.add(tailerThread);                   
-                }
-            } else {
-                Shard shard = config.getShards().get(0);
-                Thread tailerThread = EsExecutors.daemonThreadFactory(
-                        settings.globalSettings(), "mongodb_river_slurper_" + shard.getName() + ":" + definition.getIndexName()
-                    ).newThread(new OplogSlurper(shard.getLatestOplogTimestamp(), mongoClusterClient, mongoClusterClient, definition, context, esClient));
-                tailerThreads.add(tailerThread);                   
-            }
-
-            for (Thread thread : tailerThreads) {
-                thread.start();
-            }
-        } catch (Throwable t) {
-            logger.warn("Failed to start river {}", t, riverName.getName());
-            MongoDBRiverHelper.setRiverStatus(esClient, definition.getRiverName(), Status.START_FAILED);
-            context.setStatus(Status.START_FAILED);
+        if (startupThread != null) {
+            // Already processing a request to start up the river, so ignore
+            // this call.
+            return;
         }
+        // Update the status: we're busy starting now.
+        context.setStatus(Status.STARTING);
+
+        Runnable startupRunnable = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    // Create the index if it does not exist
+                    try {
+                        if (!esClient.admin().indices().prepareExists(definition.getIndexName()).get().isExists()) {
+                            esClient.admin().indices().prepareCreate(definition.getIndexName()).get();
+                        }
+                    } catch (Exception e) {
+                        if (ExceptionsHelper.unwrapCause(e) instanceof IndexAlreadyExistsException) {
+                            // that's fine
+                        } else if (ExceptionsHelper.unwrapCause(e) instanceof ClusterBlockException) {
+                            // ok, not recovered yet..., lets start indexing and hope we
+                            // recover by the first bulk
+                            // TODO: a smarter logic can be to register for cluster
+                            // event
+                            // listener here, and only start sampling when the
+                            // block is removed...
+                        } else {
+                            logger.error("failed to create index [{}], disabling river...", e, definition.getIndexName());
+                            return;
+                        }
+                    }
+
+                    // GridFS
+                    if (definition.isMongoGridFS()) {
+                        try {
+                            if (logger.isDebugEnabled()) {
+                                logger.debug("Set explicit attachment mapping.");
+                            }
+                            esClient.admin().indices().preparePutMapping(definition.getIndexName()).setType(definition.getTypeName())
+                                    .setSource(getGridFSMapping()).get();
+                        } catch (Exception e) {
+                            logger.warn("Failed to set explicit mapping (attachment): {}", e);
+                        }
+                    }
+
+                    // Replicate data roughly the same way MongoDB does
+                    // https://groups.google.com/d/msg/mongodb-user/sOKlhD_E2ns/SvngoUHXtcAJ
+                    //
+                    // Steps:
+                    // Get oplog timestamp
+                    // Do the initial import
+                    // Sync from the oplog of each shard starting at timestamp
+                    //
+                    // Notes
+                    // Primary difference between river sync and MongoDB replica sync is that we ignore chunk migrations
+                    // We only need to know about CRUD commands. If data moves from one MongoDB shard to another
+                    // then we do not need to let ElasticSearch know that.
+                    MongoClient mongoClusterClient = mongoClientService.getMongoClusterClient(definition);
+                    MongoConfigProvider configProvider = new MongoConfigProvider(mongoClientService, definition);
+                    MongoConfig config;
+                    while (true) {
+                        try {
+                            config = configProvider.call();
+                            break;
+                        } catch(MongoSocketException | MongoTimeoutException e) {
+                            Thread.sleep(MONGODB_RETRY_ERROR_DELAY_MS);
+                        }
+                    }
+
+                    Timestamp startTimestamp = null;
+                    if (definition.getInitialTimestamp() != null) {
+                        startTimestamp = definition.getInitialTimestamp();
+                    } else if (getLastProcessedTimestamp() != null) {
+                        startTimestamp = getLastProcessedTimestamp();
+                    } else {
+                        for (Shard shard : config.getShards()) {
+                            if (startTimestamp == null || shard.getLatestOplogTimestamp().compareTo(startTimestamp) < 1) {
+                                startTimestamp = shard.getLatestOplogTimestamp();
+                            }
+                        }
+                    }
+
+                    // All good, mark the context as "running" now: this
+                    // status value is used as termination condition for the threads we're going to start now.
+                    context.setStatus(Status.RUNNING);
+
+                    indexerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_indexer:" + definition.getIndexName()).newThread(
+                            new Indexer(MongoDBRiver.this, definition, context, esClient, scriptService));
+                    indexerThread.start();
+
+                    // Import in main thread to block tailing the oplog
+                    CollectionSlurper importer = new CollectionSlurper(startTimestamp, mongoClusterClient, definition, context, esClient);
+                    importer.run();
+
+                    // Tail the oplog
+                    if (config.isMongos()) {
+                        for (Shard shard : config.getShards()) {
+                            MongoClient mongoClient = mongoClientService.getMongoShardClient(definition, shard.getReplicas());
+                            Thread tailerThread = EsExecutors.daemonThreadFactory(
+                                    settings.globalSettings(), "mongodb_river_slurper_" + shard.getName() + ":" + definition.getIndexName()
+                                ).newThread(new OplogSlurper(shard.getLatestOplogTimestamp(), mongoClusterClient, mongoClient, definition, context, esClient));
+                            tailerThreads.add(tailerThread);
+                        }
+                    } else {
+                        Shard shard = config.getShards().get(0);
+                        Thread tailerThread = EsExecutors.daemonThreadFactory(
+                                settings.globalSettings(), "mongodb_river_slurper_" + shard.getName() + ":" + definition.getIndexName()
+                            ).newThread(new OplogSlurper(shard.getLatestOplogTimestamp(), mongoClusterClient, mongoClusterClient, definition, context, esClient));
+                        tailerThreads.add(tailerThread);
+                    }
+
+                    for (Thread thread : tailerThreads) {
+                        thread.start();
+                    }
+                } catch (Throwable t) {
+                    logger.warn("Failed to start river {}", t, riverName.getName());
+                    MongoDBRiverHelper.setRiverStatus(esClient, definition.getRiverName(), Status.START_FAILED);
+                    context.setStatus(Status.START_FAILED);
+                } finally {
+                    // Startup is fully done
+                    startupThread = null;
+                }
+            }
+        };
+        startupThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_startup:" + definition.getIndexName()).newThread(
+                startupRunnable);
+        startupThread.start();
     }
 
     /**
@@ -306,6 +327,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     void internalStopRiver() {
         logger.info("Stopping river {}", riverName.getName());
         try {
+            if (startupThread != null) {
+                startupThread.interrupt();
+                startupThread = null;
+            }
             for (Thread thread : tailerThreads) {
                 thread.interrupt();
                 thread = null;
