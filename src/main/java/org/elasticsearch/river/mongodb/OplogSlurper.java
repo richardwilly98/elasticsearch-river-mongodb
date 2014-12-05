@@ -119,11 +119,11 @@ class OplogSlurper implements Runnable {
             } catch (SlurperException e) {
                 logger.error("Exception in slurper", e);
                 Thread.currentThread().interrupt();
-                return;
+                break;
             } catch (MongoInterruptedException | InterruptedException e) {
                 logger.info("river-mongodb slurper interrupted");
                 Thread.currentThread().interrupt();
-                return;
+                break;
             } catch (MongoSocketException | MongoTimeoutException | MongoCursorNotFoundException e) {
                 logger.info("Oplog tailing - {} - {}. Will retry.", e.getClass().getSimpleName(), e.getMessage());
                 logger.debug("Total documents inserted so far by river {}: {}", definition.getRiverName(), totalDocuments.get());
@@ -132,12 +132,12 @@ class OplogSlurper implements Runnable {
                 } catch (InterruptedException iEx) {
                     logger.info("river-mongodb slurper interrupted");
                     Thread.currentThread().interrupt();
-                    return;
+                    break;
                 }
             } catch (Exception e) {
                 logger.error("Exception while looping in cursor", e);
                 Thread.currentThread().interrupt();
-                return;
+                break;
             }
         }
         logger.info("Slurper is stopping. River has status {}", context.getStatus());
