@@ -98,10 +98,6 @@ class CollectionSlurper {
         }
     }
 
-    protected boolean riverHasIndexedFromOplog() {
-        return MongoDBRiver.getLastTimestamp(esClient, definition) != null;
-    }
-
     protected boolean isIndexEmpty() {
         return MongoDBRiver.getIndexCount(esClient, definition) == 0;
     }
