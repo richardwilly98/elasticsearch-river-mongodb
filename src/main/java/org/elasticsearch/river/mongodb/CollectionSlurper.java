@@ -37,12 +37,10 @@ class CollectionSlurper {
     private final SharedContext context;
     private final Client esClient;
     private final MongoClient mongoClient;
-    private Timestamp<?> timestamp;
     private final DB slurpedDb;
     private final AtomicLong totalDocuments = new AtomicLong();
 
-    public CollectionSlurper(Timestamp<?> timestamp, MongoClient mongoClient, MongoDBRiverDefinition definition, SharedContext context, Client esClient) {
-        this.timestamp = timestamp;
+    public CollectionSlurper(MongoClient mongoClient, MongoDBRiverDefinition definition, SharedContext context, Client esClient) {
         this.definition = definition;
         this.context = context;
         this.esClient = esClient;
@@ -52,8 +50,10 @@ class CollectionSlurper {
 
     /**
      * Import initial contents from the {@code definition}
+     *
+     * @param timestamp the timestamp to use for the last imported document
      */
-    public void importInitial() {
+    public void importInitial(Timestamp<?> timestamp) {
         if (definition.isSkipInitialImport() || definition.getInitialTimestamp() != null) {
             logger.info("Skip initial import from collection {}", definition.getMongoCollection());
         } else if (riverHasIndexedFromOplog()) {
@@ -73,12 +73,12 @@ class CollectionSlurper {
                     for (String name : slurpedDb.getCollectionNames()) {
                         if (name.length() < 7 || !name.substring(0, 7).equals("system.")) {
                             DBCollection collection = slurpedDb.getCollection(name);
-                            importCollection(collection);
+                            importCollection(collection, timestamp);
                         }
                     }
                 } else {
                     DBCollection collection = slurpedDb.getCollection(definition.getMongoCollection());
-                    importCollection(collection);
+                    importCollection(collection, timestamp);
                 }
                 logger.debug("Before waiting for 500 ms");
                 Thread.sleep(500);
@@ -116,10 +116,11 @@ class CollectionSlurper {
      * Import a single collection into the index
      *
      * @param collection the collection to import
+     * @param timestamp the timestamp to use for the last imported document
      * @throws InterruptedException
      *             if the blocking queue stream is interrupted while waiting
      */
-    public void importCollection(DBCollection collection) throws InterruptedException {
+    public void importCollection(DBCollection collection, Timestamp<?> timestamp) throws InterruptedException {
         // TODO: ensure the index type is empty
         // DBCollection slurpedCollection =
         // slurpedDb.getCollection(definition.getMongoCollection());

@@ -318,8 +318,8 @@ class OplogSlurper implements Runnable {
                 if (to.startsWith(definition.getMongoDb())) {
                     String newCollection = getCollectionFromNamespace(to);
                     DBCollection coll = slurpedDb.getCollection(newCollection);
-                    CollectionSlurper importer = new CollectionSlurper(timestamp, mongoClusterClient, definition, context, esClient);
-                    importer.importCollection(coll);
+                    CollectionSlurper importer = new CollectionSlurper(mongoClusterClient, definition, context, esClient);
+                    importer.importCollection(coll, timestamp);
                 }
             }
         }
