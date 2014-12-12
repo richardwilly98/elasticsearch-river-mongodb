@@ -21,6 +21,7 @@ import org.testng.annotations.Test;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.DBObject;
+import com.mongodb.DBRef;
 import com.mongodb.WriteConcern;
 import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
@@ -69,15 +70,17 @@ public class RiverMongoDbRefTest extends RiverMongoDBTestAbstract {
             WriteResult result = mongoCollection.insert(dbObject);
             Thread.sleep(wait);
             String id = dbObject.get("_id").toString();
+            String categoryId = ((DBRef) dbObject.get("category")).getId().toString();
             logger.info("WriteResult: {}", result.toString());
             ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices()
                     .exists(new IndicesExistsRequest(getIndex()));
             assertThat(response.actionGet().isExists(), equalTo(true));
             refreshIndex();
             SearchRequest search = getNode().client().prepareSearch(getIndex())
-                    .setQuery(QueryBuilders.queryString("5194272CFDEA65E5D6000021").defaultField("category.id")).request();
+                    .setQuery(QueryBuilders.queryString(categoryId).defaultField("category.id")).request();
             SearchResponse searchResponse = getNode().client().search(search).actionGet();
             assertThat(searchResponse.getHits().getTotalHits(), equalTo(1l));
+            assertThat(searchResponse.getHits().getAt(0).getId(), equalTo(id));
 
             search = getNode().client().prepareSearch(getIndex()).setQuery(new QueryStringQueryBuilder("testing").defaultField("innerDoc.innerThing"))
                     .request();
