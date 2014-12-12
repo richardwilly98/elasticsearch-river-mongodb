@@ -20,7 +20,6 @@ package org.elasticsearch.river.mongodb.gridfs;
 
 import static org.elasticsearch.client.Requests.countRequest;
 import static org.elasticsearch.client.Requests.getRequest;
-import static org.elasticsearch.client.Requests.indexRequest;
 import static org.elasticsearch.common.io.Streams.copyToBytesFromClasspath;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
