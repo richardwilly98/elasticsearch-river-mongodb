@@ -286,7 +286,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
                     // Import in main thread to block tailing the oplog
                     CollectionSlurper importer = new CollectionSlurper(startTimestamp, mongoClusterClient, definition, context, esClient);
-                    importer.run();
+                    importer.importInitial();
 
                     // Tail the oplog
                     // NB: In a non-mongos environment the config will report a single shard, with the servers used for the connection as the replicas.

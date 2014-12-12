@@ -29,7 +29,7 @@ import com.mongodb.gridfs.GridFS;
 import com.mongodb.gridfs.GridFSDBFile;
 import com.mongodb.gridfs.GridFSFile;
 
-class CollectionSlurper implements Runnable {
+class CollectionSlurper {
 
     private static final ESLogger logger = ESLoggerFactory.getLogger(CollectionSlurper.class.getName());
 
@@ -50,8 +50,10 @@ class CollectionSlurper implements Runnable {
         this.slurpedDb = mongoClient.getDB(definition.getMongoDb());
     }
 
-    @Override
-    public void run() {
+    /**
+     * Import initial contents from the {@code definition}
+     */
+    public void importInitial() {
         if (definition.isSkipInitialImport() || definition.getInitialTimestamp() != null) {
             logger.info("Skip initial import from collection {}", definition.getMongoCollection());
         } else if (riverHasIndexedFromOplog()) {
@@ -111,10 +113,13 @@ class CollectionSlurper implements Runnable {
     }
 
     /**
+     * Import a single collection into the index
+     *
+     * @param collection the collection to import
      * @throws InterruptedException
      *             if the blocking queue stream is interrupted while waiting
      */
-    protected void importCollection(DBCollection collection) throws InterruptedException {
+    public void importCollection(DBCollection collection) throws InterruptedException {
         // TODO: ensure the index type is empty
         // DBCollection slurpedCollection =
         // slurpedDb.getCollection(definition.getMongoCollection());
