@@ -54,53 +54,47 @@ class CollectionSlurper {
      * @param timestamp the timestamp to use for the last imported document
      */
     public void importInitial(Timestamp<?> timestamp) {
-        if (definition.isSkipInitialImport() || definition.getInitialTimestamp() != null) {
-            logger.info("Skip initial import from collection {}", definition.getMongoCollection());
-        } else if (riverHasIndexedFromOplog()) {
-            logger.trace("Initial import already completed.");
-        } else {
-            try {
-                if (!isIndexEmpty()) {
-                    // MongoDB would delete the index and re-attempt the import
-                    // We should probably do that too or at least have an option for it
-                    // https://groups.google.com/d/msg/mongodb-user/hrOuS-lpMeI/opP6l0gndSEJ
-                    logger.error("Cannot import collection {} into existing index", definition.getMongoCollection());
-                    MongoDBRiverHelper.setRiverStatus(
-                            esClient, definition.getRiverName(), Status.INITIAL_IMPORT_FAILED);
-                    return;
-                }
-                if (definition.isImportAllCollections()) {
-                    for (String name : slurpedDb.getCollectionNames()) {
-                        if (name.length() < 7 || !name.substring(0, 7).equals("system.")) {
-                            DBCollection collection = slurpedDb.getCollection(name);
-                            importCollection(collection, timestamp);
-                        }
+        try {
+            if (!isIndexEmpty()) {
+                // MongoDB would delete the index and re-attempt the import
+                // We should probably do that too or at least have an option for it
+                // https://groups.google.com/d/msg/mongodb-user/hrOuS-lpMeI/opP6l0gndSEJ
+                logger.error("Cannot import collection {} into existing index", definition.getMongoCollection());
+                MongoDBRiverHelper.setRiverStatus(
+                        esClient, definition.getRiverName(), Status.INITIAL_IMPORT_FAILED);
+                return;
+            }
+            if (definition.isImportAllCollections()) {
+                for (String name : slurpedDb.getCollectionNames()) {
+                    if (name.length() < 7 || !name.substring(0, 7).equals("system.")) {
+                        DBCollection collection = slurpedDb.getCollection(name);
+                        importCollection(collection, timestamp);
                     }
-                } else {
-                    DBCollection collection = slurpedDb.getCollection(definition.getMongoCollection());
-                    importCollection(collection, timestamp);
                 }
-                logger.debug("Before waiting for 500 ms");
-                Thread.sleep(500);
-            } catch (MongoInterruptedException | InterruptedException e) {
+            } else {
+                DBCollection collection = slurpedDb.getCollection(definition.getMongoCollection());
+                importCollection(collection, timestamp);
+            }
+            logger.debug("Before waiting for 500 ms");
+            Thread.sleep(500);
+        } catch (MongoInterruptedException | InterruptedException e) {
+            logger.info("river-mongodb slurper interrupted");
+            Thread.currentThread().interrupt();
+            return;
+        } catch (MongoSocketException | MongoTimeoutException | MongoCursorNotFoundException e) {
+            logger.info("Oplog tailing - {} - {}. Will retry.", e.getClass().getSimpleName(), e.getMessage());
+            logger.debug("Total documents inserted so far by river {}: {}", definition.getRiverName(), totalDocuments.get());
+            try {
+                Thread.sleep(MongoDBRiver.MONGODB_RETRY_ERROR_DELAY_MS);
+            } catch (InterruptedException iEx) {
                 logger.info("river-mongodb slurper interrupted");
                 Thread.currentThread().interrupt();
                 return;
-            } catch (MongoSocketException | MongoTimeoutException | MongoCursorNotFoundException e) {
-                logger.info("Oplog tailing - {} - {}. Will retry.", e.getClass().getSimpleName(), e.getMessage());
-                logger.debug("Total documents inserted so far by river {}: {}", definition.getRiverName(), totalDocuments.get());
-                try {
-                    Thread.sleep(MongoDBRiver.MONGODB_RETRY_ERROR_DELAY_MS);
-                } catch (InterruptedException iEx) {
-                    logger.info("river-mongodb slurper interrupted");
-                    Thread.currentThread().interrupt();
-                    return;
-                }
-            } catch (Exception e) {
-                logger.error("Exception while looping in cursor", e);
-                Thread.currentThread().interrupt();
-                return;
             }
+        } catch (Exception e) {
+            logger.error("Exception while looping in cursor", e);
+            Thread.currentThread().interrupt();
+            return;
         }
     }
 
