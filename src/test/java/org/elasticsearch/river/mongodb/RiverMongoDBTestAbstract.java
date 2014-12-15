@@ -92,6 +92,7 @@ import de.flapdoodle.embed.mongo.config.RuntimeConfigBuilder;
 import de.flapdoodle.embed.mongo.config.Storage;
 import de.flapdoodle.embed.mongo.distribution.Versions;
 import de.flapdoodle.embed.process.config.IRuntimeConfig;
+import de.flapdoodle.embed.process.config.io.ProcessOutput;
 import de.flapdoodle.embed.process.distribution.BitSize;
 import de.flapdoodle.embed.process.distribution.GenericVersion;
 import de.flapdoodle.embed.process.distribution.Platform;
@@ -163,7 +164,10 @@ public abstract class RiverMongoDBTestAbstract {
         protected abstract RuntimeConfigBuilder getRuntimeConfigBuilder();
 
         protected IRuntimeConfig getRuntimeConfig() {
-            return getRuntimeConfigBuilder().defaults(Command.MongoD).build();
+            return getRuntimeConfigBuilder()
+                    .defaults(Command.MongoD)
+                    .processOutput(ProcessOutput.getDefaultInstance(configKey))
+                    .build();
         }
     }
 
