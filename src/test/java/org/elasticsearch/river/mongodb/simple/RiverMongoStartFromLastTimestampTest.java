@@ -24,14 +24,9 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
-import java.lang.reflect.Field;
 import java.util.Map;
 
 import org.elasticsearch.client.Client;
-import org.elasticsearch.common.inject.Injector;
-import org.elasticsearch.node.internal.InternalNode;
-import org.elasticsearch.river.RiverName;
-import org.elasticsearch.river.RiversService;
 import org.elasticsearch.river.mongodb.MongoDBRiver;
 import org.elasticsearch.river.mongodb.MongoDBRiverDefinition;
 import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
@@ -126,8 +121,6 @@ public class RiverMongoStartFromLastTimestampTest extends RiverMongoDBTestAbstra
 
             // Start the river
             MongoDBRiverHelper.setRiverStatus(client, getRiver(), Status.RUNNING);
-            // Force start until #407 is merged
-            restartRiver(getRiver());
             Thread.sleep(wait);
 
             // Check that the object was loaded
@@ -144,21 +137,6 @@ public class RiverMongoStartFromLastTimestampTest extends RiverMongoDBTestAbstra
             throw t;
         } finally {
             cleanUp();
-        }
-    }
-
-    private void restartRiver(String river) {
-        try {
-            RiversService riversService = ((InternalNode) getNode()).injector().getInstance(RiversService.class);
-            Field riversInjectorsField = RiversService.class.getDeclaredField("riversInjectors");
-            riversInjectorsField.setAccessible(true);
-            Map<String, Injector> riversInjectors = (Map<String, Injector>) riversInjectorsField.get(riversService);
-            Injector riverInjector = riversInjectors.get(new RiverName(MongoDBRiver.TYPE, river));
-            MongoDBRiver riverInstance = riverInjector.getInstance(MongoDBRiver.class);
-            riverInstance.start();
-        } catch (Throwable t) {
-            logger.error("Cannot force a restart of the river", t);
-            throw new IllegalStateException(t);
         }
     }
 }
