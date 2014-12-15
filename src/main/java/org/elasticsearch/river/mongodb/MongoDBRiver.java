@@ -181,13 +181,14 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
      */
     void internalStartRiver() {
         if (startupThread != null) {
-            // Already processing a request to start up the river, so ignore
-            // this call.
+            // Already processing a request to start up the river, so ignore this call.
             return;
         }
         // Update the status: we're busy starting now.
         context.setStatus(Status.STARTING);
 
+        // ES only starts one River at a time, so we start the river using a new thread so that
+        // we don't block the startup of other rivers
         Runnable startupRunnable = new Runnable() {
             @Override
             public void run() {
