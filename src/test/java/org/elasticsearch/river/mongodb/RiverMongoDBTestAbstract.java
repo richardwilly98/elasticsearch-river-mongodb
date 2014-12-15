@@ -57,6 +57,7 @@ import org.elasticsearch.river.RiverIndexName;
 import org.elasticsearch.river.RiverName;
 import org.elasticsearch.river.RiverSettings;
 import org.elasticsearch.river.mongodb.embed.TokuMXStarter;
+import org.elasticsearch.river.mongodb.embed.TokuRuntimeConfigBuilder;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 import org.elasticsearch.script.ScriptService;
 import org.testng.Assert;
@@ -81,13 +82,17 @@ import com.mongodb.ServerAddress;
 import com.mongodb.WriteConcern;
 import com.mongodb.util.JSON;
 
+import de.flapdoodle.embed.mongo.Command;
 import de.flapdoodle.embed.mongo.MongodExecutable;
 import de.flapdoodle.embed.mongo.MongodProcess;
 import de.flapdoodle.embed.mongo.MongodStarter;
 import de.flapdoodle.embed.mongo.config.IMongodConfig;
 import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
+import de.flapdoodle.embed.mongo.config.RuntimeConfigBuilder;
 import de.flapdoodle.embed.mongo.config.Storage;
 import de.flapdoodle.embed.mongo.distribution.Versions;
+import de.flapdoodle.embed.process.config.IRuntimeConfig;
+import de.flapdoodle.embed.process.config.io.ProcessOutput;
 import de.flapdoodle.embed.process.distribution.BitSize;
 import de.flapdoodle.embed.process.distribution.GenericVersion;
 import de.flapdoodle.embed.process.distribution.Platform;
@@ -121,20 +126,48 @@ public abstract class RiverMongoDBTestAbstract {
     }
 
     public static enum ExecutableType {
-        VANILLA("mongodb", true, true, MongodStarter.getDefaultInstance()),
-        TOKUMX("tokumx", tokuIsSupported(), false, TokuMXStarter.getDefaultInstance());
+        VANILLA("mongodb", true, true) {
+            @Override
+            public Starter<IMongodConfig, MongodExecutable, MongodProcess> newStarter() {
+                return MongodStarter.getInstance(newRuntimeConfig());
+            }
+
+            @Override
+            public RuntimeConfigBuilder newRuntimeConfigBuilder() {
+                return new RuntimeConfigBuilder();
+            }
+        },
+        TOKUMX("tokumx", tokuIsSupported(), false) {
+            @Override
+            public Starter<IMongodConfig, MongodExecutable, MongodProcess> newStarter() {
+                return TokuMXStarter.getInstance(newRuntimeConfig());
+            }
+
+            @Override
+            public RuntimeConfigBuilder newRuntimeConfigBuilder() {
+                return new TokuRuntimeConfigBuilder();
+            }
+        };
 
         public final String configKey;
         public final boolean isSupported;
         public final boolean supportsGridFS;
-        public final Starter<IMongodConfig, MongodExecutable, MongodProcess> starter;
 
-        ExecutableType(String configKey, boolean isSupported, boolean supportsGridFS, 
-                Starter<IMongodConfig, MongodExecutable, MongodProcess> mongodStarter) {
+        private ExecutableType(String configKey, boolean isSupported, boolean supportsGridFS) {
             this.configKey = configKey;
             this.supportsGridFS = supportsGridFS;
             this.isSupported = isSupported;
-            this.starter = mongodStarter;
+        }
+
+        public abstract Starter<IMongodConfig, MongodExecutable, MongodProcess> newStarter();
+
+        protected abstract RuntimeConfigBuilder newRuntimeConfigBuilder();
+
+        protected IRuntimeConfig newRuntimeConfig() {
+            return newRuntimeConfigBuilder()
+                    .defaults(Command.MongoD)
+                    .processOutput(ProcessOutput.getDefaultInstance(configKey))
+                    .build();
         }
     }
 
@@ -245,6 +278,7 @@ public abstract class RiverMongoDBTestAbstract {
         }
         String replicaSetName = "es-test-" + type.configKey;
         // Create 3 mongod processes
+        Starter<IMongodConfig, MongodExecutable, MongodProcess> starter = type.newStarter();
         ImmutableList.Builder<MongoReplicaSet.Member> builder = ImmutableList.builder();
         for (int i = 1; i <= 3; ++i) {
             Storage storage = new Storage("target/" + replicaSetName + '/' + i, replicaSetName, 20);
@@ -252,7 +286,7 @@ public abstract class RiverMongoDBTestAbstract {
             member.config = new MongodConfigBuilder().version(Versions.withFeatures(new GenericVersion(rsSettings.get("version"))))
                 .net(new de.flapdoodle.embed.mongo.config.Net(ports[i - 1], Network.localhostIsIPv6())).replication(storage).build();
             logger.trace("replSetName in config: {}", member.config.replication().getReplSetName());
-            member.executable = type.starter.prepare(member.config);
+            member.executable = starter.prepare(member.config);
             member.process = member.executable.start();
             member.address = new ServerAddress(Network.getLocalHost().getHostName(), member.config.net().getPort());
             logger.debug("Server #" + i + ": {}", member.address);
