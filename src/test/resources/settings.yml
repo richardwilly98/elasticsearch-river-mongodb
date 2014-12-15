@@ -2,35 +2,35 @@
 # makes sense to "disable" the distributed features:
 #
 node:
-	local: true
-	
+    local: true
+
 path:
-	data: target/data
-	plugins: target/plugins
-	logs: target/log
-	conf: target/config
-	
+    data: target/data
+    plugins: target/plugins
+    logs: target/log
+    conf: target/config
+
 index:
-	number_of_shards: 1
-	number_of_replicas: 0
-	store:
-		type: memory
-	gateway:
-		type: none
-		
+    number_of_shards: 1
+    number_of_replicas: 0
+    store:
+        type: memory
+    gateway:
+        type: none
+
 cluster:
-	name: es-test-cluster
-	
+    name: es-test-cluster
+
 script.disable_dynamic: false
 
 plugins:
-  mapper-attachments: elasticsearch/elasticsearch-mapper-attachments/2.4.1
-  lang-javascript: elasticsearch/elasticsearch-lang-javascript/2.4.1
+    mapper-attachments: elasticsearch/elasticsearch-mapper-attachments/2.4.1
+    lang-javascript: elasticsearch/elasticsearch-lang-javascript/2.4.1
 
 mongodb:
-  version: 2.6.6
-  use_dynamic_ports: false
+    version: 2.6.6
+    use_dynamic_ports: false
 
 tokumx:
-  version: 1.5.1
-  use_dynamic_ports: false
+    version: 1.5.1
+    use_dynamic_ports: false
