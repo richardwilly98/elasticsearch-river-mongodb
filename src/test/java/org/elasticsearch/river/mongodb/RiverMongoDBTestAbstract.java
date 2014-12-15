@@ -128,7 +128,7 @@ public abstract class RiverMongoDBTestAbstract {
     public static enum ExecutableType {
         VANILLA("mongodb", true, true) {
             @Override
-            public Starter<IMongodConfig, MongodExecutable, MongodProcess> getStarter() {
+            public Starter<IMongodConfig, MongodExecutable, MongodProcess> newStarter() {
                 return MongodStarter.getInstance(getRuntimeConfig());
             }
 
@@ -139,7 +139,7 @@ public abstract class RiverMongoDBTestAbstract {
         },
         TOKUMX("tokumx", tokuIsSupported(), false) {
             @Override
-            public Starter<IMongodConfig, MongodExecutable, MongodProcess> getStarter() {
+            public Starter<IMongodConfig, MongodExecutable, MongodProcess> newStarter() {
                 return TokuMXStarter.getInstance(getRuntimeConfig());
             }
 
@@ -159,7 +159,7 @@ public abstract class RiverMongoDBTestAbstract {
             this.isSupported = isSupported;
         }
 
-        public abstract Starter<IMongodConfig, MongodExecutable, MongodProcess> getStarter();
+        public abstract Starter<IMongodConfig, MongodExecutable, MongodProcess> newStarter();
 
         protected abstract RuntimeConfigBuilder getRuntimeConfigBuilder();
 
@@ -278,7 +278,7 @@ public abstract class RiverMongoDBTestAbstract {
         }
         String replicaSetName = "es-test-" + type.configKey;
         // Create 3 mongod processes
-        Starter<IMongodConfig, MongodExecutable, MongodProcess> starter = type.getStarter();
+        Starter<IMongodConfig, MongodExecutable, MongodProcess> starter = type.newStarter();
         ImmutableList.Builder<MongoReplicaSet.Member> builder = ImmutableList.builder();
         for (int i = 1; i <= 3; ++i) {
             Storage storage = new Storage("target/" + replicaSetName + '/' + i, replicaSetName, 20);
