@@ -129,22 +129,22 @@ public abstract class RiverMongoDBTestAbstract {
         VANILLA("mongodb", true, true) {
             @Override
             public Starter<IMongodConfig, MongodExecutable, MongodProcess> newStarter() {
-                return MongodStarter.getInstance(getRuntimeConfig());
+                return MongodStarter.getInstance(newRuntimeConfig());
             }
 
             @Override
-            public RuntimeConfigBuilder getRuntimeConfigBuilder() {
+            public RuntimeConfigBuilder newRuntimeConfigBuilder() {
                 return new RuntimeConfigBuilder();
             }
         },
         TOKUMX("tokumx", tokuIsSupported(), false) {
             @Override
             public Starter<IMongodConfig, MongodExecutable, MongodProcess> newStarter() {
-                return TokuMXStarter.getInstance(getRuntimeConfig());
+                return TokuMXStarter.getInstance(newRuntimeConfig());
             }
 
             @Override
-            public RuntimeConfigBuilder getRuntimeConfigBuilder() {
+            public RuntimeConfigBuilder newRuntimeConfigBuilder() {
                 return new TokuRuntimeConfigBuilder();
             }
         };
@@ -161,10 +161,10 @@ public abstract class RiverMongoDBTestAbstract {
 
         public abstract Starter<IMongodConfig, MongodExecutable, MongodProcess> newStarter();
 
-        protected abstract RuntimeConfigBuilder getRuntimeConfigBuilder();
+        protected abstract RuntimeConfigBuilder newRuntimeConfigBuilder();
 
-        protected IRuntimeConfig getRuntimeConfig() {
-            return getRuntimeConfigBuilder()
+        protected IRuntimeConfig newRuntimeConfig() {
+            return newRuntimeConfigBuilder()
                     .defaults(Command.MongoD)
                     .processOutput(ProcessOutput.getDefaultInstance(configKey))
                     .build();
