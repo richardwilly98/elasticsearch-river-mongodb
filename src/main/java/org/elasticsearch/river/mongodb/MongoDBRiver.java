@@ -112,7 +112,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     public static final String INSERTION_ORDER_KEY = "$natural";
 
     static final int MONGODB_RETRY_ERROR_DELAY_MS = 10_000;
-    static final ESLogger logger = ESLoggerFactory.getLogger(MongoDBRiver.class.getName());
+    private static final ESLogger logger = ESLoggerFactory.getLogger(MongoDBRiver.class.getName());
 
     protected final MongoDBRiverDefinition definition;
     protected final Client esClient;

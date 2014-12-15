@@ -1,8 +1,11 @@
 package org.elasticsearch.river.mongodb;
 
+import org.elasticsearch.common.logging.ESLogger;
+import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 
 class StatusChecker implements Runnable {
+    private static final ESLogger logger = ESLoggerFactory.getLogger(StatusChecker.class.getName());
 
     private final MongoDBRiver mongoDBRiver;
     private final MongoDBRiverDefinition definition;
@@ -21,16 +24,16 @@ class StatusChecker implements Runnable {
                 Status status = MongoDBRiverHelper.getRiverStatus(this.mongoDBRiver.esClient, this.definition.getRiverName());
                 if (status != this.context.getStatus()) {
                     if (status == Status.RUNNING && this.context.getStatus() != Status.STARTING) {
-                        MongoDBRiver.logger.trace("About to start river: {}", this.definition.getRiverName());
+                        logger.trace("About to start river: {}", this.definition.getRiverName());
                         mongoDBRiver.internalStartRiver();
                     } else if (status == Status.STOPPED) {
-                        MongoDBRiver.logger.info("About to stop river: {}", this.definition.getRiverName());
+                        logger.info("About to stop river: {}", this.definition.getRiverName());
                         mongoDBRiver.internalStopRiver();
                      }
                 }
                 Thread.sleep(1000L);
             } catch (InterruptedException e) {
-                MongoDBRiver.logger.debug("Status thread interrupted", e, (Object) null);
+                logger.debug("Status thread interrupted", e, (Object) null);
                 Thread.currentThread().interrupt();
                 break;
             }
