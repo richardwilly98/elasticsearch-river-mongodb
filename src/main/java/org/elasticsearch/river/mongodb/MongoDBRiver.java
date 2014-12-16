@@ -285,23 +285,36 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                     indexerThread.start();
 
                     // Import in main thread to block tailing the oplog
-                    CollectionSlurper importer = new CollectionSlurper(startTimestamp, mongoClusterClient, definition, context, esClient);
-                    importer.run();
+                    Timestamp slurperStartTimestamp = getLastProcessedTimestamp();
+                    if (slurperStartTimestamp != null) {
+                        logger.trace("Initial import already completed.");
+                        // Start from where we last left of
+                    } else if (definition.isSkipInitialImport() || definition.getInitialTimestamp() != null) {
+                        logger.info("Skip initial import from collection {}", definition.getMongoCollection());
+                        // Start from the point requested
+                        slurperStartTimestamp = definition.getInitialTimestamp();
+                    } else {
+                        // Determine the timestamp to be used for all documents loaded as "initial import".
+                        Timestamp initialImportTimestamp = null;
+                        for (Shard shard : config.getShards()) {
+                            if (initialImportTimestamp == null || shard.getLatestOplogTimestamp().compareTo(initialImportTimestamp) < 1) {
+                                initialImportTimestamp = shard.getLatestOplogTimestamp();
+                            }
+                        }
+                        CollectionSlurper importer = new CollectionSlurper(mongoClusterClient, definition, context, esClient);
+                        importer.importInitial(initialImportTimestamp);
+                        // Start slurping from the shard's oplog time
+                        slurperStartTimestamp = null;
+                    }
 
                     // Tail the oplog
-                    if (config.isMongos()) {
-                        for (Shard shard : config.getShards()) {
-                            MongoClient mongoClient = mongoClientService.getMongoShardClient(definition, shard.getReplicas());
-                            Thread tailerThread = EsExecutors.daemonThreadFactory(
-                                    settings.globalSettings(), "mongodb_river_slurper_" + shard.getName() + ":" + definition.getIndexName()
-                                ).newThread(new OplogSlurper(shard.getLatestOplogTimestamp(), mongoClusterClient, mongoClient, definition, context, esClient));
-                            tailerThreads.add(tailerThread);
-                        }
-                    } else {
-                        Shard shard = config.getShards().get(0);
+                    // NB: In a non-mongos environment the config will report a single shard, with the servers used for the connection as the replicas.
+                    for (Shard shard : config.getShards()) {
+                        Timestamp shardSlurperStartTimestamp = slurperStartTimestamp != null ? slurperStartTimestamp : shard.getLatestOplogTimestamp();
+                        MongoClient mongoClient = mongoClientService.getMongoShardClient(definition, shard.getReplicas());
                         Thread tailerThread = EsExecutors.daemonThreadFactory(
                                 settings.globalSettings(), "mongodb_river_slurper_" + shard.getName() + ":" + definition.getIndexName()
-                            ).newThread(new OplogSlurper(shard.getLatestOplogTimestamp(), mongoClusterClient, mongoClusterClient, definition, context, esClient));
+                            ).newThread(new OplogSlurper(shardSlurperStartTimestamp, mongoClusterClient, mongoClient, definition, context, esClient));
                         tailerThreads.add(tailerThread);
                     }
 
