@@ -20,7 +20,7 @@ Note that you must be using MongoDB replica sets since this river tails the oplo
 
 | MongoDB River Plugin     | ElasticSearch    | MongoDB       | TokuMX        |
 |--------------------------|------------------|---------------|---------------|
-| master                   | 1.4.1            | 2.6.6         | 1.5.1         |
+| master                   | 1.4.2            | 2.6.6         | 1.5.1         |
 | 2.0.4                    | 1.4.0            | 2.6.5         | 1.5.1         |
 | 2.0.2                    | 1.3.5            | 2.6.5         | 1.5.1         |
 | 2.0.1                    | 1.2.2            | 2.4.9 -> 2.6.3| 1.5.0         |
