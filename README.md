@@ -41,7 +41,7 @@ Build status
 
 [![Build Status](https://drone.io/github.com/richardwilly98/elasticsearch-river-mongodb/status.png)](https://drone.io/github.com/richardwilly98/elasticsearch-river-mongodb/latest)
 
-Initial implementation by [aparo](https://github.com/aparo). For the initial implementation see [tutorial](http://www.matt-reid.co.uk/blog_post.php?id=68#&slider1=4).
+[Initial implementation](http://www.matt-reid.co.uk/blog_post.php?id=68#&slider1=4) by [aparo](https://github.com/aparo).
 
 Modified to get the same structure as the other Elasticsearch rivers (like [CouchDB](http://www.elasticsearch.org/blog/2010/09/28/the_river_searchable_couchdb.html))
 
