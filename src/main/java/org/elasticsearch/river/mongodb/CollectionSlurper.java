@@ -15,6 +15,7 @@ import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 
 import com.google.common.base.Preconditions;
 import com.mongodb.BasicDBObject;
+import com.mongodb.CommandResult;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
@@ -127,7 +128,7 @@ class CollectionSlurper {
                 if (!definition.isMongoGridFS()) {
                     if (logger.isTraceEnabled()) {
                         // Note: collection.count() is expensive on TokuMX
-                        logger.trace("Collection {} - count: {}", collection.getName(), collection.count());
+                        logger.trace("Collection {} - count: {}", collection.getName(), safeCount(collection, timestamp.getClass()));
                     }
                     long count = 0;
                     cursor = collection
@@ -180,6 +181,17 @@ class CollectionSlurper {
                 }
             }
         }
+    }
+
+    /**
+     * Only calls DBCollection.count() when using vanilla MongoDB; otherwise gets estimate from collection.getStats()
+     */
+    private String safeCount(DBCollection collection, Class<? extends Timestamp<?>> type) {
+        if (type.equals(Timestamp.BSON.class)) {
+            return "" + collection.count(); // Vanilla MongoDB can quickly return precise count
+        }
+        CommandResult stats = collection.getStats();
+        return "~" + (!stats.containsField("count") ? 0l : stats.getLong("count"));
     }
 
     private BasicDBObject getFilterForInitialImport(BasicDBObject filter, String id) {
