@@ -186,7 +186,7 @@ class CollectionSlurper {
     /**
      * Only calls DBCollection.count() when using vanilla MongoDB; otherwise gets estimate from collection.getStats()
      */
-    private String safeCount(DBCollection collection, Class<? extends Timestamp<?>> type) {
+    private String safeCount(DBCollection collection, Class<? extends Timestamp> type) {
         if (type.equals(Timestamp.BSON.class)) {
             return "" + collection.count(); // Vanilla MongoDB can quickly return precise count
         }
