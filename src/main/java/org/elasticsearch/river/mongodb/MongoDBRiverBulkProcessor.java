@@ -216,7 +216,7 @@ public class MongoDBRiverBulkProcessor {
     }
 
     private long getBulkQueueSize() {
-        NodesInfoResponse response = client.admin().cluster().prepareNodesInfo().setThreadPool(true).get();
+        NodesInfoResponse response = client.admin().cluster().prepareNodesInfo().clear().setThreadPool(true).get();
         for (NodeInfo node : response.getNodes()) {
             Iterator<Info> iterator = node.getThreadPool().iterator();
             while (iterator.hasNext()) {
