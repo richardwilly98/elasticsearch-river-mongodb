@@ -28,7 +28,7 @@ plugins:
     lang-javascript: elasticsearch/elasticsearch-lang-javascript/2.4.1
 
 mongodb:
-    version: 2.6.6
+    version: 3.0.0
     use_dynamic_ports: false
 
 tokumx:
