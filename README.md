@@ -14,7 +14,7 @@ This plugin uses MongoDB or the TokuMX fork of MongoDB as datasource to store da
 Filtering and transformation are also possible. 
 See the [wiki](https://github.com/richardwilly98/elasticsearch-river-mongodb/wiki) for more details.
 
-In order to install the plugin, simply run: ```bin/plugin --install com.github.richardwilly98.elasticsearch/elasticsearch-river-mongodb/2.0.5```
+In order to install the plugin, simply run: ```bin/plugin --install com.github.richardwilly98.elasticsearch/elasticsearch-river-mongodb/2.0.6```
 
 Note that you must be using MongoDB replica sets since this river tails the oplog.
 
@@ -150,6 +150,9 @@ License
 
 Changelog
 -------
+
+#### 2.0.6
+- Update versions ES 1.4.2, MongoDB 3.0.0, MongoDB driver 2.13.0
 
 #### 2.0.5
 - Update versions ES 1.4.0
