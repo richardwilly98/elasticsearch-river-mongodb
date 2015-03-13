@@ -128,4 +128,34 @@ public class RiverMongoIncludeFieldsTest extends RiverMongoDBTestAbstract {
         }
     }
 
+    @Test
+    public void testUpdateOnNotIncludedFieldIsIgnored() throws Throwable {
+        logger.debug("Start testUpdatesOnNotIncludedFieldsAreIgnored");
+        try {
+            DBObject dbObject = new BasicDBObject();
+            dbObject.put("include-field-1", System.currentTimeMillis());
+            dbObject.put("include-field-2", System.currentTimeMillis());
+            dbObject.put("field-3", System.currentTimeMillis());
+            mongoCollection.insert(dbObject);
+            mongoCollection.update(new BasicDBObject("_id", dbObject.get("_id")),
+                    new BasicDBObject("$set", new BasicDBObject("field-3", System.currentTimeMillis())));
+
+            Thread.sleep(wait);
+
+            String id = dbObject.get("_id").toString();
+            SearchResponse sr = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.queryString(id)
+                    .defaultField("_id")).setVersion(true).get();
+            logger.debug("SearchResponse {}", sr.toString());
+            long totalHits = sr.getHits().getTotalHits();
+            logger.debug("TotalHits: {}", totalHits);
+
+            assertThat(totalHits, equalTo(1l));
+            assertThat(sr.getHits().getHits()[0].getVersion(), equalTo(1l));
+        } catch (Throwable t) {
+            logger.error("testUpdatesOnNotIncludedFieldsAreIgnored failed.", t);
+            t.printStackTrace();
+            throw t;
+        }
+    }
+
 }

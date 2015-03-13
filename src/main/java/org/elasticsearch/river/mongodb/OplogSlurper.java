@@ -1,6 +1,9 @@
 package org.elasticsearch.river.mongodb;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.bson.BasicBSONObject;
@@ -37,6 +40,67 @@ class OplogSlurper implements Runnable {
 
         SlurperException(String message) {
             super(message);
+        }
+    }
+
+    static class UpdateObject {
+
+        private BasicDBObject object;
+
+        UpdateObject(BasicDBObject object) {
+            this.object = object;
+        }
+
+        public boolean hasAnyFieldOf(Set<String> fields) {
+            for (String updateField : getAllFields()) {
+                for (String field : fields) {
+                    if (updateField.startsWith(field.concat(".")) || updateField.equals(field)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        public boolean hasNoFieldsExcept(Set<String> fields) {
+            for (String updateField : getAllFields()) {
+                boolean found = false;
+                for (String field : fields) {
+                    found = updateField.startsWith(field.concat(".")) || updateField.equals(field);
+                    if (found) {
+                        break;
+                    }
+                }
+                if (!found) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public Set<String> getAllFields() {
+            return getAllFields(object, "");
+        }
+
+        private Set<String> getAllFields(BasicDBObject object, String prefix) {
+            HashSet<String> result = new HashSet<>();
+
+            for (Map.Entry<String,Object> entry : object.entrySet()) {
+                Object ev = entry.getValue();
+                String ek = entry.getKey();
+                String newPrefix = prefix;
+
+                if (!ek.startsWith("$")) {
+                    newPrefix = prefix.isEmpty() ? ek : newPrefix.concat(".").concat(ek);
+                }
+
+                if (ev instanceof BasicDBObject) {
+                    result.addAll(getAllFields((BasicDBObject) ev, newPrefix));
+                } else {
+                    result.add(newPrefix);
+                }
+            }
+            return result;
         }
     }
 
@@ -263,9 +327,13 @@ class OplogSlurper implements Runnable {
             addToStream(operation, oplogTimestamp, applyFieldFilter(object), collection);
         } else {
             if (operation == Operation.UPDATE) {
-                DBObject update = (DBObject) entry.get(MongoDBRiver.OPLOG_UPDATE);
-                logger.trace("Updated item: {}", update);
-                addQueryToStream(operation, oplogTimestamp, update, collection);
+                if (isUpdateValuable(object)) {
+                    DBObject update = (DBObject) entry.get(MongoDBRiver.OPLOG_UPDATE);
+                    logger.trace("Updated item: {}", update);
+                    addQueryToStream(operation, oplogTimestamp, update, collection);
+                } else {
+                    logger.trace("Update skipped: {}", object);
+                }
             } else {
                 if (operation == Operation.INSERT) {
                     addInsertToStream(oplogTimestamp, applyFieldFilter(object), collection);
@@ -275,6 +343,26 @@ class OplogSlurper implements Runnable {
             }
         }
         return oplogTimestamp;
+    }
+
+    /*
+     * Update is not valuable in two cases:
+     * 1. There are excluded fields and the object consists of them only;
+     * 2. There are included fields and the object doesn't contain any of them.
+     */
+    private boolean isUpdateValuable(DBObject object) {
+        if (!(object instanceof BasicDBObject)) {
+            return true;
+        }
+
+        if (definition.getExcludeFields() != null) {
+            UpdateObject updObject = new UpdateObject((BasicDBObject)object);
+            return !updObject.hasNoFieldsExcept(definition.getExcludeFields());
+        } else if (definition.getIncludeFields() != null) {
+            UpdateObject updObject = new UpdateObject((BasicDBObject)object);
+            return updObject.hasAnyFieldOf(definition.getIncludeFields());
+        }
+        return true;
     }
 
     @SuppressWarnings("unchecked")
