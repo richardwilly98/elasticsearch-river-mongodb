@@ -3,19 +3,29 @@
 var mongoDBRiverApp = angular.module('mongoDBRiverApp', ['ngResource', 'ui.bootstrap']);
 
 mongoDBRiverApp.constant('appSettings', {
-	defaultRefresh: 5000
+  defaultRefresh: 5000
 });
 
 mongoDBRiverApp.controller('MainCtrl', function ($log, $scope, $resource, $timeout, appSettings) {
   var riverResource = $resource('/_river/:type/:river/:action' , {type:'@type', river:'@river', page:'@page'},
     {
-	  list: {method:'GET', params: {action: 'list'}},
+      list: {method:'GET', params: {action: 'list'}},
       start: {method:'POST', params: {action: 'start'}},
       stop: {method:'POST', params: {action: 'stop'}},
       delete: {method:'POST', params: {action: 'delete'}}
     }
   );
   var timeoutId;
+
+  $scope.uiSettings = {};
+
+  $scope.getUISettings = function(riverName) {
+    if (typeof $scope.uiSettings[riverName] == 'undefined') {
+      $scope.uiSettings[riverName] = {};
+    }
+
+    return $scope.uiSettings[riverName];
+  }
 
   $scope.rivers = [];
   $scope.type = null;
@@ -26,22 +36,22 @@ mongoDBRiverApp.controller('MainCtrl', function ($log, $scope, $resource, $timeo
   $scope.prev = { label: 'Previous Page', enabled: false }
 
   $scope.nextPage = function() {
-	  if($scope.next.enabled) {
-		  $scope.list(null, $scope.page+1);
-	  }
+    if($scope.next.enabled) {
+      $scope.list(null, $scope.page+1);
+    }
   }
-  
+
   $scope.prevPage = function() {
-	  if($scope.prev.enabled) {
-		  $scope.list(null, $scope.page-1);
-	  }
+    if($scope.prev.enabled) {
+      $scope.list(null, $scope.page-1);
+    }
   }
 
   function autoRefresh() {
-      timeoutId = $timeout(function() {
-        $scope.list();
-        autoRefresh();
-      }, appSettings.defaultRefresh);
+    timeoutId = $timeout(function() {
+      $scope.list();
+      autoRefresh();
+    }, appSettings.defaultRefresh);
   }
 
   $scope.updateTimer = function(enabled) {
@@ -63,7 +73,7 @@ mongoDBRiverApp.controller('MainCtrl', function ($log, $scope, $resource, $timeo
     $scope.type = type || 'mongodb';
     var data = {'type': $scope.type};
     if(page != undefined && page != null) {
-	    data.page = page;
+      data.page = page;
     }
     var rivers = riverResource.list(data, function() {
       $log.log('rivers count: ' + rivers.hits);
@@ -71,14 +81,14 @@ mongoDBRiverApp.controller('MainCtrl', function ($log, $scope, $resource, $timeo
       $scope.pages = rivers.pages;
       $scope.page = rivers.page;
       if($scope.page > 1) {
-	      $scope.prev.enabled = true;
+        $scope.prev.enabled = true;
       } else {
-	      $scope.prev.enabled = false;
+        $scope.prev.enabled = false;
       }
       if($scope.page < $scope.pages) {
-	      $scope.next.enabled = true;
+        $scope.next.enabled = true;
       } else {
-	      $scope.next.enabled = false;
+        $scope.next.enabled = false;
       }
     });
   };
