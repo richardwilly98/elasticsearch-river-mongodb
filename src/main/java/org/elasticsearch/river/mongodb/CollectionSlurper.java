@@ -28,6 +28,8 @@ import com.mongodb.gridfs.GridFS;
 import com.mongodb.gridfs.GridFSDBFile;
 import com.mongodb.gridfs.GridFSFile;
 
+import static org.elasticsearch.river.mongodb.util.MongoDBHelper.getMongoDBIdField;
+
 class CollectionSlurper extends MongoDBRiverComponent {
 
     private final MongoDBRiverDefinition definition;
@@ -232,7 +234,7 @@ class CollectionSlurper extends MongoDBRiverComponent {
         if (data == null) {
             return null;
         } else {
-            return data.containsField(MongoDBRiver.MONGODB_ID_FIELD) ? data.get(MongoDBRiver.MONGODB_ID_FIELD).toString() : null;
+            return getMongoDBIdField(data);
         }
     }
 

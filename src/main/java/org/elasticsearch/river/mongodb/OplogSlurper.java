@@ -27,6 +27,8 @@ import com.mongodb.gridfs.GridFSDBFile;
 import com.mongodb.gridfs.GridFSFile;
 import com.mongodb.util.JSONSerializers;
 
+import static org.elasticsearch.river.mongodb.util.MongoDBHelper.getMongoDBIdField;
+
 class OplogSlurper extends MongoDBRiverComponent implements Runnable {
 
     class SlurperException extends Exception {
@@ -524,7 +526,7 @@ class OplogSlurper extends MongoDBRiverComponent implements Runnable {
         if (data == null) {
             return null;
         } else {
-            return data.containsField(MongoDBRiver.MONGODB_ID_FIELD) ? data.get(MongoDBRiver.MONGODB_ID_FIELD).toString() : null;
+            return getMongoDBIdField(data);
         }
     }
 
