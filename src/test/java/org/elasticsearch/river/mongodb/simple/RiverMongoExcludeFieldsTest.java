@@ -127,4 +127,34 @@ public class RiverMongoExcludeFieldsTest extends RiverMongoDBTestAbstract {
         }
     }
 
+    @Test
+    public void testUpdateOnExcludedFieldIsIgnored() throws Throwable {
+        logger.debug("Start testUpdateOnExcludedFieldIsIgnored");
+        try {
+            DBObject dbObject = new BasicDBObject();
+            dbObject.put("exclude-field-1", System.currentTimeMillis());
+            dbObject.put("exclude-field-2", System.currentTimeMillis());
+            dbObject.put("include-field-1", System.currentTimeMillis());
+            mongoCollection.insert(dbObject);
+            mongoCollection.update(new BasicDBObject("_id", dbObject.get("_id")),
+                    new BasicDBObject("$set", new BasicDBObject("exclude-field-1", System.currentTimeMillis())));
+
+            Thread.sleep(wait);
+
+            String id = dbObject.get("_id").toString();
+            SearchResponse sr = getNode().client().prepareSearch(getIndex()).setQuery(QueryBuilders.queryString(id).defaultField("_id"))
+                    .setVersion(true).get();
+            logger.debug("SearchResponse {}", sr.toString());
+            long totalHits = sr.getHits().getTotalHits();
+            logger.debug("TotalHits: {}", totalHits);
+
+            assertThat(totalHits, equalTo(1l));
+            assertThat(sr.getHits().getHits()[0].getVersion(), equalTo(1l));
+        } catch (Throwable t) {
+            logger.error("testUpdateOnExcludedFieldIsIgnored failed.", t);
+            t.printStackTrace();
+            throw t;
+        }
+    }
+
 }
