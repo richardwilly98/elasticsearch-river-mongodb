@@ -35,8 +35,6 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.block.ClusterBlockException;
 import org.elasticsearch.common.collect.Lists;
 import org.elasticsearch.common.inject.Inject;
-import org.elasticsearch.common.logging.ESLogger;
-import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.common.util.concurrent.EsExecutors;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.indices.IndexAlreadyExistsException;
@@ -112,7 +110,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
     public static final String INSERTION_ORDER_KEY = "$natural";
 
     static final int MONGODB_RETRY_ERROR_DELAY_MS = 10_000;
-    private static final ESLogger logger = ESLoggerFactory.getLogger(MongoDBRiver.class.getName());
 
     protected final MongoDBRiverDefinition definition;
     protected final Client esClient;
@@ -131,7 +128,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             Client esClient, ScriptService scriptService, MongoClientService mongoClientService) {
         super(riverName, settings);
         if (logger.isTraceEnabled()) {
-            logger.trace("Initializing river : [{}]", riverName.getName());
+            logger.trace("Initializing");
         }
         this.esClient = esClient;
         this.scriptService = scriptService;
@@ -144,6 +141,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         this.context = new SharedContext(stream, Status.STOPPED);
     }
 
+    public RiverSettings settings() {
+        return super.settings;
+    }
+
     @Override
     public void start() {
         // http://stackoverflow.com/questions/5270611/read-maven-properties-file-inside-jar-war-file
@@ -152,7 +153,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
         Status status = MongoDBRiverHelper.getRiverStatus(esClient, riverName.getName());
         if (status == Status.IMPORT_FAILED || status == Status.INITIAL_IMPORT_FAILED || status == Status.SCRIPT_IMPORT_FAILED
                 || status == Status.START_FAILED) {
-            logger.error("Cannot start river {}. Current status is {}", riverName.getName(), status);
+            logger.error("Cannot start. Current status is {}", status);
             return;
         }
 
@@ -161,14 +162,14 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             // Enabling the river via REST will trigger the actual start.
             context.setStatus(Status.STOPPED);
 
-            logger.info("River {} is currently disabled and will not be started", riverName.getName());
+            logger.info("River is currently disabled and will not be started");
         } else {
             // Mark the current status as "waiting for full start"
             context.setStatus(Status.START_PENDING);
             // Request start of the river in the next iteration of the status thread
             MongoDBRiverHelper.setRiverStatus(esClient, riverName.getName(), Status.RUNNING);
 
-            logger.info("River {} startup pending", riverName.getName());
+            logger.info("Startup pending");
         }
 
         statusThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_status:" + definition.getIndexName()).newThread(
@@ -193,7 +194,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             @Override
             public void run() {
                 // Log some info about what we're about to do now.
-                logger.info("Starting river {}", riverName.getName());
+                logger.info("Starting");
                 logger.info(
                         "MongoDB options: secondaryreadpreference [{}], drop_collection [{}], include_collection [{}], throttlesize [{}], gridfs [{}], filter [{}], db [{}], collection [{}], script [{}], indexing to [{}]/[{}]",
                         definition.isMongoSecondaryReadPreference(), definition.isDropCollection(), definition.getIncludeCollection(),
@@ -252,7 +253,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                     // We only need to know about CRUD commands. If data moves from one MongoDB shard to another
                     // then we do not need to let ElasticSearch know that.
                     MongoClient mongoClusterClient = mongoClientService.getMongoClusterClient(definition);
-                    MongoConfigProvider configProvider = new MongoConfigProvider(mongoClientService, definition);
+                    MongoConfigProvider configProvider = new MongoConfigProvider(MongoDBRiver.this, mongoClientService);
                     MongoConfig config;
                     while (true) {
                         try {
@@ -281,7 +282,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                     context.setStatus(Status.RUNNING);
 
                     indexerThread = EsExecutors.daemonThreadFactory(settings.globalSettings(), "mongodb_river_indexer:" + definition.getIndexName()).newThread(
-                            new Indexer(MongoDBRiver.this, definition, context, esClient, scriptService));
+                            new Indexer(MongoDBRiver.this));
                     indexerThread.start();
 
                     // Import in main thread to block tailing the oplog
@@ -301,7 +302,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                                 initialImportTimestamp = shard.getLatestOplogTimestamp();
                             }
                         }
-                        CollectionSlurper importer = new CollectionSlurper(mongoClusterClient, definition, context, esClient);
+                        CollectionSlurper importer = new CollectionSlurper(MongoDBRiver.this, mongoClusterClient);
                         importer.importInitial(initialImportTimestamp);
                         // Start slurping from the shard's oplog time
                         slurperStartTimestamp = null;
@@ -314,16 +315,16 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                         MongoClient mongoClient = mongoClientService.getMongoShardClient(definition, shard.getReplicas());
                         Thread tailerThread = EsExecutors.daemonThreadFactory(
                                 settings.globalSettings(), "mongodb_river_slurper_" + shard.getName() + ":" + definition.getIndexName()
-                            ).newThread(new OplogSlurper(shardSlurperStartTimestamp, mongoClusterClient, mongoClient, definition, context, esClient));
+                            ).newThread(new OplogSlurper(MongoDBRiver.this, shardSlurperStartTimestamp, mongoClusterClient, mongoClient));
                         tailerThreads.add(tailerThread);
                     }
 
                     for (Thread thread : tailerThreads) {
                         thread.start();
                     }
-                    logger.info("Started river {}", riverName.getName());
+                    logger.info("Started");
                 } catch (Throwable t) {
-                    logger.warn("Failed to start river {}", t, riverName.getName());
+                    logger.warn("Failed to start", t);
                     MongoDBRiverHelper.setRiverStatus(esClient, definition.getRiverName(), Status.START_FAILED);
                     context.setStatus(Status.START_FAILED);
                 } finally {
@@ -344,7 +345,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
      * to {@link Status#RUNNING}.
      */
     void internalStopRiver() {
-        logger.info("Stopping river {}", riverName.getName());
+        logger.info("Stopping");
         try {
             if (startupThread != null) {
                 startupThread.interrupt();
@@ -359,9 +360,9 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
                 indexerThread.interrupt();
                 indexerThread = null;
             }
-            logger.info("Stopped river {}", riverName.getName());
+            logger.info("Stopped");
         } catch (Throwable t) {
-            logger.error("Failed to stop river {}", t, riverName.getName());
+            logger.error("Failed to stop", t);
         } finally {
             this.context.setStatus(Status.STOPPED);
         }
@@ -369,7 +370,7 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
 
     @Override
     public void close() {
-        logger.info("Closing river {}", riverName.getName());
+        logger.info("Closing river");
 
         // Stop the status thread completely, it will be re-started by #start()
         if (statusThread != null) {
@@ -408,7 +409,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
      */
     @SuppressWarnings("unchecked")
     public static Timestamp<?> getLastTimestamp(Client client, MongoDBRiverDefinition definition) {
-
         client.admin().indices().prepareRefresh(definition.getRiverIndexName()).get();
 
         GetResponse lastTimestampResponse = client.prepareGet(definition.getRiverIndexName(), definition.getRiverName(),
@@ -419,9 +419,6 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
             if (mongodbState != null) {
                 Timestamp<?> lastTimestamp = Timestamp.on(mongodbState);
                 if (lastTimestamp != null) {
-                    if (logger.isTraceEnabled()) {
-                        logger.trace("{} last timestamp: {}", definition.getMongoOplogNamespace(), lastTimestamp);
-                    }
                     return lastTimestamp;
                 }
             }
@@ -439,10 +436,10 @@ public class MongoDBRiver extends AbstractRiverComponent implements River {
      * 
      * @param bulk
      */
-    static void setLastTimestamp(final MongoDBRiverDefinition definition, final Timestamp<?> time, final BulkProcessor bulkProcessor) {
+    void setLastTimestamp(final Timestamp<?> time, final BulkProcessor bulkProcessor) {
         try {
             if (logger.isTraceEnabled()) {
-                logger.trace("setLastTimestamp [{}] [{}] [{}]", definition.getRiverName(), definition.getMongoOplogNamespace(), time);
+                logger.trace("setLastTimestamp [{}] [{}]", definition.getMongoOplogNamespace(), time);
             }
             bulkProcessor.add(indexRequest(definition.getRiverIndexName()).type(definition.getRiverName())
                     .id(definition.getMongoOplogNamespace()).source(source(time)));

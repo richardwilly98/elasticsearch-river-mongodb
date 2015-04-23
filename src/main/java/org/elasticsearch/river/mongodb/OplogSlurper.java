@@ -7,8 +7,6 @@ import org.bson.BasicBSONObject;
 import org.bson.types.ObjectId;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.collect.ImmutableList;
-import org.elasticsearch.common.logging.ESLogger;
-import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.river.mongodb.util.MongoDBHelper;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 
@@ -29,7 +27,7 @@ import com.mongodb.gridfs.GridFSDBFile;
 import com.mongodb.gridfs.GridFSFile;
 import com.mongodb.util.JSONSerializers;
 
-class OplogSlurper implements Runnable {
+class OplogSlurper extends MongoDBRiverComponent implements Runnable {
 
     class SlurperException extends Exception {
 
@@ -40,8 +38,7 @@ class OplogSlurper implements Runnable {
         }
     }
 
-    private static final ESLogger logger = ESLoggerFactory.getLogger(OplogSlurper.class.getName());
-
+    private final MongoDBRiver river;
     private final MongoDBRiverDefinition definition;
     private final SharedContext context;
     private final BasicDBObject findKeys;
@@ -59,11 +56,13 @@ class OplogSlurper implements Runnable {
     private final DBCollection oplogCollection, oplogRefsCollection;
     private final AtomicLong totalDocuments = new AtomicLong();
 
-    public OplogSlurper(Timestamp<?> timestamp, MongoClient mongoClusterClient, MongoClient mongoShardClient, MongoDBRiverDefinition definition, SharedContext context, Client esClient) {
+    public OplogSlurper(MongoDBRiver river, Timestamp<?> timestamp, MongoClient mongoClusterClient, MongoClient mongoShardClient) {
+        super(river);
+        this.river = river;
         this.timestamp = timestamp;
-        this.definition = definition;
-        this.context = context;
-        this.esClient = esClient;
+        this.definition = river.definition;
+        this.context = river.context;
+        this.esClient = river.esClient;
         this.mongoClusterClient = mongoClusterClient;
         this.mongoShardClient = mongoShardClient;
         this.findKeys = new BasicDBObject();
@@ -318,7 +317,7 @@ class OplogSlurper implements Runnable {
                 if (to.startsWith(definition.getMongoDb())) {
                     String newCollection = getCollectionFromNamespace(to);
                     DBCollection coll = slurpedDb.getCollection(newCollection);
-                    CollectionSlurper importer = new CollectionSlurper(mongoClusterClient, definition, context, esClient);
+                    CollectionSlurper importer = new CollectionSlurper(river, mongoClusterClient);
                     importer.importCollection(coll, timestamp);
                 }
             }
