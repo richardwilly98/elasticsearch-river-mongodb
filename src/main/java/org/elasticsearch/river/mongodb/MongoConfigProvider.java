@@ -8,8 +8,6 @@ import java.util.concurrent.Callable;
 
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.common.collect.ImmutableMap;
-import org.elasticsearch.common.logging.ESLogger;
-import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.river.mongodb.MongoConfig.Shard;
 
 import com.mongodb.BasicDBObject;
@@ -23,17 +21,16 @@ import com.mongodb.MongoClient;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 
-public class MongoConfigProvider implements Callable<MongoConfig> {
-
-    private static final ESLogger logger = ESLoggerFactory.getLogger(MongoConfigProvider.class.getName());
+public class MongoConfigProvider extends MongoDBRiverComponent implements Callable<MongoConfig> {
 
     private final MongoClientService mongoClientService;
     private final MongoDBRiverDefinition definition;
     private final MongoClient clusterClient;
 
-    public MongoConfigProvider(MongoClientService mongoClientService, MongoDBRiverDefinition definition) {
+    public MongoConfigProvider(MongoDBRiver river, MongoClientService mongoClientService) {
+        super(river);
         this.mongoClientService = mongoClientService;
-        this.definition= definition;
+        this.definition = river.definition;
         this.clusterClient = mongoClientService.getMongoClusterClient(definition);
     }
 
