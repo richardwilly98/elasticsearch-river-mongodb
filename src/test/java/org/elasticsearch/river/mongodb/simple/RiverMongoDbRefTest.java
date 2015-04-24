@@ -29,9 +29,10 @@ import com.mongodb.util.JSON;
 public class RiverMongoDbRefTest extends RiverMongoDBTestAbstract {
 
     private static final String TEST_DBREF_MONGODB_DOCUMENT_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-document-with-dbref.json";
+    private static final String TEST_MONGO_REFERENCED_DOCUMENT = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-referenced-document.json";
 
     private DB mongoDB;
-    private DBCollection mongoCollection;
+    private DBCollection mongoCollection, referencedCollection;
 
     @Factory(dataProvider = "allMongoExecutableTypes")
     public RiverMongoDbRefTest(ExecutableType type) {
@@ -48,6 +49,7 @@ public class RiverMongoDbRefTest extends RiverMongoDBTestAbstract {
             logger.info("Start createCollection");
             this.mongoCollection = mongoDB.createCollection(getCollection(), null);
             Assert.assertNotNull(mongoCollection);
+            Assert.assertNotNull(referencedCollection);
         } catch (Throwable t) {
             logger.error("createDatabase failed.", t);
         }
@@ -76,7 +78,7 @@ public class RiverMongoDbRefTest extends RiverMongoDBTestAbstract {
                     .exists(new IndicesExistsRequest(getIndex()));
             assertThat(response.actionGet().isExists(), equalTo(true));
             refreshIndex();
-            SearchRequest search = getNode().client().prepareSearch(getIndex())
+            SearchRequest search = getNode().client().prepareSearch().setIndices(getIndex())
                     .setQuery(QueryBuilders.queryString(categoryId).defaultField("category.id")).request();
             SearchResponse searchResponse = getNode().client().search(search).actionGet();
             assertThat(searchResponse.getHits().getTotalHits(), equalTo(1l));
@@ -98,7 +100,48 @@ public class RiverMongoDbRefTest extends RiverMongoDBTestAbstract {
             logger.error("simpleBSONObject failed.", t);
             t.printStackTrace();
             throw t;
+        } finally {
+            reset();
         }
     }
 
+    @Test
+    public void nestedDbRef() throws Throwable{
+        try {
+            this.referencedCollection = mongoDB.createCollection("category", null);
+            String referencedDocument = copyToStringFromClasspath(TEST_MONGO_REFERENCED_DOCUMENT);
+            WriteResult result = referencedCollection.insert((DBObject) JSON.parse(referencedDocument));
+            Thread.sleep(wait);
+            logger.info("Referenced WriteResult: {}", result.toString());
+
+            String mongoDocument = copyToStringFromClasspath(TEST_DBREF_MONGODB_DOCUMENT_JSON);
+            DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
+            result = mongoCollection.insert(dbObject);
+            Thread.sleep(wait);
+            logger.info("WriteResult: {}", result.toString());
+
+            ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices()
+                    .exists(new IndicesExistsRequest(getIndex()));
+            assertThat(response.actionGet().isExists(), equalTo(true));
+            refreshIndex();
+
+            SearchRequest search = getNode().client().prepareSearch(getIndex()).setQuery(new QueryStringQueryBuilder("arbitrary").defaultField("category.name")).addField("category.name")
+                    .request();
+            SearchResponse searchResponse = getNode().client().search(search).actionGet();
+            assertThat(searchResponse.getHits().getTotalHits(), equalTo(1l));
+            Assert.assertEquals("arbitrary category for a thousand", searchResponse.getHits().getAt(0).field("category.name").getValue().toString());
+
+        } catch (Throwable t) {
+            logger.error("nestedDbRef failed.", t);
+            t.printStackTrace();
+            throw t;
+        } finally{
+            reset();
+        }
+    }
+
+    void reset(){
+        mongoCollection.drop();
+        referencedCollection.drop();
+    }
 }
