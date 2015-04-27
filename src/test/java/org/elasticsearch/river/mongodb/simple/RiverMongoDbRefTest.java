@@ -13,10 +13,7 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.QueryStringQueryBuilder;
 import org.elasticsearch.river.mongodb.RiverMongoDBTestAbstract;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.Factory;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
@@ -25,6 +22,8 @@ import com.mongodb.DBRef;
 import com.mongodb.WriteConcern;
 import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
+
+import java.io.IOException;
 
 public class RiverMongoDbRefTest extends RiverMongoDBTestAbstract {
 
@@ -45,7 +44,6 @@ public class RiverMongoDbRefTest extends RiverMongoDBTestAbstract {
         try {
             mongoDB = getMongo().getDB(getDatabase());
             mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
-            super.createRiver(TEST_MONGODB_RIVER_SIMPLE_JSON);
             logger.info("Start createCollection");
             this.mongoCollection = mongoDB.createCollection(getCollection(), null);
             Assert.assertNotNull(mongoCollection);
@@ -65,15 +63,11 @@ public class RiverMongoDbRefTest extends RiverMongoDBTestAbstract {
     @Test
     public void simpleBSONObject() throws Throwable {
         logger.debug("Start simpleBSONObject");
+        super.createRiver(TEST_MONGODB_RIVER_SIMPLE_JSON);
         try {
-            String mongoDocument = copyToStringFromClasspath(TEST_DBREF_MONGODB_DOCUMENT_JSON);
-            DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
-
-            WriteResult result = mongoCollection.insert(dbObject);
-            Thread.sleep(wait);
+            DBObject dbObject = setUp();
             String id = dbObject.get("_id").toString();
             String categoryId = ((DBRef) dbObject.get("category")).getId().toString();
-            logger.info("WriteResult: {}", result.toString());
             ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices()
                     .exists(new IndicesExistsRequest(getIndex()));
             assertThat(response.actionGet().isExists(), equalTo(true));
@@ -101,25 +95,15 @@ public class RiverMongoDbRefTest extends RiverMongoDBTestAbstract {
             t.printStackTrace();
             throw t;
         } finally {
-            reset();
+            tearDown();
         }
     }
 
     @Test
     public void nestedDbRef() throws Throwable{
+        super.createRiver(TEST_MONGODB_RIVER_EXPAND_DB_REFS_JSON);
         try {
-            this.referencedCollection = mongoDB.createCollection("category", null);
-            String referencedDocument = copyToStringFromClasspath(TEST_MONGO_REFERENCED_DOCUMENT);
-            WriteResult result = referencedCollection.insert((DBObject) JSON.parse(referencedDocument));
-            Thread.sleep(wait);
-            logger.info("Referenced WriteResult: {}", result.toString());
-
-            String mongoDocument = copyToStringFromClasspath(TEST_DBREF_MONGODB_DOCUMENT_JSON);
-            DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
-            result = mongoCollection.insert(dbObject);
-            Thread.sleep(wait);
-            logger.info("WriteResult: {}", result.toString());
-
+            DBObject dbObject = setUp();
             ActionFuture<IndicesExistsResponse> response = getNode().client().admin().indices()
                     .exists(new IndicesExistsRequest(getIndex()));
             assertThat(response.actionGet().isExists(), equalTo(true));
@@ -136,12 +120,29 @@ public class RiverMongoDbRefTest extends RiverMongoDBTestAbstract {
             t.printStackTrace();
             throw t;
         } finally{
-            reset();
+            tearDown();
         }
     }
 
-    void reset(){
+    DBObject setUp() throws IOException, InterruptedException {
+        this.referencedCollection = mongoDB.createCollection("category", null);
+        String referencedDocument = copyToStringFromClasspath(TEST_MONGO_REFERENCED_DOCUMENT);
+        WriteResult result = referencedCollection.insert((DBObject) JSON.parse(referencedDocument));
+        Thread.sleep(wait);
+        logger.info("Referenced WriteResult: {}", result.toString());
+
+        String mongoDocument = copyToStringFromClasspath(TEST_DBREF_MONGODB_DOCUMENT_JSON);
+        DBObject dbObject = (DBObject) JSON.parse(mongoDocument);
+        result = mongoCollection.insert(dbObject);
+        Thread.sleep(wait);
+        logger.info("WriteResult: {}", result.toString());
+
+        return dbObject;
+    }
+
+    void tearDown(){
         mongoCollection.drop();
         referencedCollection.drop();
+        super.deleteRiver();
     }
 }

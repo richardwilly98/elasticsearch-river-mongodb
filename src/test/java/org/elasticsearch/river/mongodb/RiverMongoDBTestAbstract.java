@@ -180,6 +180,7 @@ public abstract class RiverMongoDBTestAbstract {
     public static final String TEST_MONGODB_RIVER_IMPORT_ALL_COLLECTION_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-import-all-collections.json";
     public static final String TEST_MONGODB_RIVER_STORE_STATISTICS_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-store-statistics.json";
     public static final String TEST_SIMPLE_MONGODB_DOCUMENT_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-document.json";
+    public static final String TEST_MONGODB_RIVER_EXPAND_DB_REFS_JSON = "/org/elasticsearch/river/mongodb/simple/test-simple-mongodb-river-expand-db-refs.json";
 
     protected final ESLogger logger = Loggers.getLogger(getClass().getName());
     protected final static long wait = 2000;
