@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.mongodb.*;
 import org.bson.types.BasicBSONList;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
@@ -26,10 +27,6 @@ import org.elasticsearch.script.ExecutableScript;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.search.SearchHit;
 
-import com.mongodb.BasicDBList;
-import com.mongodb.BasicDBObject;
-import com.mongodb.DBObject;
-import com.mongodb.DBRef;
 import com.mongodb.gridfs.GridFSDBFile;
 
 class Indexer extends MongoDBRiverComponent implements Runnable {
@@ -414,16 +411,17 @@ class Indexer extends MongoDBRiverComponent implements Runnable {
      * @return
      */
     private Map<String, Object> convertDbRef(DBRef ref) {
-        DBObject dbObject = ref.fetch();
-        if(dbObject == null){
-            dbObject = ref.getDB().getMongo().getDB(definition.getMongoDb()).getCollection(ref.getRef()).findOne(new BasicDBObject("_id", ref.getId()));
+        DB refDb = ref.getDB();
+        if(refDb != null) {
+            DBObject dbObject = refDb.getMongo().getDB(definition.getMongoDb()).getCollection(ref.getCollectionName()).findOne(new BasicDBObject("_id", ref.getId()));
+            if(dbObject != null) {
+                return createObjectMap(dbObject);
+            }
         }
-        if(dbObject != null) {
-            return createObjectMap(dbObject);
-        }
+
         Map<String, Object> obj = new HashMap<>();
         obj.put("id", ref.getId());
-        obj.put("ref", ref.getRef());
+        obj.put("ref", ref.getCollectionName());
 
         return obj;
     }
