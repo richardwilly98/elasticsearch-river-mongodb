@@ -63,13 +63,13 @@ public class MongoClientService extends AbstractLifecycleComponent<MongoClientSe
 
             List<MongoCredential> mongoCredentials = new ArrayList<>();
             if (!Strings.isNullOrEmpty(definition.getMongoLocalUser()) && !Strings.isNullOrEmpty(definition.getMongoLocalPassword())) {
-                mongoCredentials.add(MongoCredential.createMongoCRCredential(
+                mongoCredentials.add(MongoCredential.createCredential(
                         definition.getMongoLocalUser(),
                         !Strings.isNullOrEmpty(definition.getMongoLocalAuthDatabase()) ? definition.getMongoLocalAuthDatabase() : MongoDBRiver.MONGODB_LOCAL_DATABASE,
                         definition.getMongoLocalPassword().toCharArray()));
             }
             if (!Strings.isNullOrEmpty(definition.getMongoAdminUser()) && !Strings.isNullOrEmpty(definition.getMongoAdminPassword())) {
-                mongoCredentials.add(MongoCredential.createMongoCRCredential(
+                mongoCredentials.add(MongoCredential.createCredential(
                         definition.getMongoAdminUser(),
                         !Strings.isNullOrEmpty(definition.getMongoAdminAuthDatabase()) ? definition.getMongoAdminAuthDatabase() : MongoDBRiver.MONGODB_ADMIN_DATABASE,
                         definition.getMongoAdminPassword().toCharArray()));

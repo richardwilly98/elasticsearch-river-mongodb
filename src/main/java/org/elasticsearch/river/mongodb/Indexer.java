@@ -14,8 +14,6 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.collect.ImmutableMap;
 import org.elasticsearch.common.collect.Maps;
-import org.elasticsearch.common.logging.ESLogger;
-import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.common.xcontent.XContentType;
@@ -34,9 +32,8 @@ import com.mongodb.DBObject;
 import com.mongodb.DBRef;
 import com.mongodb.gridfs.GridFSDBFile;
 
-class Indexer implements Runnable {
+class Indexer extends MongoDBRiverComponent implements Runnable {
 
-    private final ESLogger logger = ESLoggerFactory.getLogger(this.getClass().getName());
     private final MongoDBRiver river;
     private final MongoDBRiverDefinition definition;
     private final SharedContext context;
@@ -45,12 +42,13 @@ class Indexer implements Runnable {
 
     private final Map<SimpleEntry<String, String>, MongoDBRiverBulkProcessor> processors = Maps.newHashMap();
 
-    public Indexer(MongoDBRiver river, MongoDBRiverDefinition definition, SharedContext context, Client esClient, ScriptService scriptService) {
+    public Indexer(MongoDBRiver river) {
+        super(river);
         this.river = river;
-        this.definition = definition;
-        this.context = context;
-        this.esClient = esClient;
-        this.scriptService = scriptService;
+        this.definition = river.definition;
+        this.context = river.context;
+        this.esClient = river.esClient;
+        this.scriptService = river.scriptService;
         logger.debug(
                 "Create bulk processor with parameters - bulk actions: {} - concurrent request: {} - flush interval: {} - bulk size: {}",
                 definition.getBulk().getBulkActions(), definition.getBulk().getConcurrentRequests(), definition.getBulk()
@@ -74,7 +72,7 @@ class Indexer implements Runnable {
 
                 // 2. Update the timestamp
                 if (lastTimestamp != null) {
-                    MongoDBRiver.setLastTimestamp(definition, lastTimestamp,
+                    river.setLastTimestamp(lastTimestamp,
                             getBulkProcessor(definition.getIndexName(), definition.getTypeName()).getBulkProcessor());
                 }
 

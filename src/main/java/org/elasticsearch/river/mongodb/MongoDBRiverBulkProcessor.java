@@ -31,18 +31,15 @@ import org.elasticsearch.cluster.metadata.MappingMetaData;
 import org.elasticsearch.common.collect.ImmutableMap;
 import org.elasticsearch.common.collect.ImmutableOpenMap;
 import org.elasticsearch.common.collect.Maps;
-import org.elasticsearch.common.logging.ESLogger;
-import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.river.mongodb.util.MongoDBRiverHelper;
 import org.elasticsearch.threadpool.ThreadPool.Info;
 import org.elasticsearch.threadpool.ThreadPoolStats.Stats;
 
-public class MongoDBRiverBulkProcessor {
+public class MongoDBRiverBulkProcessor extends MongoDBRiverComponent {
 
     public static final long DEFAULT_BULK_QUEUE_SIZE = 50;
     public static final Map<String, Boolean> DROP_INDEX = ImmutableMap.of("dropIndex", Boolean.TRUE);
-    private final ESLogger logger = ESLoggerFactory.getLogger(this.getClass().getName());
     private final MongoDBRiver river;
     private final MongoDBRiverDefinition definition;
     private final Client client;
@@ -159,6 +156,7 @@ public class MongoDBRiverBulkProcessor {
     };
 
     MongoDBRiverBulkProcessor(MongoDBRiver river, MongoDBRiverDefinition definition, Client client, String index, String type) {
+        super(river);
         this.river = river;
         this.bulkProcessor = BulkProcessor.builder(client, listener).setBulkActions(definition.getBulk().getBulkActions())
                 .setConcurrentRequests(definition.getBulk().getConcurrentRequests())
