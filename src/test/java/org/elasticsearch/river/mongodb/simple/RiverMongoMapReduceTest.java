@@ -30,6 +30,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.BasicDBObjectBuilder;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
@@ -57,9 +58,9 @@ public class RiverMongoMapReduceTest extends RiverMongoDBTestAbstract {
             mongoDB = getMongo().getDB(getDatabase());
             mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
             logger.info("Start createCollection");
-            mongoCollection = mongoDB.createCollection(getCollection(), null);
+            mongoCollection = mongoDB.createCollection(getCollection(), new BasicDBObject());
             Assert.assertNotNull(mongoCollection);
-            mongoCollection2 = mongoDB.createCollection("collection-" + System.currentTimeMillis(), null);
+            mongoCollection2 = mongoDB.createCollection("collection-" + System.currentTimeMillis(), new BasicDBObject());
             Assert.assertNotNull(mongoCollection2);
             createRiver(TEST_MONGODB_RIVER_IMPORT_ALL_COLLECTION_JSON, getRiver(), 3, getDatabase(), getIndex());
         } catch (Throwable t) {

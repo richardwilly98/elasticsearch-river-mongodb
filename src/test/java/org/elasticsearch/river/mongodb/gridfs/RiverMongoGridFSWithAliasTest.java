@@ -35,6 +35,7 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.WriteConcern;
@@ -61,7 +62,7 @@ public class RiverMongoGridFSWithAliasTest extends RiverMongoGridFSTestAbstract 
             mongoDB = getMongo().getDB(getDatabase());
             mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
             logger.info("Start createCollection");
-            mongoCollection = mongoDB.createCollection(getCollection(), null);
+            mongoCollection = mongoDB.createCollection(getCollection(), new BasicDBObject());
             Assert.assertNotNull(mongoCollection);
         } catch (Throwable t) {
             logger.error("createDatabase failed.", t);

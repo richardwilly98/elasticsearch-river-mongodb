@@ -58,7 +58,7 @@ public class RiverMongoWithGridFSTest extends RiverMongoGridFSTestAbstract {
             super.createRiver(TEST_MONGODB_RIVER_GRIDFS_JSON);
             Thread.sleep(wait);
             logger.info("Start createCollection");
-            mongoCollection = mongoDB.createCollection(getCollection(), null);
+            mongoCollection = mongoDB.createCollection(getCollection(), new BasicDBObject());
             Assert.assertNotNull(mongoCollection);
         } catch (Throwable t) {
             logger.error("createDatabase failed.", t);

@@ -36,6 +36,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.DBObject;
@@ -74,7 +75,7 @@ public class RiverMongoGroovyScriptTest extends RiverMongoDBTestAbstract {
 
     @BeforeMethod
     public void createCollection() {
-        mongoCollection = mongoDB.createCollection(getCollection(), null);
+        mongoCollection = mongoDB.createCollection(getCollection(), new BasicDBObject());
         Assert.assertNotNull(mongoCollection);
     }
 

@@ -18,6 +18,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.DBObject;
@@ -46,7 +47,7 @@ public class RiverMongoDbRefTest extends RiverMongoDBTestAbstract {
             mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
             super.createRiver(TEST_MONGODB_RIVER_SIMPLE_JSON);
             logger.info("Start createCollection");
-            this.mongoCollection = mongoDB.createCollection(getCollection(), null);
+            this.mongoCollection = mongoDB.createCollection(getCollection(), new BasicDBObject());
             Assert.assertNotNull(mongoCollection);
         } catch (Throwable t) {
             logger.error("createDatabase failed.", t);
