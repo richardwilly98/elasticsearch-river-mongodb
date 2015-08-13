@@ -1,6 +1,5 @@
 package org.elasticsearch.river.mongodb;
 
-import java.net.UnknownHostException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
@@ -529,21 +528,13 @@ public class MongoDBRiverDefinition {
                         mongoHost = XContentMapValues.nodeStringValue(feed.get(HOST_FIELD), null);
                         mongoPort = XContentMapValues.nodeIntegerValue(feed.get(PORT_FIELD), DEFAULT_DB_PORT);
                         logger.trace("Server: " + mongoHost + " - " + mongoPort);
-                        try {
-                            mongoServers.add(new ServerAddress(mongoHost, mongoPort));
-                        } catch (UnknownHostException uhEx) {
-                            logger.warn("Cannot add mongo server {}:{}", uhEx, mongoHost, mongoPort);
-                        }
+                        mongoServers.add(new ServerAddress(mongoHost, mongoPort));
                     }
                 }
             } else {
                 mongoHost = XContentMapValues.nodeStringValue(mongoSettings.get(HOST_FIELD), DEFAULT_DB_HOST);
                 mongoPort = XContentMapValues.nodeIntegerValue(mongoSettings.get(PORT_FIELD), DEFAULT_DB_PORT);
-                try {
-                    mongoServers.add(new ServerAddress(mongoHost, mongoPort));
-                } catch (UnknownHostException uhEx) {
-                    logger.warn("Cannot add mongo server {}:{}", uhEx, mongoHost, mongoPort);
-                }
+                mongoServers.add(new ServerAddress(mongoHost, mongoPort));
             }
             builder.mongoServers(mongoServers);
 
@@ -764,12 +755,9 @@ public class MongoDBRiverDefinition {
         } else {
             mongoHost = DEFAULT_DB_HOST;
             mongoPort = DEFAULT_DB_PORT;
-            try {
-                mongoServers.add(new ServerAddress(mongoHost, mongoPort));
-                builder.mongoServers(mongoServers);
-            } catch (UnknownHostException e) {
-                e.printStackTrace();
-            }
+
+            mongoServers.add(new ServerAddress(mongoHost, mongoPort));
+            builder.mongoServers(mongoServers);
             builder.mongoDb(riverName);
             builder.mongoCollection(riverName);
         }
