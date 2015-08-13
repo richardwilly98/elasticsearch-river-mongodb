@@ -1,6 +1,5 @@
 package org.elasticsearch.river.mongodb;
 
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -146,11 +145,7 @@ public class MongoConfigProvider extends MongoDBRiverComponent implements Callab
         }
         List<ServerAddress> servers = new ArrayList<ServerAddress>();
         for (String server : definition.split(",")) {
-            try {
-                servers.add(new ServerAddress(server));
-            } catch (UnknownHostException uhEx) {
-                logger.warn("failed to execute bulk", uhEx);
-            }
+            servers.add(new ServerAddress(server));
         }
         return servers;
     }

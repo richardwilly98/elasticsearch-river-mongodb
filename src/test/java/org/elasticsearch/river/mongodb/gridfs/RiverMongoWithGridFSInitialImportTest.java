@@ -32,6 +32,7 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
@@ -53,7 +54,7 @@ public class RiverMongoWithGridFSInitialImportTest extends RiverMongoGridFSTestA
             mongoDB = getMongo().getDB(getDatabase());
             mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
             logger.info("Start createCollection");
-            mongoCollection = mongoDB.createCollection(getCollection(), null);
+            mongoCollection = mongoDB.createCollection(getCollection(), new BasicDBObject());
             Assert.assertNotNull(mongoCollection);
             Thread.sleep(wait);
         } catch (Throwable t) {

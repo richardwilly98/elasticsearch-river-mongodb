@@ -62,7 +62,7 @@ public class RiverMongoExcludeFieldsTest extends RiverMongoDBTestAbstract {
                     (Object) "[\"exclude-field-1\", \"exclude-field-2\"]", (Object) getDatabase(), (Object) getCollection(),
                     (Object) getIndex(), (Object) getDatabase());
             logger.info("Start createCollection");
-            mongoCollection = mongoDB.createCollection(getCollection(), null);
+            mongoCollection = mongoDB.createCollection(getCollection(), new BasicDBObject());
             Assert.assertNotNull(mongoCollection);
         } catch (Throwable t) {
             logger.error("createDatabase failed.", t);

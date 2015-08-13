@@ -416,7 +416,7 @@ class Indexer extends MongoDBRiverComponent implements Runnable {
     private Map<String, Object> convertDbRef(DBRef ref) {
         Map<String, Object> obj = new HashMap<String, Object>();
         obj.put("id", ref.getId());
-        obj.put("ref", ref.getRef());
+        obj.put("ref", ref.getCollectionName());
 
         return obj;
     }

@@ -294,7 +294,7 @@ public abstract class RiverMongoDBTestAbstract {
         }
         ImmutableList<MongoReplicaSet.Member> members = builder.build();
         Thread.sleep(2000);
-        MongoClientOptions mco = MongoClientOptions.builder().autoConnectRetry(true).connectTimeout(15000).socketTimeout(60000).build();
+        MongoClientOptions mco = MongoClientOptions.builder().connectTimeout(15000).socketTimeout(60000).build();
         Mongo mongo = new MongoClient(new ServerAddress(Network.getLocalHost().getHostName(), ports[0]), mco);
         DB mongoAdminDB = mongo.getDB(ADMIN_DATABASE_NAME);
 

@@ -64,7 +64,7 @@ public class RiverMongoDBTest extends RiverMongoDBTestAbstract {
             mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
             super.createRiver(TEST_MONGODB_RIVER_SIMPLE_JSON);
             logger.info("Start createCollection");
-            mongoCollection = mongoDB.createCollection(getCollection(), null);
+            mongoCollection = mongoDB.createCollection(getCollection(), new BasicDBObject());
             Assert.assertNotNull(mongoCollection);
         } catch (Throwable t) {
             logger.error("createDatabase failed.", t);

@@ -34,6 +34,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.DBObject;
@@ -62,7 +63,7 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAbstract {
             super.createRiver(TEST_SIMPLE_MONGODB_RIVER_DROP_COLLECTION_JSON, getRiver(), 3, (Object) dropCollectionOption,
                     (Object) getDatabase(), (Object) getCollection(), (Object) getIndex(), (Object) getDatabase());
             logger.info("Start createCollection");
-            mongoCollection = mongoDB.createCollection(getCollection(), null);
+            mongoCollection = mongoDB.createCollection(getCollection(), new BasicDBObject());
             Assert.assertNotNull(mongoCollection);
         } catch (Throwable t) {
             logger.error("createDatabase failed.", t);
@@ -190,7 +191,7 @@ public class RiverMongoDropCollectionTest extends RiverMongoDBTestAbstract {
                 assertThat(countRequest, equalTo(0L));
             }
             mongoDB = getMongo().getDB(getDatabase());
-            mongoCollection = mongoDB.createCollection(getCollection(), null);
+            mongoCollection = mongoDB.createCollection(getCollection(), new BasicDBObject());
             dbObject = (DBObject) JSON.parse(mongoDocument);
             String value = String.valueOf(System.currentTimeMillis());
             dbObject.put("attribute1", value);

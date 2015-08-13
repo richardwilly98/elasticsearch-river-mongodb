@@ -32,6 +32,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.DBObject;
@@ -60,7 +61,7 @@ public class RiverMongoIncludeCollectionTest extends RiverMongoDBTestAbstract {
             super.createRiver(TEST_SIMPLE_MONGODB_RIVER_INCLUDE_COLLECTION_JSON, getRiver(), 3, (Object) includeCollectionOption,
                     (Object) getDatabase(), (Object) getCollection(), (Object) getIndex(), (Object) getDatabase());
             logger.info("Start createCollection");
-            mongoCollection = mongoDB.createCollection(getCollection(), null);
+            mongoCollection = mongoDB.createCollection(getCollection(), new BasicDBObject());
             Assert.assertNotNull(mongoCollection);
         } catch (Throwable t) {
             logger.error("createDatabase failed.", t);

@@ -56,7 +56,7 @@ public class RiverMongoCollectionWithDot extends RiverMongoDBTestAbstract {
             mongoDB = getMongo().getDB(database);
             mongoDB.setWriteConcern(WriteConcern.REPLICAS_SAFE);
             logger.info("Start createCollection");
-            mongoCollection = mongoDB.createCollection(collection, null);
+            mongoCollection = mongoDB.createCollection(collection, new BasicDBObject());
             Assert.assertNotNull(mongoCollection);
         } catch (Throwable t) {
             logger.error("createDatabase failed.", t);
