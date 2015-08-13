@@ -666,7 +666,7 @@ public class MongoDBRiverDefinition {
                         if (initalTimestampSettings.containsKey(INITIAL_TIMESTAMP_SCRIPT_FIELD)) {
 
                             ExecutableScript scriptExecutable = scriptService.executable(scriptType,
-                                    initalTimestampSettings.get(INITIAL_TIMESTAMP_SCRIPT_FIELD).toString(), ScriptService.ScriptType.INLINE, Maps.newHashMap());
+                                    initalTimestampSettings.get(INITIAL_TIMESTAMP_SCRIPT_FIELD).toString(), ScriptService.ScriptType.INLINE, Maps.<String, Object>newHashMap());
                             Object ctx = scriptExecutable.run();
                             logger.trace("initialTimestamp script returned: {}", ctx);
                             if (ctx != null) {
