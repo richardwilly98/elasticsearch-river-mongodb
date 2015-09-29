@@ -205,7 +205,7 @@ class OplogSlurper extends MongoDBRiverComponent implements Runnable {
         logger.trace("namespace: {} - operation: {}", namespace, operation);
         if (namespace.equals(MongoDBRiver.OPLOG_ADMIN_COMMAND)) {
             if (operation == Operation.COMMAND) {
-                processAdminCommandOplogEntry(entry, startTimestamp);
+                processAdminCommandOplogEntry(entry);
                 return startTimestamp;
             }
         }
@@ -306,7 +306,7 @@ class OplogSlurper extends MongoDBRiverComponent implements Runnable {
         return oplog == null ? null : oplog.get("ops");
     }
 
-    private void processAdminCommandOplogEntry(final DBObject entry, final Timestamp<?> startTimestamp) throws InterruptedException {
+    private void processAdminCommandOplogEntry(final DBObject entry) throws InterruptedException {
         if (logger.isTraceEnabled()) {
             logger.trace("processAdminCommandOplogEntry - [{}]", entry);
         }
