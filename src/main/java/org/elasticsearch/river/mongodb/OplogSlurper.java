@@ -514,15 +514,10 @@ class OplogSlurper extends MongoDBRiverComponent implements Runnable {
         }
     }
 
-    private String addInsertToStream(final Timestamp<?> currentTimestamp, final DBObject data, final String collection)
+    private void addInsertToStream(final Timestamp<?> currentTimestamp, final DBObject data, final String collection)
             throws InterruptedException {
         totalDocuments.incrementAndGet();
         addToStream(Operation.INSERT, currentTimestamp, data, collection);
-        if (data == null) {
-            return null;
-        } else {
-            return data.containsField(MongoDBRiver.MONGODB_ID_FIELD) ? data.get(MongoDBRiver.MONGODB_ID_FIELD).toString() : null;
-        }
     }
 
     private void addToStream(final Operation operation, final Timestamp<?> currentTimestamp, final DBObject data, final String collection)
