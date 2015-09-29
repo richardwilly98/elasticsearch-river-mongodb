@@ -61,13 +61,14 @@ class Indexer extends MongoDBRiverComponent implements Runnable {
         while (context.getStatus() == Status.RUNNING) {
 
             try {
-                Timestamp<?> lastTimestamp = null;
-
                 // 1. Attempt to fill as much of the bulk request as possible
                 QueueEntry entry = context.getStream().take();
-                lastTimestamp = processBlockingQueue(entry);
+                Timestamp<?> lastTimestamp = entry.getOplogTimestamp();
+
+                processBlockingQueue(entry);
                 while ((entry = context.getStream().poll(definition.getBulk().getFlushInterval().millis(), MILLISECONDS)) != null) {
-                    lastTimestamp = processBlockingQueue(entry);
+                    processBlockingQueue(entry);
+                    lastTimestamp = entry.getOplogTimestamp();
                 }
 
                 // 2. Update the timestamp
@@ -102,15 +103,14 @@ class Indexer extends MongoDBRiverComponent implements Runnable {
     }
 
     @SuppressWarnings({ "unchecked" })
-    private Timestamp<?> processBlockingQueue(QueueEntry entry) {
+    private void processBlockingQueue(QueueEntry entry) {
         Operation operation = entry.getOperation();
         if (entry.getData().get(MongoDBRiver.MONGODB_ID_FIELD) == null
                 && (operation == Operation.INSERT || operation == Operation.UPDATE || operation == Operation.DELETE)) {
             logger.warn("Cannot get object id. Skip the current item: [{}]", entry.getData());
-            return null;
+            return;
         }
 
-        Timestamp<?> lastTimestamp = entry.getOplogTimestamp();
         String type;
         if (definition.isImportAllCollections()) {
             type = entry.getCollection();
@@ -123,7 +123,7 @@ class Indexer extends MongoDBRiverComponent implements Runnable {
             } catch (IOException ioEx) {
                 logger.error("Update bulk failed.", ioEx);
             }
-            return lastTimestamp;
+            return;
         }
 
         String objectId = "";
@@ -139,11 +139,12 @@ class Indexer extends MongoDBRiverComponent implements Runnable {
             } catch (IOException ioEx) {
                 logger.error("Update bulk failed.", ioEx);
             }
-            return lastTimestamp;
+            return;
         }
 
         if (hasScript() && definition.isAdvancedTransformation()) {
-            return applyAdvancedTransformation(entry, type);
+            applyAdvancedTransformation(entry, type);
+            return;
         }
 
         if (logger.isTraceEnabled()) {
@@ -186,7 +187,7 @@ class Indexer extends MongoDBRiverComponent implements Runnable {
                 if (isDocumentIgnored(ctx)) {
                     logger.trace("From script ignore document id: {}", objectId);
                     // ignore document
-                    return lastTimestamp;
+                    return;
                 }
                 if (isDocumentDeleted(ctx)) {
                     ctx.put("operation", MongoDBRiver.OPLOG_DELETE_OPERATION);
@@ -210,7 +211,6 @@ class Indexer extends MongoDBRiverComponent implements Runnable {
         } catch (IOException e) {
             logger.warn("failed to parse {}", e, entry.getData());
         }
-        return lastTimestamp;
     }
 
     private void updateBulkRequest(DBObject data, String objectId, Operation operation, String index, String type, String routing,
@@ -274,9 +274,7 @@ class Indexer extends MongoDBRiverComponent implements Runnable {
     }
 
     @SuppressWarnings("unchecked")
-    private Timestamp<?> applyAdvancedTransformation(QueueEntry entry, String type) {
-
-        Timestamp<?> lastTimestamp = entry.getOplogTimestamp();
+    private void applyAdvancedTransformation(QueueEntry entry, String type) {
         Operation operation = entry.getOperation();
         String objectId = "";
         if (entry.getData().get(MongoDBRiver.MONGODB_ID_FIELD) != null) {
@@ -370,8 +368,6 @@ class Indexer extends MongoDBRiverComponent implements Runnable {
                 }
             }
         }
-
-        return lastTimestamp;
     }
 
     private XContentBuilder build(final DBObject data, final String objectId) throws IOException {
