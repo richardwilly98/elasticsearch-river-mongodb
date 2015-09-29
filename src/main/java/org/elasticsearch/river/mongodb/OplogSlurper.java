@@ -156,7 +156,7 @@ class OplogSlurper extends MongoDBRiverComponent implements Runnable {
         }
     }
 
-    private DBCursor processFullOplog() throws InterruptedException, SlurperException {
+    private DBCursor processFullOplog() throws SlurperException {
         Timestamp<?> currentTimestamp = getCurrentOplogTimestamp();
         return oplogCursor(currentTimestamp);
     }
