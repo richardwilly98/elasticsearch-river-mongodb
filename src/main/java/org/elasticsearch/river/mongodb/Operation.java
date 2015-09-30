@@ -7,6 +7,12 @@ public enum Operation {
     DROP_COLLECTION("dc"),
     DROP_DATABASE("dd"),
     COMMAND(MongoDBRiver.OPLOG_COMMAND_OPERATION),
+    /**
+     * Internal "no-op" to force a timestamp update.
+     *
+     * The code is the same MongoDB uses for no-operation entries.
+     */
+    NOP("n"),
     UNKNOWN(null);
 
     private String value;

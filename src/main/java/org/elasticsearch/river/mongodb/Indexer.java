@@ -111,6 +111,11 @@ class Indexer extends MongoDBRiverComponent implements Runnable {
             return;
         }
 
+        if (operation == Operation.NOP) {
+            // No-op entry, nothing to do.
+            return;
+        }
+
         String type;
         if (definition.isImportAllCollections()) {
             type = entry.getCollection();
