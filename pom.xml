@@ -43,7 +43,7 @@
 	</parent>
 
 	<properties>
-		<elasticsearch.version>1.4.2</elasticsearch.version>
+		<elasticsearch.version>1.7.3</elasticsearch.version>
 		<mongo-java-driver.version>3.0.4</mongo-java-driver.version>
 		<de.flapdoodle.embed.mongo.version>1.48.2</de.flapdoodle.embed.mongo.version>
 		<hamcrest.version>1.3</hamcrest.version>
