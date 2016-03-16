@@ -24,8 +24,8 @@ cluster:
 script.disable_dynamic: false
 
 plugins:
-    mapper-attachments: elasticsearch/elasticsearch-mapper-attachments/2.4.1
-    lang-javascript: elasticsearch/elasticsearch-lang-javascript/2.4.1
+    mapper-attachments: elasticsearch/elasticsearch-mapper-attachments/2.7.0
+    lang-javascript: elasticsearch/elasticsearch-lang-javascript/2.7.0
 
 mongodb:
     version: 3.0.0
