@@ -26,7 +26,18 @@
 		<system>GitHub</system>
 		<url>https://github.com/richardwilly98/elasticsearch-river-mongodb/issues</url>
 	</issueManagement>
-
+    
+    <distributionManagement>
+        <repository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/content/repositories/releases</url>
+        </repository>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+    </distributionManagement>
+    
 	<developers>
 		<developer>
 			<email>richard.louapre@gmail.com</email>
