@@ -73,26 +73,13 @@ class CollectionSlurper extends MongoDBRiverComponent {
                 DBCollection collection = slurpedDb.getCollection(definition.getMongoCollection());
                 importCollection(collection, timestamp);
             }
-            logger.debug("Before waiting for 500 ms");
-            Thread.sleep(500);
         } catch (MongoInterruptedException | InterruptedException e) {
-            logger.info("river-mongodb slurper interrupted");
+            logger.error("river-mongodb slurper interrupted");
             Thread.currentThread().interrupt();
-            return;
-        } catch (MongoSocketException | MongoTimeoutException | MongoCursorNotFoundException e) {
-            logger.info("Oplog tailing - {} - {}. Will retry.", e.getClass().getSimpleName(), e.getMessage());
-            logger.debug("Total documents inserted so far: {}", totalDocuments.get());
-            try {
-                Thread.sleep(MongoDBRiver.MONGODB_RETRY_ERROR_DELAY_MS);
-            } catch (InterruptedException iEx) {
-                logger.info("river-mongodb slurper interrupted");
-                Thread.currentThread().interrupt();
-                return;
-            }
         } catch (Exception e) {
-            logger.error("Exception while looping in cursor", e);
+            logger.error("Exception in initial import", e);
+            logger.debug("Total documents inserted so far: {}", totalDocuments.get());
             Thread.currentThread().interrupt();
-            return;
         }
     }
 
