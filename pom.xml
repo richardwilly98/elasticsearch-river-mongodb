@@ -21,7 +21,7 @@
 		<url>https://github.com/richardwilly98/elasticsearch-river-mongodb</url>
 		<connection>scm:git:git@github.com:richardwilly98/elasticsearch-river-mongodb.git</connection>
 		<developerConnection>scm:git:git@github.com:richardwilly98/elasticsearch-river-mongodb.git</developerConnection>
-	  <tag>HEAD</tag>
+	  <tag>elasticsearch-river-mongodb-2.0.10</tag>
   </scm>
 	<issueManagement>
 		<system>GitHub</system>
@@ -30,13 +30,9 @@
     
     <distributionManagement>
         <repository>
-            <id>ossrh</id>
+            <id>nexus-release</id>
             <url>https://oss.sonatype.org/content/repositories/releases</url>
         </repository>
-        <snapshotRepository>
-            <id>ossrh</id>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-        </snapshotRepository>
     </distributionManagement>
     
 	<developers>
@@ -120,7 +116,7 @@
                             </execution>
                         </executions>
                         <configuration>
-                            <serverId>ossrh</serverId>
+                            <serverId>nexus-release</serverId>
                             <nexusUrl>https://oss.sonatype.org/</nexusUrl>
                             <skipStaging>true</skipStaging>
                         </configuration>
@@ -131,7 +127,7 @@
    	</profiles>
 	<repositories>
 		<repository>
-			<id>sonatype-releases</id>
+			<id>nexus</id>
 			<name>Sonatype Releases Repository</name>
 			<url>https://oss.sonatype.org/content/repositories/releases</url>
 		</repository>
@@ -248,7 +244,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-release-plugin</artifactId>
-                <version>2.5.3</version>
+                <version>2.4.2</version>
                 <configuration>
                     <tagNameFormat>@{project.artifactId}-@{project.version}</tagNameFormat>
                     <autoVersionSubmodules>true</autoVersionSubmodules>
