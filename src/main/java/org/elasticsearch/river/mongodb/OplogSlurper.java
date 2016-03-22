@@ -19,6 +19,7 @@ import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoCursorNotFoundException;
 import com.mongodb.MongoInterruptedException;
+import com.mongodb.MongoQueryException;
 import com.mongodb.MongoSocketException;
 import com.mongodb.MongoTimeoutException;
 import com.mongodb.QueryOperators;
@@ -86,7 +87,8 @@ class OplogSlurper extends MongoDBRiverComponent implements Runnable {
     @Override
     public void run() {
         while (context.getStatus() == Status.RUNNING) {
-            try {        
+            boolean stopSlurper = false;
+            try {
                 // Slurp from oplog
                 DBCursor cursor = null;
                 try {
@@ -117,25 +119,46 @@ class OplogSlurper extends MongoDBRiverComponent implements Runnable {
                 }
             } catch (SlurperException e) {
                 logger.error("Exception in slurper", e);
-                Thread.currentThread().interrupt();
-                break;
+                stopSlurper = true;
             } catch (MongoInterruptedException | InterruptedException e) {
                 logger.info("river-mongodb slurper interrupted");
-                Thread.currentThread().interrupt();
-                break;
-            } catch (MongoSocketException | MongoTimeoutException | MongoCursorNotFoundException e) {
-                logger.info("Oplog tailing - {} - {}. Will retry.", e.getClass().getSimpleName(), e.getMessage());
-                logger.debug("Total documents inserted so far by river {}: {}", definition.getRiverName(), totalDocuments.get());
-                try {
-                    Thread.sleep(MongoDBRiver.MONGODB_RETRY_ERROR_DELAY_MS);
-                } catch (InterruptedException iEx) {
-                    logger.info("river-mongodb slurper interrupted");
-                    Thread.currentThread().interrupt();
-                    break;
+                stopSlurper = true;
+            } catch (MongoSocketException | MongoTimeoutException | MongoQueryException e) {
+                // MongoQueryException is a server-side exception, and we can retry under some of these:
+                // - MongoCursorNotFoundException: likely the master moved, and so the cursor is no longer valid
+                // - MQE with code InterruptedAtShutdown(11600) or Interrupted(11601): those indicate server-side interruptions
+                // All others are (probably) fatal, and we abort the slurper.
+                boolean canRetry;
+                if (e instanceof MongoQueryException && (e instanceof MongoCursorNotFoundException || e.getCode() == 11600 || e.getCode() == 11601)) {
+                    // Retryable server-side exception
+                    canRetry = true;
+                } else if (e instanceof MongoQueryException) {
+                    // Some other server-side exception
+                    canRetry = false;
+                } else {
+                    // Client-side exception
+                    canRetry = true;
+                }
+
+                if (canRetry) {
+                    logger.info("Oplog tailing - {} - {}. Will retry.", e.getClass().getSimpleName(), e.getMessage());
+                    logger.debug("Total documents inserted so far by river {}: {}", definition.getRiverName(), totalDocuments.get());
+                    try {
+                        Thread.sleep(MongoDBRiver.MONGODB_RETRY_ERROR_DELAY_MS);
+                    } catch (InterruptedException iEx) {
+                        logger.info("river-mongodb slurper interrupted");
+                        stopSlurper = true;
+                    }
+                } else {
+                    logger.error("Non-retryable exception in slurper", e);
+                    stopSlurper = true;
                 }
             } catch (Exception e) {
                 logger.error("Exception while looping in cursor", e);
-                Thread.currentThread().interrupt();
+                stopSlurper = true;
+            }
+
+            if (stopSlurper) {
                 break;
             }
         }
