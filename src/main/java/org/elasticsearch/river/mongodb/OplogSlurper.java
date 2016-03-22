@@ -224,7 +224,12 @@ class OplogSlurper extends MongoDBRiverComponent implements Runnable {
             }
         }
 
-        String objectId = getObjectIdFromOplogEntry(entry);
+        String objectId = null;
+        try {
+            objectId = getObjectIdFromOplogEntry(entry);
+        } catch (Exception e) {
+            logger.warn("Failed to get ObjectId from Oplog Entry!", e);
+        }
         if (operation == Operation.DELETE) {
             // Include only _id in data, as vanilla MongoDB does, so
             // transformation scripts won't be broken by Toku
