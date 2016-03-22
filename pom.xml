@@ -31,7 +31,7 @@
     <distributionManagement>
         <repository>
             <id>nexus-release</id>
-            <url>https://oss.sonatype.org/content/repositories/releases</url>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
         </repository>
     </distributionManagement>
     
@@ -125,13 +125,6 @@
             </build>
         </profile>
    	</profiles>
-	<repositories>
-		<repository>
-			<id>nexus</id>
-			<name>Sonatype Releases Repository</name>
-			<url>https://oss.sonatype.org/content/repositories/releases</url>
-		</repository>
-	</repositories>
 
 	<dependencies>
 		<dependency>
