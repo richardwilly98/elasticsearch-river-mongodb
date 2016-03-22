@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.github.richardwilly98.elasticsearch</groupId>
 	<artifactId>elasticsearch-river-mongodb</artifactId>
-	<version>2.0.10-SNAPSHOT</version>
+	<version>2.0.10</version>
 	<packaging>jar</packaging>
 	<description>MongoDB River for ElasticSearch</description>
 	<url>https://github.com/richardwilly98/elasticsearch-river-mongodb</url>
@@ -29,8 +29,12 @@
 	</issueManagement>
     
     <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
         <repository>
-            <id>nexus-release</id>
+            <id>ossrh</id>
             <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
         </repository>
     </distributionManagement>
@@ -101,26 +105,6 @@
             <id>releases</id>
             <build>
                 <plugins>
-                    <plugin>
-                        <groupId>org.sonatype.plugins</groupId>
-                        <artifactId>nexus-staging-maven-plugin</artifactId>
-                        <version>1.6.3</version>
-                        <extensions>true</extensions>
-                        <executions>
-                            <execution>
-                                <id>default-deploy</id>
-                                <phase>deploy</phase>
-                                <goals>
-                                    <goal>deploy</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                        <configuration>
-                            <serverId>nexus-release</serverId>
-                            <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-                            <skipStaging>true</skipStaging>
-                        </configuration>
-                    </plugin>
                 </plugins>
             </build>
         </profile>
@@ -234,6 +218,26 @@
 		</testResources>
 
 		<plugins>
+            <plugin>
+                <groupId>org.sonatype.plugins</groupId>
+                <artifactId>nexus-staging-maven-plugin</artifactId>
+                <version>1.6.3</version>
+                <extensions>true</extensions>
+                <executions>
+                    <execution>
+                        <id>default-deploy</id>
+                        <phase>deploy</phase>
+                        <goals>
+                            <goal>deploy</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <serverId>ossrh</serverId>
+                    <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                    <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-release-plugin</artifactId>
