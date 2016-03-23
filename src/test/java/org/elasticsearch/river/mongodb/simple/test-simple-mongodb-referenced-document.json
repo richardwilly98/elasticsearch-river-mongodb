@@ -1,0 +1,5 @@
+{
+  "_id": { "$oid" : "5194272CFDEA65E5D6000021" },
+  "name": "arbitrary category for a thousand",
+  "postDate": { "$date": 1388853809000.000000 }
+}

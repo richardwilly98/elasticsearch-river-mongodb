@@ -100,6 +100,7 @@ public class MongoDBRiverDefinition {
     public final static String BULK_SIZE_FIELD = "bulk_size";
     public final static String BULK_TIMEOUT_FIELD = "bulk_timeout";
     public final static String CONCURRENT_BULK_REQUESTS_FIELD = "concurrent_bulk_requests";
+    public final static String EXPAND_DB_REFS_FIELD = "expand_db_refs";
 
     public final static String BULK_FIELD = "bulk";
     public final static String ACTIONS_FIELD = "actions";
@@ -150,6 +151,7 @@ public class MongoDBRiverDefinition {
     private final String statisticsTypeName;
     private final boolean importAllCollections;
     private final boolean disableIndexRefresh;
+    private final boolean expandDbRefs;
     // index
     private final String indexName;
     private final String typeName;
@@ -201,6 +203,7 @@ public class MongoDBRiverDefinition {
         private String statisticsTypeName;
         private boolean importAllCollections;
         private boolean disableIndexRefresh;
+        private boolean expandDbRefs;
 
         // index
         private String indexName;
@@ -338,6 +341,11 @@ public class MongoDBRiverDefinition {
 
         public Builder disableIndexRefresh(boolean disableIndexRefresh) {
             this.disableIndexRefresh = disableIndexRefresh;
+            return this;
+        }
+
+        public Builder expandDbRefs(boolean expandDbRefs){
+            this.expandDbRefs = expandDbRefs;
             return this;
         }
 
@@ -615,6 +623,8 @@ public class MongoDBRiverDefinition {
                 // builder.storeStatistics(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(STORE_STATISTICS_FIELD),
                 // false));
                 builder.importAllCollections(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(IMPORT_ALL_COLLECTIONS_FIELD),
+                        false));
+                builder.expandDbRefs(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(EXPAND_DB_REFS_FIELD),
                         false));
                 builder.disableIndexRefresh(XContentMapValues.nodeBooleanValue(mongoOptionsSettings.get(DISABLE_INDEX_REFRESH_FIELD), false));
                 builder.includeCollection(XContentMapValues.nodeStringValue(mongoOptionsSettings.get(INCLUDE_COLLECTION_FIELD), ""));
@@ -912,6 +922,7 @@ public class MongoDBRiverDefinition {
         this.statisticsTypeName = builder.statisticsTypeName;
         this.importAllCollections = builder.importAllCollections;
         this.disableIndexRefresh = builder.disableIndexRefresh;
+        this.expandDbRefs = builder.expandDbRefs;
 
         // index
         this.indexName = builder.indexName;
@@ -1064,6 +1075,10 @@ public class MongoDBRiverDefinition {
 
     public boolean isDisableIndexRefresh() {
         return disableIndexRefresh;
+    }
+
+    public boolean isExpandDbRefs() {
+        return expandDbRefs;
     }
 
     public String getIndexName() {
