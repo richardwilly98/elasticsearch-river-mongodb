@@ -35,6 +35,7 @@ import org.elasticsearch.common.joda.time.DateTimeZone;
 import org.elasticsearch.common.joda.time.format.ISODateTimeFormat;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
+import org.elasticsearch.river.mongodb.MongoDBRiver;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
@@ -198,5 +199,14 @@ public abstract class MongoDBHelper {
             object = MongoDBHelper.applyIncludeFields(object, includeFields);
         }
         return object;
+    }
+
+
+    public static String getMongoDBIdField(DBObject data) {
+        if(data.containsField(MongoDBRiver.MONGODB_ID_FIELD)) {
+            final Object value = data.get(MongoDBRiver.MONGODB_ID_FIELD);
+            return value != null ? value.toString() : null;
+        }
+        return null;
     }
 }
