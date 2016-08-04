@@ -1,0 +1,26 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"servers": [{
+			host: "localhost",
+			port: "27017"
+		},
+		{
+			host: "localhost",
+			port: "27018"
+		},
+		{
+			host: "localhost",
+			port: "27019"
+		}],
+		"options": {
+			"secondary_read_preference": true
+		},
+		"db": "srs",
+		"collection": "instances"
+	},
+	"index": {
+		"name": "srs",
+		"type": "instances"
+	}
+}

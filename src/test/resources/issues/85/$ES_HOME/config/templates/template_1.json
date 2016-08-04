@@ -1,0 +1,28 @@
+{
+    "template_1" : {
+		"template" : "authors*",
+		"settings" : {
+			"number_of_shards" : 1,
+			"mapper" : {
+				"dynamic": false
+			}
+		},
+		"mappings" : {
+			"author": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"nationality": {
+						"type": "string"
+					}
+				}
+			},
+			"book": {
+				"_parent": {
+					"type": "author"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,12 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"db": "mydb91",
+		"collection": "fs",
+		gridfs: "true"
+	},
+	"index": {
+		"name": "mydb91",
+		"type": "type91"
+	}
+}

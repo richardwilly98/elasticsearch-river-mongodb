@@ -1,0 +1,17 @@
+{
+    "settings" : {
+        "number_of_shards" : 1,
+		"mapper" : {
+			"dynamic": false
+		}
+    },
+    "mappings" : {
+		"pin" : {
+			"properties" : {
+				"location" : {
+					"type" : "geo_point"
+				}
+			}
+		}    
+	}
+}

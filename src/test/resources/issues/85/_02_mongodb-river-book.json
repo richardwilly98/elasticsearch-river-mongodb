@@ -1,0 +1,12 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"db": "mydb85",
+		"collection": "books",
+		"script": "if(ctx.document._parentId) { ctx._parent = ctx.document._parentId; delete ctx.document._parentId;}"
+	},
+	"index": {
+		"name": "authors",
+		"type": "book"
+	}
+}

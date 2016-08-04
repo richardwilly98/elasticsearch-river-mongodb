@@ -1,0 +1,29 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"servers": [{
+			host: "localhost",
+			port: "27017"
+		},
+		{
+			host: "localhost",
+			port: "27018"
+		}],
+		"options": {
+			"secondary_read_preference": true
+		},
+		"credentials": [{
+			db: "admin",
+			user: "admin",
+			password: "Skipper2000"
+		}],
+		db: "testriver",
+		collection: "person",
+		gridfs: "false"
+	},
+	index: {
+		name: "personindex",
+		bulk_size: 500,
+		throttle_size: 2000
+	}
+}

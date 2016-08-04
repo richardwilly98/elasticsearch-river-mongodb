@@ -1,0 +1,13 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"host": "localhost", 
+		"port": "37017",
+		"db": "mydb",
+		"collection": "students"
+	},
+	"index": {
+		"name": "mydb46",
+		"type": "students46"
+	}
+}

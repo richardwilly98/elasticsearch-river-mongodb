@@ -1,0 +1,14 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"db": "mydb76",
+		"collection": "mycollec76",
+		"options": {
+			"exclude_fields": ["exclude-1", "exclude-2"]
+		}
+	},
+	"index": {
+		"name": "mydb76",
+		"type": "type76"
+	}
+}

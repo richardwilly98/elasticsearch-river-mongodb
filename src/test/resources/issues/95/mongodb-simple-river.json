@@ -1,0 +1,12 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"db": "mydb95",
+		"collection": "mycollection95",
+		gridfs: "false"
+	},
+	"index": {
+		"name": "mydb95",
+		"type": "type95"
+	}
+}

@@ -1,0 +1,1 @@
+curl -XPUT "http://localhost:9200/_river/mongodb1/_meta" -d @secured-mongodb-river-simple-local-user.json

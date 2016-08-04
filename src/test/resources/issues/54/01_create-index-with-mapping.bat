@@ -1,0 +1,1 @@
+curl -XPUT "http://localhost:9200/mygeoindex" -d @_01_create-index-with-mapping.json

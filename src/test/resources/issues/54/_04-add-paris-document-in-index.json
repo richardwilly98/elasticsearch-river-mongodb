@@ -1,0 +1,9 @@
+{
+    "pin" : {
+		"city" : "Paris",
+        "location" : {
+            "lat" : 48.8742,
+            "lon" : 2.3470
+        }
+    }
+}

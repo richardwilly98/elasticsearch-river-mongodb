@@ -1,0 +1,11 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"db": "mydb97",
+		"collection": "mycollec97"
+	},
+	"index": {
+		"name": "mydb-97",
+		"type": "mycollec-97"
+	}
+}

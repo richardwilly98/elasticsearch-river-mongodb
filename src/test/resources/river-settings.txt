@@ -1,0 +1,12 @@
+{
+	"type": "mongodb",
+	"mongodb": 
+	{
+		db: "testriver", 
+		user: "richard",
+		password: "skipper",
+		collection: "fs", 
+		gridfs: "true"
+	},
+	index: {name: "testriver", type: "files"}
+}

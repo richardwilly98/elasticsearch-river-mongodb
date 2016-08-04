@@ -1,0 +1,11 @@
+{
+	"type": "mongodb",
+	"mongodb": {
+		"db": "mydb85",
+		"collection": "authors"
+	},
+	"index": {
+		"name": "authors",
+		"type": "author"
+	}
+}

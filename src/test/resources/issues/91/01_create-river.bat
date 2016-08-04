@@ -1,0 +1,1 @@
+curl -XPUT "http://localhost:9200/_river/river91/_meta" -d @mongodb-river-with-gridfs.json

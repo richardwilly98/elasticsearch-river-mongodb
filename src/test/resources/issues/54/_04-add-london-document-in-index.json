@@ -1,0 +1,9 @@
+{
+    "pin" : {
+		"city" : "London",
+        "location" : {
+            "lat" : 51.5171,
+            "lon" : 0.1062
+        }
+    }
+}
